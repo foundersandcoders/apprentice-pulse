@@ -13,7 +13,7 @@
 |----------|----------|--------|
 | README | `/README.md` | ☐ |
 | Requirements / User Stories | `/docs/requirements.md` | ☐ |
-| Architecture Diagram | `/docs/architecture.md` | ☐ |
+| Architecture & Tech Stack | `/docs/architecture.md` | ☐ |
 | Database / Schema Design | `/docs/schema.md` | ☐ |
 | Test Scenarios | `/docs/test-scenarios.md` | ☐ |
 | Meeting Notes | `/docs/meetings/` | ☐ |

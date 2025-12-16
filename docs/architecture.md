@@ -212,6 +212,35 @@ sequenceDiagram
 | Hosting (prod) | Heroku |
 | Scheduled jobs | Vercel Cron |
 
+### Decisions & Rationale
+
+**SvelteKit over Next.js**
+Lighter framework with less boilerplate. Handles both frontend (PWA for student check-in) and API routes in one codebase. Native Vercel deployment support.
+
+**TypeScript**
+Type safety helps when working with Airtable data structures. Catches errors at build time.
+
+**Vitest over Jest**
+Faster, native ES modules support, works well with SvelteKit out of the box.
+
+**Magic link auth**
+No password management. Students enter email once, click link, session stored for ~90 days. Minimal friction for daily check-ins.
+
+**Airtable as database**
+Already in use at FAC. No migration needed. System acts as automation layer on top of existing data.
+
+**Resend for email**
+Simple API, good free tier, reliable delivery. Handles magic links and reminder emails.
+
+**Discord webhooks**
+Staff already use Discord. Webhooks require no bot setup - just POST to a URL. Instant notifications for support requests and alerts.
+
+**Vercel (temporary) → Heroku (production)**
+Vercel for rapid iteration during development. Will migrate to Heroku when production permissions available. Config via environment variables ensures portability.
+
+**Vercel Cron for scheduled jobs**
+Built into Vercel, no external scheduler needed. Runs API routes on schedule for attendance chases, survey sends, reminders.
+
 ## Environment Variables
 
 ```
