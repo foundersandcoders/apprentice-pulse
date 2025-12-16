@@ -30,8 +30,3 @@ npm-debug.log*
 
 # Vercel
 .vercel
-
-# Envirenment variables
-.env
-.env.development
-.env.production
