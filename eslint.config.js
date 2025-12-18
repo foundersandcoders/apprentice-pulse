@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { includeIgnoreFile } from '@eslint/compat';
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
+import stylistic from '@stylistic/eslint-plugin';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import ts from 'typescript-eslint';
@@ -14,6 +15,12 @@ export default defineConfig(
 	js.configs.recommended,
 	...ts.configs.recommended,
 	...svelte.configs.recommended,
+	stylistic.configs.customize({
+		indent: 'tab',
+		quotes: 'single',
+		semi: true,
+		jsx: false,
+	}),
 	{
 		languageOptions: { globals: { ...globals.browser, ...globals.node } },
 
