@@ -14,3 +14,51 @@ To avoid possible errors when mapping the Airtable tables and fields I created t
 
 # Refereing Airtable Tables and fields by their IDs.
 Instead of using their names, we will refer to tables and fields using their IDs, so there is no danger with users changing the name of a table and breaking the whole system
+
+
+# Reusable Airtable Client with Factory Pattern
+
+To prepare for the attendance tracking MVP and future features, I refactored the Airtable integration into a reusable module using the factory pattern. This allows the same business logic to work both in SvelteKit (server-side) and standalone scripts.
+
+## Structure
+
+- **`src/lib/airtable/airtable.ts`** - Core client with `createAirtableClient()` factory function. Contains all business logic and is framework-agnostic.
+- **`src/lib/airtable/sveltekit-wrapper.ts`** - Thin wrapper that uses SvelteKit's `$env/static/private` to configure the client.
+
+## Implementation
+
+The factory pattern accepts credentials and returns an object with utility functions:
+
+```typescript
+export function createAirtableClient(apiKey: string, baseId: string) {
+	Airtable.configure({ apiKey });
+	const base = Airtable.base(baseId);
+
+	async function getApprenticesByFacCohort(facCohort: string): Promise<Apprentice[]> {
+		// ... implementation
+	}
+
+	return { getApprenticesByFacCohort };
+}
+```
+
+**Usage in SvelteKit:**
+```typescript
+import { getApprenticesByFacCohort } from '$lib/airtable/sveltekit-wrapper';
+const apprentices = await getApprenticesByFacCohort('FAC29');
+```
+
+**Usage in scripts:**
+```typescript
+import { createAirtableClient } from '../src/lib/airtable/airtable.ts';
+const client = createAirtableClient(apiKey, baseId);
+const apprentices = await client.getApprenticesByFacCohort('FAC29');
+```
+
+## Key decisions
+
+- **Field IDs with `returnFieldsByFieldId: true`**: Makes the code resilient to field renames in Airtable
+- **Typed `Apprentice` interface**: Provides type safety for consuming code
+- **Lookup field handling**: Email is a lookup field that returns an array, handled with `emailLookup?.[0] ?? null`
+
+This refactoring enables code reuse across the application while keeping environment-specific configuration isolated. [P5 - 75%] [D2 - 60%]
