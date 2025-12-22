@@ -39,3 +39,22 @@ npm run dev
 - TailwindCSS
 - Airtable
 - Vitest + Playwright
+
+## Airtable Integration
+
+We reference Airtable tables and fields by their **IDs** rather than names to prevent breakage when users rename things.
+
+Use `returnFieldsByFieldId: true` in select queries to access fields by ID:
+
+```typescript
+const records = await table
+  .select({
+    filterByFormula: `{Field Name} = "value"`,
+    returnFieldsByFieldId: true,
+  })
+  .all();
+
+const value = record.get('fldXXXXXXXXXXXXXX'); // field ID
+```
+
+**Limitation:** `filterByFormula` still requires field **names**, not IDs. This is an Airtable API limitation. Document any field names used in formulas to track potential breaking changes.
