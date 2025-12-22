@@ -11,11 +11,13 @@ const bases = [
 ];
 
 interface AirtableField {
+	id: string;
 	name: string;
 	type: string;
 }
 
 interface AirtableTable {
+	id: string;
 	name: string;
 	fields: AirtableField[];
 }
@@ -52,11 +54,12 @@ async function main() {
 
 		for (const table of selected) {
 			output += `## ${base.name} / ${table.name}\n\n`;
-			output += '| Field | Type |\n';
-			output += '|-------|------|\n';
+			output += `Table ID: \`${table.id}\`\n\n`;
+			output += '| Field | ID | Type |\n';
+			output += '|-------|-----|------|\n';
 
 			for (const field of table.fields) {
-				output += `| ${field.name} | ${field.type} |\n`;
+				output += `| ${field.name} | \`${field.id}\` | ${field.type} |\n`;
 			}
 			output += '\n';
 		}
