@@ -21,3 +21,8 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Report aids
+Assesment-criteria.md
+ksbs.md
+
