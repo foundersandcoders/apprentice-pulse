@@ -70,5 +70,7 @@ During Sprint 02, I identified that certain tasks required permissions I did not
 
 This approach improved visibility into the project status and helped me prioritise effectively, focusing on tasks within my control while maintaining a clear follow-up list for delegated items. [P1 - 50%] [P2 - 40%] [K2, K6]
 
-
-
+# Authentication
+We use jsonwebtoken library to authenticate learners and staff. This allows us to:
+  * Generate the magic link token
+  * Verify the token
