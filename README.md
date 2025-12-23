@@ -14,7 +14,17 @@ Create a `.env.local` file with your Airtable credentials:
 AIRTABLE_API_KEY=your_api_key
 AIRTABLE_BASE_ID_LEARNERS=your_base_id
 AIRTABLE_BASE_ID_FEEDBACK=your_base_id
+AUTH_SECRET=your_auth_secret
 ```
+
+## Staff Access
+
+To grant someone staff access (for managing events):
+
+1. Add them as a **collaborator** in the Airtable workspace
+2. Add a record for them in the **Staff - Apprentice Pulse** table (`tblJjn62ExE1LVjmx`), selecting their collaborator profile in the Staff Name field
+
+Staff members can then log in using their collaborator email address.
 
 ## Development
 

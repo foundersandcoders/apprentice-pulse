@@ -86,4 +86,22 @@ We use jsonwebtoken library to authenticate learners and staff. This allows us t
 
 **API testing:** We use Postman to manually test the authentication endpoints during development. This allows us to verify request/response payloads and debug the auth flow before building the frontend.
 
-image.png
+## Role-based Access Control
+
+The `findUserByEmail` function implements role-based authentication by checking two Airtable tables:
+
+1. **Staff table** - Returns `type: 'staff'` for admin access
+2. **Apprentices table** - Returns `type: 'student'` for learner access
+
+A technical challenge arose with the Staff table: the email is stored in a `singleCollaborator` field (an Airtable collaborator object with `{ id, email, name }`). Unlike regular text fields, collaborator fields cannot be filtered using Airtable's `filterByFormula`. The solution was to fetch all staff records and iterate through them in code, comparing emails case-insensitively:
+
+```typescript
+for (const record of staffRecords) {
+	const collaborator = record.get(STAFF_FIELDS.COLLABORATOR);
+	if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
+		return { type: 'staff' };
+	}
+}
+```
+
+This approach ensures staff members can authenticate regardless of how their email is capitalised in Airtable. [K2 - 40%] [S5 - 30%] [D2 - 20%]
