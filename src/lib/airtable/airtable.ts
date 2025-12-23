@@ -1,6 +1,6 @@
 import Airtable from 'airtable';
 
-import { TABLES, COHORT_FIELDS, APPRENTICE_FIELDS } from './config.ts';
+import { TABLES, COHORT_FIELDS, APPRENTICE_FIELDS, STAFF_FIELDS } from './config.ts';
 
 export interface Apprentice {
 	id: string;
@@ -77,13 +77,29 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 
 	/**
 	 * Find a user by email and return their type (staff or student)
-	 *
-	 * Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
+	 * Checks Staff table first, then Apprentices table.
 	 */
 	async function findUserByEmail(email: string): Promise<{ type: UserType } | null> {
+		const staffTable = base(TABLES.STAFF);
 		const apprenticesTable = base(TABLES.APPRENTICES);
 
-		const records = await apprenticesTable
+		// Check Staff table first (singleCollaborator field contains email)
+		const staffRecords = await staffTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		for (const record of staffRecords) {
+			const collaborator = record.get(STAFF_FIELDS.COLLABORATOR) as { email: string } | undefined;
+			if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
+				return { type: 'staff' };
+			}
+		}
+
+		// Check Apprentices table
+		// Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
+		const apprenticeRecords = await apprenticesTable
 			.select({
 				filterByFormula: `{Learner email} = "${email}"`,
 				maxRecords: 1,
@@ -91,11 +107,10 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		if (records.length > 0) {
+		if (apprenticeRecords.length > 0) {
 			return { type: 'student' };
 		}
 
-		// TODO: Check Staff table when available
 		return null;
 	}
 

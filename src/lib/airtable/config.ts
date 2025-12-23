@@ -7,6 +7,7 @@
 export const TABLES = {
 	COHORTS: 'tbllAnSw8VPYFAa1a',
 	APPRENTICES: 'tbl0HJM700Jmd5Oob',
+	STAFF: 'tblJjn62ExE1LVjmx',
 } as const;
 
 // Fields - Cohorts
@@ -20,4 +21,9 @@ export const APPRENTICE_FIELDS = {
 	NAME: 'fldtvHx7pP5FgUWvh',
 	STATUS: 'fldFP9b6CfhNzeVNQ',
 	EMAIL: 'fldC3xdKGd96U0aoZ',
+} as const;
+
+// Fields - Staff
+export const STAFF_FIELDS = {
+	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
 } as const;
