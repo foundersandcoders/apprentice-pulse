@@ -35,7 +35,14 @@ async function fetchTables(baseId: string): Promise<AirtableTable[]> {
 	return data.tables.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function getTimestamp(): string {
+	return new Date().toISOString().replace(/[T:]/g, '-').substring(0, 19);
+}
+
 async function main() {
+	const timestamp = getTimestamp();
+	const outputFile = `scripts/schema-${timestamp}.md`;
+
 	let output = '# Airtable Schema\n\n';
 
 	for (const base of bases) {
@@ -65,8 +72,8 @@ async function main() {
 		}
 	}
 
-	writeFileSync('scripts/fetch-schema-output.md', output);
-	console.log(`\nWritten to scripts/fetch-schema-output.md`);
+	writeFileSync(outputFile, output);
+	console.log(`\nWritten to ${outputFile}`);
 }
 
 main().catch(console.error);

@@ -8,7 +8,7 @@ Schema mapping for Apprentice Pulse. Includes table and field IDs for API integr
 
 ```
 Apprentices (tbl0HJM700Jmd5Oob) - primary learner record
-  ├── Attendance (Current) (tblZp7KpGYaRfpLJt)
+  ├── Attendace - Apprentice Pulse (tblkDbhJcuT9TTwFc)
   ├── Weekly learning log (tblL2y5NRjyml8XU8)
   ├── Progress Reviews (Apprentices) (tblXMWiU6DmrrBAZ7)
   ├── Support log (tblWINmz4JDtVUucD)
@@ -48,23 +48,19 @@ Primary learner record for apprenticeship programme.
 
 ---
 
-## Attendance (Current)
+## Attendace - Apprentice Pulse
 
-**Table ID:** `tblZp7KpGYaRfpLJt`
+**Table ID:** `tblkDbhJcuT9TTwFc`
 
-Check-in records for events/sessions. Note: Uses date columns as fields (e.g., "10/11/25").
+Attendance tracking using a junction table pattern (one record per apprentice per date).
 
 | Field | ID | Type | Purpose |
 |-------|-----|------|---------|
-| Id | `fldF3O6N7ljzsZxo1` | autoNumber | Record ID |
-| Apprentice | `flddLOmOWKKPlTDog` | multipleRecordLinks | Links to Apprentices |
-| Company | `fldDfKhkPpP2ylDJw` | multipleLookupValues | Employer lookup |
-| Status | `fldgZJus1FTEAXysv` | multipleLookupValues | Learner status lookup |
-| Planned end date | `fldQ1cVeblI8eVe7j` | multipleLookupValues | EPA date lookup |
-| work-email | `fldXCdBcS4ntqXbCC` | multipleLookupValues | Email lookup |
-| Cohort | `fldymkv3erCZBRX0i` | multipleLookupValues | Cohort lookup |
-
-**Note:** Date columns (10/11/25, 17/11/25, etc.) are singleSelect fields added dynamically per session.
+| Id | `fldGdpuw6SoHkQbOs` | autoNumber | Record ID |
+| Apprentice | `fldOyo3hlj9Ht0rfZ` | multipleRecordLinks | Links to Apprentices |
+| Cohort | `fldn53kWDE8GHg2Yy` | multipleLookupValues | Cohort lookup |
+| Date | `fldvXHPmoLlEA8EuN` | date | Session date |
+| Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status |
 
 ---
 
