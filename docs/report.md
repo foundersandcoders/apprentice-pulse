@@ -83,3 +83,7 @@ This approach improved visibility into the project status and helped me prioriti
 We use jsonwebtoken library to authenticate learners and staff. This allows us to:
   * Generate the magic link token
   * Verify the token
+
+**API testing:** We use Postman to manually test the authentication endpoints during development. This allows us to verify request/response payloads and debug the auth flow before building the frontend.
+
+image.png
