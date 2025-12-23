@@ -14,7 +14,22 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ## Epic 1: Attendance Management
 
-### US-1: Check-in to event
+### US-1: Event management
+**As** FAC staff  
+**I want to** create, modify, and delete events via a calendar interface  
+**So that** I can manage the training schedule and enable attendance tracking
+
+**Acceptance Criteria:**
+- Calendar view displays existing events from Airtable
+- Create event: select date, cohort, and event type (regular class, workshop, hackathon)
+- Edit event: update date, cohort, or event type
+- Delete event: remove event from Airtable
+- Event syncs to Attendance (Current) table
+- Event type stored for filtering and reporting
+
+---
+
+### US-2: Check-in to event
 **As an** apprentice  
 **I want to** register my attendance by tapping an NFC sticker or scanning a QR code  
 **So that** I can check in quickly without manual roll calls
@@ -28,7 +43,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-2: Attendance chase email
+### US-3: Attendance chase email
 **As** FAC staff  
 **I want** students who haven't checked in to receive an automatic reminder  
 **So that** I don't have to manually chase attendance
@@ -41,7 +56,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-3: Staff attendance notification
+### US-4: Staff attendance notification
 **As** FAC staff  
 **I want to** receive a notification when attendance is low or missing  
 **So that** I can follow up with students who may need support
@@ -55,7 +70,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ## Epic 2: Survey Automation
 
-### US-4: Event survey distribution
+### US-5: Event survey distribution
 **As** FAC staff  
 **I want** surveys to be automatically sent to attendees after an event  
 **So that** I don't have to manually distribute feedback forms
@@ -68,7 +83,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-5: Scheduled recurring surveys
+### US-6: Scheduled recurring surveys
 **As** FAC staff  
 **I want to** configure recurring surveys (e.g., weekly on Tuesday 10am)  
 **So that** regular feedback collection happens automatically
@@ -80,7 +95,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-6: Survey reminder
+### US-7: Survey reminder
 **As** FAC staff  
 **I want** non-completers to receive automatic reminders  
 **So that** survey completion rates improve without manual chasing
@@ -93,7 +108,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-7: Support request alert
+### US-8: Support request alert
 **As** FAC staff  
 **I want to** be immediately notified when a student requests support in a survey  
 **So that** I can respond quickly to learners who need help
@@ -106,7 +121,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-8: Support follow-up alert
+### US-9: Support follow-up alert
 **As** FAC staff  
 **I want to** receive an alert if a support request hasn't been actioned  
 **So that** no student falls through the cracks
@@ -121,7 +136,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ## Epic 3: Progress Monitoring
 
-### US-9: Low OTJ hours alert
+### US-10: Low OTJ hours alert
 **As** FAC staff  
 **I want to** be alerted when an apprentice's OTJ hours fall behind  
 **So that** I can intervene before they miss EPA requirements
@@ -133,7 +148,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-10: EPA timeline alert
+### US-11: EPA timeline alert
 **As** FAC staff  
 **I want to** be alerted when apprentices are at risk of missing EPA deadlines  
 **So that** I can provide additional support or adjust timelines
@@ -145,7 +160,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-11: Missing employer feedback alert
+### US-12: Missing employer feedback alert
 **As** FAC staff  
 **I want to** know when employer feedback is overdue for a progress review  
 **So that** I can chase line managers and complete the review cycle
@@ -159,7 +174,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ## Epic 4: Stretch Goals
 
-### US-12: Discord notifications
+### US-13: Discord notifications
 **As** FAC staff  
 **I want** alerts to be sent via Discord  
 **So that** notifications integrate with our existing communication workflow
@@ -173,7 +188,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-13: Admin dashboard
+### US-14: Admin dashboard
 **As** FAC staff  
 **I want** a dashboard showing attendance records, support history, and learner status  
 **So that** I can view the holistic picture of a learner's journey
@@ -188,7 +203,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-14: Cohort dashboard
+### US-15: Cohort dashboard
 **As** FAC staff  
 **I want** a cohort-level view of progress metrics  
 **So that** I can identify trends and at-risk groups
@@ -203,7 +218,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 ---
 
-### US-15: Quarterly review automation
+### US-16: Quarterly review automation
 **As** FAC staff  
 **I want** the quarterly progress review process to be automated  
 **So that** survey distribution, chasing, and summary generation happen without manual effort
@@ -222,7 +237,7 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 
 | Priority | User Stories | Rationale |
 |----------|--------------|-----------|
-| P0 - MVP | US-1, US-2, US-4, US-6, US-7 | Core attendance + survey automation |
-| P1 - Essential | US-3, US-5, US-8, US-9 | Staff notifications + monitoring |
-| P2 - Important | US-10, US-11, US-12 | Progress tracking alerts |
-| P3 - Stretch | US-13, US-14, US-15 | Dashboards + advanced automation |
+| P0 - MVP | US-1, US-2, US-3, US-5, US-7, US-8 | Event management + core attendance + survey automation |
+| P1 - Essential | US-4, US-6, US-9, US-10 | Staff notifications + monitoring |
+| P2 - Important | US-11, US-12, US-13 | Progress tracking alerts |
+| P3 - Stretch | US-14, US-15, US-16 | Dashboards + advanced automation |
