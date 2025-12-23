@@ -62,3 +62,13 @@ const apprentices = await client.getApprenticesByFacCohort('FAC29');
 - **Lookup field handling**: Email is a lookup field that returns an array, handled with `emailLookup?.[0] ?? null`
 
 This refactoring enables code reuse across the application while keeping environment-specific configuration isolated. [P5 - 75%] [D2 - 60%]
+
+
+# Task Delegation and Team Coordination
+
+During Sprint 02, I identified that certain tasks required permissions I did not have (e.g., Airtable schema modifications, access to specific bases). Rather than letting these become blockers, I added Jess to the Jira board and assigned the relevant tasks to her. This allowed me to clearly distinguish between work I could progress independently and work that was pending on others.
+
+This approach improved visibility into the project status and helped me prioritise effectively, focusing on tasks within my control while maintaining a clear follow-up list for delegated items. [P1 - 50%] [P2 - 40%] [K2, K6]
+
+
+
