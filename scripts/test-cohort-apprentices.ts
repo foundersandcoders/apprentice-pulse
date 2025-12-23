@@ -1,7 +1,6 @@
-import dotenv from 'dotenv';
 import { createAirtableClient } from '../src/lib/airtable/airtable.ts';
-
-dotenv.config({ path: '.env.local' });
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseIdLearners = process.env.AIRTABLE_BASE_ID_LEARNERS;
