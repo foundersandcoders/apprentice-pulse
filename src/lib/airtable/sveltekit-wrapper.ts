@@ -18,3 +18,4 @@ export type { Apprentice } from './airtable.js';
 const client = createAirtableClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
 
 export const getApprenticesByFacCohort = client.getApprenticesByFacCohort;
+export const findUserByEmail = client.findUserByEmail;
