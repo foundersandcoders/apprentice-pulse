@@ -1,38 +1,60 @@
-# sv
+# Apprentice Pulse
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A SvelteKit application for tracking apprenticeship progress, integrated with Airtable.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
+## Setup
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install
 ```
 
-## Developing
+Create a `.env.local` file with your Airtable credentials:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+```
+AIRTABLE_API_KEY=your_api_key
+AIRTABLE_BASE_ID_LEARNERS=your_base_id
+AIRTABLE_BASE_ID_FEEDBACK=your_base_id
+```
+
+## Development
 
 ```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+## Scripts
 
-To create a production version of your app:
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run test` | Run tests |
+| `npm run lint` | Run ESLint |
+| `npx tsx scripts/fetch-schema.ts` | Fetch Airtable schema |
+| `npx tsx scripts/test-airtable.ts` | Test Airtable connection |
 
-```sh
-npm run build
+## Tech Stack
+
+- SvelteKit
+- TailwindCSS
+- Airtable
+- Vitest + Playwright
+
+## Airtable Integration
+
+We reference Airtable tables and fields by their **IDs** rather than names to prevent breakage when users rename things.
+
+Use `returnFieldsByFieldId: true` in select queries to access fields by ID:
+
+```typescript
+const records = await table
+  .select({
+    filterByFormula: `{Field Name} = "value"`,
+    returnFieldsByFieldId: true,
+  })
+  .all();
+
+const value = record.get('fldXXXXXXXXXXXXXX'); // field ID
 ```
 
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+**Limitation:** `filterByFormula` still requires field **names**, not IDs. This is an Airtable API limitation. Document any field names used in formulas to track potential breaking changes.

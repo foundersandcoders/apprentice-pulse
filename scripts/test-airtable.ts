@@ -12,13 +12,18 @@ if (!apiKey || !baseIdLearners) {
 
 Airtable.configure({ apiKey });
 
+// Table: Test for Apprentice-pulse
+const TABLE_ID = 'tblTT4yIfKbVurrPf';
+// Field: Name
+const FIELD_NAME = 'fldJummyNwMjpr3Vr';
+
 async function testConnection() {
 	const base = Airtable.base(baseIdLearners ?? '');
-	const table = base('Test for Apprentice-pulse');
+	const table = base(TABLE_ID);
 
 	console.log('Testing write access...');
 	const newRecord = await table.create({
-		Name: 'Test Record',
+		[FIELD_NAME]: 'Test Record',
 	});
 	console.log('Created record:', newRecord.id);
 
@@ -26,7 +31,7 @@ async function testConnection() {
 	const records = await table.select({ maxRecords: 3 }).all();
 	console.log(`Found ${records.length} records:`);
 	records.forEach((record) => {
-		console.log(`  - ${record.id}: ${record.get('Name')}`);
+		console.log(`  - ${record.id}: ${record.get(FIELD_NAME)}`);
 	});
 
 	// console.log('\nTesting delete...');
