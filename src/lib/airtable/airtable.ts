@@ -21,6 +21,8 @@ export interface Apprentice {
 	cohortNumber: string | null;
 }
 
+export type UserType = 'staff' | 'student';
+
 export function createAirtableClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });
 	const base = Airtable.base(baseId);
@@ -84,7 +86,32 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		});
 	}
 
+	/**
+	 * Find a user by email and return their type (staff or student)
+	 *
+	 * Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
+	 */
+	async function findUserByEmail(email: string): Promise<{ type: UserType } | null> {
+		const apprenticesTable = base(APPRENTICES_TABLE);
+
+		const records = await apprenticesTable
+			.select({
+				filterByFormula: `{Learner email} = "${email}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (records.length > 0) {
+			return { type: 'student' };
+		}
+
+		// TODO: Check Staff table when available
+		return null;
+	}
+
 	return {
 		getApprenticesByFacCohort,
+		findUserByEmail,
 	};
 }
