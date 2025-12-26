@@ -1,22 +1,54 @@
-import type { Handle } from '@sveltejs/kit';
+import { redirect, type Handle } from '@sveltejs/kit';
+import { getSession } from '$lib/server/session';
+
+// Routes that require staff access
+const ADMIN_ROUTES = ['/admin'];
+
+// Routes that require any authenticated user
+const PROTECTED_ROUTES = ['/checkin'];
+
+// Routes that should not redirect authenticated users
+const AUTH_ROUTES = ['/login'];
+
+function isPathMatch(pathname: string, routes: string[]): boolean {
+	return routes.some(route => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const sessionCookie = event.cookies.get('session');
+	const session = getSession(event.cookies);
 
-	if (sessionCookie) {
-		try {
-			const session = JSON.parse(sessionCookie);
-			event.locals.user = {
-				email: session.email,
-				type: session.type,
-			};
+	// Set user in locals for all routes
+	event.locals.user = session;
+
+	const { pathname } = event.url;
+
+	// Skip protection for API routes (they handle their own auth)
+	if (pathname.startsWith('/api/')) {
+		return resolve(event);
+	}
+
+	// Check admin routes - require staff
+	if (isPathMatch(pathname, ADMIN_ROUTES)) {
+		if (!session) {
+			redirect(303, '/login?redirect=' + encodeURIComponent(pathname));
 		}
-		catch {
-			event.locals.user = null;
+		if (session.type !== 'staff') {
+			// Students trying to access admin get redirected to checkin or home
+			redirect(303, '/');
 		}
 	}
-	else {
-		event.locals.user = null;
+
+	// Check protected routes - require any authenticated user
+	if (isPathMatch(pathname, PROTECTED_ROUTES)) {
+		if (!session) {
+			redirect(303, '/login?redirect=' + encodeURIComponent(pathname));
+		}
+	}
+
+	// Redirect authenticated users away from login page
+	if (isPathMatch(pathname, AUTH_ROUTES) && session) {
+		const redirectTo = session.type === 'staff' ? '/admin' : '/';
+		redirect(303, redirectTo);
 	}
 
 	return resolve(event);
