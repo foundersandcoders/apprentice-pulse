@@ -10,6 +10,10 @@ vi.mock('$lib/server/auth', () => ({
 	generateMagicToken: vi.fn(() => 'mock-token'),
 }));
 
+vi.mock('$lib/server/email', () => ({
+	sendMagicLinkEmail: vi.fn(() => Promise.resolve({ success: true })),
+}));
+
 import { findApprenticeByEmail } from '$lib/airtable/sveltekit-wrapper';
 import { generateMagicToken } from '$lib/server/auth';
 
