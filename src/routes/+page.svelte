@@ -1,2 +1,12 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	let { data } = $props();
+</script>
+
+<h1>Apprentice Pulse</h1>
+
+{#if data.user}
+	<p>Logged in as: {data.user.email} ({data.user.type})</p>
+	<a href="/api/auth/logout">Logout</a>
+{:else}
+	<p>Not logged in</p>
+{/if}
