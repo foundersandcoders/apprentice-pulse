@@ -2,11 +2,20 @@
 I created the boiler plate code, basic CI and deployment at the very beggining off the project (AP-3, AP-2, AP-8).
 The idea is to have as soon as possible a "Hello world". In this context that would be a deployed sveltkit app that can read and write a value on Airtable.
 
-# Testing from the very beginning
+# Testing Strategy
 
-I created a test script (`scripts/test-airtable.ts`) to verify read and write access to Airtable before building any features. This script uses dotenv to load credentials from `.env.local` and tests creating and reading records from a dedicated test table.
+We use Vitest for automated testing with a co-location pattern: test files (`.spec.ts`) live next to the source files they test. This makes tests easy to find and encourages test coverage.
 
-The project uses Vitest with Playwright for browser-based component testing, with Playwright browsers installed automatically via a postinstall hook. At the moment test is boilerplate, so we are not really testing any real functionality
+**Structure:**
+- `src/lib/**/*.spec.ts` - Unit tests for library code
+- `src/routes/**/*.spec.ts` - Component tests for pages
+
+**Manual integration scripts** live in `scripts/` and are used for verifying real API connectivity during development:
+- `scripts/check-airtable-connection.ts` - Verify Airtable read/write access
+- `scripts/check-cohort-apprentices.ts` - Test cohort lookup functionality
+- `scripts/fetch-schema.ts` - Fetch and document Airtable schema
+
+This separation keeps automated tests (fast, mocked, run in CI) distinct from manual integration checks (slow, real API, run during development). [P6 - 30%] [P7 - 30%]
 
 
 # Importing Airtable schema
@@ -70,5 +79,29 @@ During Sprint 02, I identified that certain tasks required permissions I did not
 
 This approach improved visibility into the project status and helped me prioritise effectively, focusing on tasks within my control while maintaining a clear follow-up list for delegated items. [P1 - 50%] [P2 - 40%] [K2, K6]
 
+# Authentication
+We use jsonwebtoken library to authenticate learners and staff. This allows us to:
+  * Generate the magic link token
+  * Verify the token
 
+**API testing:** We use Postman to manually test the authentication endpoints during development. This allows us to verify request/response payloads and debug the auth flow before building the frontend.
 
+## Role-based Access Control
+
+The `findUserByEmail` function implements role-based authentication by checking two Airtable tables:
+
+1. **Staff table** - Returns `type: 'staff'` for admin access
+2. **Apprentices table** - Returns `type: 'student'` for learner access
+
+A technical challenge arose with the Staff table: the email is stored in a `singleCollaborator` field (an Airtable collaborator object with `{ id, email, name }`). Unlike regular text fields, collaborator fields cannot be filtered using Airtable's `filterByFormula`. The solution was to fetch all staff records and iterate through them in code, comparing emails case-insensitively:
+
+```typescript
+for (const record of staffRecords) {
+	const collaborator = record.get(STAFF_FIELDS.COLLABORATOR);
+	if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
+		return { type: 'staff' };
+	}
+}
+```
+
+This approach ensures staff members can authenticate regardless of how their email is capitalised in Airtable. [K2 - 40%] [S5 - 30%] [D2 - 20%]

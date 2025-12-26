@@ -170,6 +170,19 @@ Intervention and support request tracking.
 
 ---
 
+## Staff - Apprentice Pulse
+
+**Table ID:** `tblJjn62ExE1LVjmx`
+
+Staff members for authentication. Uses Airtable collaborators for email lookup.
+
+| Field | ID | Type | Purpose |
+|-------|-----|------|---------|
+| Id | `fldbTKP32s3Soev91` | autoNumber | Record ID |
+| Staff Name | `fldHEHhQInmSdipn8` | singleCollaborator | Collaborator with id, email, name |
+
+---
+
 ## Cohorts
 
 **Table ID:** `tbllAnSw8VPYFAa1a`
