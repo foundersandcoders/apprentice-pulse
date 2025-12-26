@@ -7,7 +7,13 @@
 
 {#if data.user}
 	<p>Logged in as: {data.user.email} ({data.user.type})</p>
-	<a href={resolve('/api/auth/logout')}>Logout</a>
+	<nav>
+		{#if data.user.type === 'staff'}
+			<a href={resolve('/admin')}>Admin Dashboard</a>
+		{/if}
+		<a href={resolve('/api/auth/logout')}>Logout</a>
+	</nav>
 {:else}
 	<p>Not logged in</p>
+	<a href={resolve('/login')}>Login</a>
 {/if}

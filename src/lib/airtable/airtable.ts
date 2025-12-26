@@ -78,12 +78,25 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	/**
 	 * Find a user by email and return their type (staff or student)
 	 * Checks Staff table first, then Apprentices table.
+	 * @deprecated Use findStaffByEmail or findApprenticeByEmail instead
 	 */
 	async function findUserByEmail(email: string): Promise<{ type: UserType } | null> {
-		const staffTable = base(TABLES.STAFF);
-		const apprenticesTable = base(TABLES.APPRENTICES);
+		if (await findStaffByEmail(email)) {
+			return { type: 'staff' };
+		}
+		if (await findApprenticeByEmail(email)) {
+			return { type: 'student' };
+		}
+		return null;
+	}
 
-		// Check Staff table first (singleCollaborator field contains email)
+	/**
+	 * Check if email exists in Staff table
+	 */
+	async function findStaffByEmail(email: string): Promise<boolean> {
+		const staffTable = base(TABLES.STAFF);
+
+		// singleCollaborator field cannot be filtered, must fetch all and iterate
 		const staffRecords = await staffTable
 			.select({
 				returnFieldsByFieldId: true,
@@ -93,12 +106,20 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		for (const record of staffRecords) {
 			const collaborator = record.get(STAFF_FIELDS.COLLABORATOR) as { email: string } | undefined;
 			if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
-				return { type: 'staff' };
+				return true;
 			}
 		}
 
-		// Check Apprentices table
-		// Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
+		return false;
+	}
+
+	/**
+	 * Check if email exists in Apprentices table
+	 * Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
+	 */
+	async function findApprenticeByEmail(email: string): Promise<boolean> {
+		const apprenticesTable = base(TABLES.APPRENTICES);
+
 		const apprenticeRecords = await apprenticesTable
 			.select({
 				filterByFormula: `{Learner email} = "${email}"`,
@@ -107,15 +128,13 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		if (apprenticeRecords.length > 0) {
-			return { type: 'student' };
-		}
-
-		return null;
+		return apprenticeRecords.length > 0;
 	}
 
 	return {
 		getApprenticesByFacCohort,
 		findUserByEmail,
+		findStaffByEmail,
+		findApprenticeByEmail,
 	};
 }

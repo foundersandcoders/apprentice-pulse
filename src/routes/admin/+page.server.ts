@@ -1,14 +1,7 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user) {
-		redirect(303, '/');
-	}
-
-	if (locals.user.type !== 'staff') {
-		redirect(303, '/');
-	}
-
+// Route protection is handled by hooks.server.ts
+// This load function just passes through - user data comes from layout
+export const load: PageServerLoad = async () => {
 	return {};
 };
