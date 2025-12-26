@@ -3,7 +3,7 @@ import { RESEND_API_KEY } from '$env/static/private';
 
 const resend = new Resend(RESEND_API_KEY);
 
-const FROM_EMAIL = 'Apprentice Pulse <noreply@resend.dev>';
+const FROM_EMAIL = 'Apprentice Pulse <login@beacons.ink>';
 
 interface SendMagicLinkResult {
 	success: boolean;
