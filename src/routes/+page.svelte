@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	let { data } = $props();
 </script>
 
@@ -6,7 +7,7 @@
 
 {#if data.user}
 	<p>Logged in as: {data.user.email} ({data.user.type})</p>
-	<a href="/api/auth/logout">Logout</a>
+	<a href={resolve('/api/auth/logout')}>Logout</a>
 {:else}
 	<p>Not logged in</p>
 {/if}
