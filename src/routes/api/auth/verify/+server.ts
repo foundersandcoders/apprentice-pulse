@@ -1,11 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { verifyMagicToken } from '$lib/server/auth';
-
-const SESSION_DURATION_DAYS = 90;
+import { setSession } from '$lib/server/session';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
 	const token = url.searchParams.get('token');
+	const redirectTo = url.searchParams.get('redirect');
 
 	if (!token) {
 		return new Response('Token is required', { status: 400 });
@@ -18,16 +18,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	}
 
 	// Set session cookie
-	cookies.set('session', JSON.stringify({
+	setSession(cookies, {
 		email: payload.email,
 		type: payload.type,
-	}), {
-		path: '/',
-		httpOnly: true,
-		secure: true,
-		sameSite: 'lax',
-		maxAge: 60 * 60 * 24 * SESSION_DURATION_DAYS,
 	});
 
-	redirect(303, '/');
+	// Redirect to the intended destination or default based on user type
+	if (redirectTo && redirectTo.startsWith('/')) {
+		redirect(303, redirectTo);
+	}
+
+	redirect(303, payload.type === 'staff' ? '/admin' : '/');
 };

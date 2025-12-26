@@ -105,3 +105,44 @@ for (const record of staffRecords) {
 ```
 
 This approach ensures staff members can authenticate regardless of how their email is capitalised in Airtable. [K2 - 40%] [S5 - 30%] [D2 - 20%]
+
+
+# Role-Based Route Protection (AP-15)
+
+Implemented centralised route protection using SvelteKit hooks. This moves authentication checks from individual page load functions to a single middleware, reducing code duplication and ensuring consistent access control.
+
+## Implementation
+
+**Session helpers** (`src/lib/server/session.ts`):
+- `getSession(cookies)` - Parse and validate session cookie
+- `setSession(cookies, data)` - Set session with 90-day expiry
+- `clearSession(cookies)` - Delete session cookie
+
+**Route protection** (`src/hooks.server.ts`):
+```typescript
+const ADMIN_ROUTES = ['/admin'];
+const PROTECTED_ROUTES = ['/checkin'];
+const AUTH_ROUTES = ['/login'];
+
+// In handle function:
+if (isPathMatch(pathname, ADMIN_ROUTES)) {
+	if (!session) redirect(303, '/login?redirect=' + encodeURIComponent(pathname));
+	if (session.type !== 'staff') redirect(303, '/');
+}
+```
+
+## Route protection rules
+
+| Route Pattern | Access | Redirect if denied |
+|--------------|--------|-------------------|
+| `/admin/*` | Staff only | → `/login` (no session) or `/` (students) |
+| `/checkin` | Any authenticated user | → `/login` |
+| `/login` | Unauthenticated only | → `/admin` (staff) or `/` (students) |
+| Other routes | Public | - |
+
+## Key decisions
+
+- **Centralised in hooks**: Single source of truth for route protection, easier to audit and modify. Avoids duplicating auth checks in every page's load function. [P5 - 70%] [D2 - 60%]
+- **Redirect parameter**: Login preserves intended destination via `?redirect=` query param, improving user experience after authentication
+- **API routes excluded**: `/api/*` routes handle their own auth to support different response formats (JSON vs redirects)
+- **Session helpers module**: Extracted cookie handling into reusable functions (`getSession`, `setSession`, `clearSession`) following DRY principles [K7 - 50%] [S17 - 60%]
