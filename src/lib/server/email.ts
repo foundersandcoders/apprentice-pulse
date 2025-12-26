@@ -1,9 +1,7 @@
 import { Resend } from 'resend';
-import { RESEND_API_KEY } from '$env/static/private';
+import { RESEND_API_KEY, RESEND_FROM_EMAIL } from '$env/static/private';
 
 const resend = new Resend(RESEND_API_KEY);
-
-const FROM_EMAIL = 'Apprentice Pulse <login@beacons.ink>';
 
 interface SendMagicLinkResult {
 	success: boolean;
@@ -48,7 +46,7 @@ If you didn't request this, you can safely ignore this email.
 
 	try {
 		const { error } = await resend.emails.send({
-			from: FROM_EMAIL,
+			from: RESEND_FROM_EMAIL,
 			to,
 			subject,
 			html,
