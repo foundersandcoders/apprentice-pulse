@@ -1,7 +1,7 @@
 import Airtable from 'airtable';
 
 import { TABLES, EVENT_FIELDS } from './config.js';
-import type { Event, EventFilters, EventType, CreateEventInput } from '$lib/types/event.js';
+import type { Event, EventFilters, EventType, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
 
 export function createEventsClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });
@@ -91,9 +91,35 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		};
 	}
 
+	/**
+	 * Update an existing event
+	 */
+	async function updateEvent(id: string, data: UpdateEventInput): Promise<Event> {
+		const fields: Record<string, unknown> = {};
+
+		if (data.name !== undefined) fields[EVENT_FIELDS.NAME] = data.name;
+		if (data.dateTime !== undefined) fields[EVENT_FIELDS.DATE_TIME] = data.dateTime;
+		if (data.cohortId !== undefined) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
+		if (data.eventType !== undefined) fields[EVENT_FIELDS.EVENT_TYPE] = data.eventType;
+		if (data.surveyUrl !== undefined) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
+
+		const record = await eventsTable.update(id, fields);
+		const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+
+		return {
+			id: record.id,
+			name: record.get(EVENT_FIELDS.NAME) as string,
+			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+			cohortId: cohortLookup?.[0] ?? '',
+			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+		};
+	}
+
 	return {
 		listEvents,
 		getEvent,
 		createEvent,
+		updateEvent,
 	};
 }
