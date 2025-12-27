@@ -34,5 +34,6 @@ export const EVENT_FIELDS = {
 	NAME: 'fldMCZijN6TJeUdFR',
 	COHORT: 'fldcXDEDkeHvWTnxE', // multipleRecordLinks to Cohorts
 	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (combined date and time)
+	EVENT_TYPE: 'fldo7fwAsFhkA1icC', // singleSelect (Regular class, Workshop, Hackathon)
 	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
 } as const;

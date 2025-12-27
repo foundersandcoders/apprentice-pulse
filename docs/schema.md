@@ -214,6 +214,7 @@ Scheduled events/sessions for attendance tracking.
 | Name | `fldMCZijN6TJeUdFR` | singleLineText | Event name |
 | FAC Cohort | `fldcXDEDkeHvWTnxE` | multipleRecordLinks | Links to Cohorts |
 | Date Time | `fld8AkM3EanzZa5QX` | dateTime | Event start date and time |
+| Event Type | `fldo7fwAsFhkA1icC` | singleSelect | Regular class, Workshop, Hackathon |
 | Survey | `fld9XBHnCWBtZiZah` | url | Optional survey form URL |
 
 ---
