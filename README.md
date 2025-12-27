@@ -138,3 +138,13 @@ This script:
 **Always use this script** to get IDs rather than copying them manually from the Airtable UI. This ensures accuracy and provides documentation of the schema at that point in time.
 
 The generated schema file can be used to update `src/lib/airtable/config.ts` with new field IDs.
+
+### Event Types
+
+Event types are defined in `src/lib/types/event.ts`. The `EventType` union currently includes:
+
+- `Regular class`
+- `Workshop`
+- `Hackathon`
+
+If new event types are added in Airtable's "Select" field, update this type definition to match.
