@@ -9,6 +9,7 @@ Schema mapping for Apprentice Pulse. Includes table and field IDs for API integr
 ```
 Apprentices (tbl0HJM700Jmd5Oob) - primary learner record
   ├── Attendace - Apprentice Pulse (tblkDbhJcuT9TTwFc)
+  │     └── Event → Events - Apprentice Pulse
   ├── Weekly learning log (tblL2y5NRjyml8XU8)
   ├── Progress Reviews (Apprentices) (tblXMWiU6DmrrBAZ7)
   ├── Support log (tblWINmz4JDtVUucD)
@@ -53,15 +54,17 @@ Primary learner record for apprenticeship programme.
 
 **Table ID:** `tblkDbhJcuT9TTwFc`
 
-Attendance tracking using a junction table pattern (one record per apprentice per date).
+Attendance tracking using a junction table pattern (one record per apprentice per event).
 
 | Field | ID | Type | Purpose |
 |-------|-----|------|---------|
 | Id | `fldGdpuw6SoHkQbOs` | autoNumber | Record ID |
 | Apprentice | `fldOyo3hlj9Ht0rfZ` | multipleRecordLinks | Links to Apprentices |
-| Cohort | `fldn53kWDE8GHg2Yy` | multipleLookupValues | Cohort lookup |
-| Date | `fldvXHPmoLlEA8EuN` | date | Session date |
+| Event | `fldiHd75LYtopwyN9` | multipleRecordLinks | Links to Events |
+| Checkin Time | `fldvXHPmoLlEA8EuN` | dateTime | When student checked in |
 | Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status |
+| Date Time (from Event) | `fldokfSk68MhJGlm6` | multipleLookupValues | Event date/time lookup |
+| FAC Cohort (from Event) | `fldkc9zLJe7NZVAz1` | multipleLookupValues | Cohort lookup from Event |
 
 ---
 
@@ -216,6 +219,8 @@ Scheduled events/sessions for attendance tracking.
 | Date Time | `fld8AkM3EanzZa5QX` | dateTime | Event start date and time |
 | Event Type | `fldo7fwAsFhkA1icC` | singleSelect | Regular class, Workshop, Hackathon |
 | Survey | `fld9XBHnCWBtZiZah` | url | Optional survey form URL |
+| Attendance | `fldcPf53fVfStFZsa` | multipleRecordLinks | Linked attendance records |
+| Name - Date | `fld7POykodV0LGsg1` | formula | Display name with date |
 
 ---
 

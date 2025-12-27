@@ -9,6 +9,7 @@ export const TABLES = {
 	APPRENTICES: 'tbl0HJM700Jmd5Oob',
 	STAFF: 'tblJjn62ExE1LVjmx',
 	EVENTS: 'tblkbskw4fuTq0E9p',
+	ATTENDANCE: 'tblkDbhJcuT9TTwFc',
 } as const;
 
 // Fields - Cohorts
@@ -36,4 +37,15 @@ export const EVENT_FIELDS = {
 	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (combined date and time)
 	EVENT_TYPE: 'fldo7fwAsFhkA1icC', // singleSelect (Regular class, Workshop, Hackathon)
 	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
+	ATTENDANCE: 'fldcPf53fVfStFZsa', // multipleRecordLinks to Attendance (reverse link)
+	NAME_DATE: 'fld7POykodV0LGsg1', // formula (display name)
+} as const;
+
+// Fields - Attendance
+export const ATTENDANCE_FIELDS = {
+	ID: 'fldGdpuw6SoHkQbOs', // autoNumber
+	APPRENTICE: 'fldOyo3hlj9Ht0rfZ', // multipleRecordLinks to Apprentices
+	EVENT: 'fldiHd75LYtopwyN9', // multipleRecordLinks to Events
+	CHECKIN_TIME: 'fldvXHPmoLlEA8EuN', // dateTime
+	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Absent/Late)
 } as const;
