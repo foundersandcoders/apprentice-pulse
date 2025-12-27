@@ -1,7 +1,7 @@
 import Airtable from 'airtable';
 
-import { TABLES, EVENT_FIELDS } from './config.js';
-import type { Event, EventFilters, EventType, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
+import { TABLES, EVENT_FIELDS } from './config.ts';
+import type { Event, EventFilters, EventType, CreateEventInput, UpdateEventInput } from '../types/event.ts';
 
 export function createEventsClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });

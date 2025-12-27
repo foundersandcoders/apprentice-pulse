@@ -114,4 +114,61 @@ describe('events', () => {
 			expect(event).toBeNull();
 		});
 	});
+
+	describe('createEvent', () => {
+		it('should create and return new event', async () => {
+			const mockRecord = { id: 'recNew123' };
+			mockTable.create.mockResolvedValue(mockRecord);
+
+			const input = {
+				name: 'New Event',
+				dateTime: '2025-01-08T09:00:00.000Z',
+				cohortId: 'recCohort1',
+				eventType: 'Workshop' as const,
+				surveyUrl: 'https://survey.example.com',
+			};
+
+			const event = await client.createEvent(input);
+
+			expect(event).toEqual({
+				id: 'recNew123',
+				...input,
+			});
+			expect(mockTable.create).toHaveBeenCalled();
+		});
+	});
+
+	describe('updateEvent', () => {
+		it('should update and return event', async () => {
+			const mockRecord = {
+				id: 'rec123',
+				get: vi.fn((field: string) => {
+					const data: Record<string, unknown> = {
+						fldMCZijN6TJeUdFR: 'Updated Name',
+						fld8AkM3EanzZa5QX: '2025-01-06T10:00:00.000Z',
+						fldcXDEDkeHvWTnxE: ['recCohort1'],
+						fldo7fwAsFhkA1icC: 'Regular class',
+						fld9XBHnCWBtZiZah: undefined,
+					};
+					return data[field];
+				}),
+			};
+			mockTable.update.mockResolvedValue(mockRecord);
+
+			const event = await client.updateEvent('rec123', { name: 'Updated Name' });
+
+			expect(event.name).toBe('Updated Name');
+			expect(mockTable.update).toHaveBeenCalledWith('rec123', expect.any(Object));
+		});
+	});
+
+	describe('deleteEvent', () => {
+		it('should delete event', async () => {
+			mockTable.destroy.mockResolvedValue({});
+
+			await client.deleteEvent('rec123');
+
+			expect(mockTable.destroy).toHaveBeenCalledWith('rec123');
+		});
+	});
 });
