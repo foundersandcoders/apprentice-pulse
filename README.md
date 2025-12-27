@@ -120,7 +120,18 @@ const records = await table
 const value = record.get('fldXXXXXXXXXXXXXX'); // field ID
 ```
 
-**Limitation:** `filterByFormula` still requires field **names**, not IDs. This is an Airtable API limitation. Document any field names used in formulas to track potential breaking changes.
+**Limitation:** `filterByFormula` still requires field **names**, not IDs. This is an Airtable API limitation.
+
+### Field Names Used in Formulas
+
+The following field names are used in `filterByFormula` queries. **Renaming these fields in Airtable will break the app:**
+
+| Table | Field Name | Used In |
+|-------|------------|---------|
+| Apprentices | `Learner email` | `findApprenticeByEmail()` |
+| Cohorts | `FAC Cohort` | `getApprenticesByFacCohort()` |
+| Events | `FAC Cohort` | `listEvents()` cohort filter |
+| Events | `Date Time` | `listEvents()` date range filter |
 
 ### Fetching Schema IDs
 
@@ -138,3 +149,13 @@ This script:
 **Always use this script** to get IDs rather than copying them manually from the Airtable UI. This ensures accuracy and provides documentation of the schema at that point in time.
 
 The generated schema file can be used to update `src/lib/airtable/config.ts` with new field IDs.
+
+### Event Types
+
+Event types are defined in `src/lib/types/event.ts`. The `EventType` union currently includes:
+
+- `Regular class`
+- `Workshop`
+- `Hackathon`
+
+If new event types are added in Airtable's "Select" field, update this type definition to match.
