@@ -8,23 +8,48 @@ A SvelteKit application for tracking apprenticeship progress, integrated with Ai
 npm install
 ```
 
-Create a `.env.local` file with your Airtable credentials:
+Create a `.env.local` file with your credentials:
 
 ```
 AIRTABLE_API_KEY=your_api_key
-AIRTABLE_BASE_ID_LEARNERS=your_base_id
-AIRTABLE_BASE_ID_FEEDBACK=your_base_id
-AUTH_SECRET=your_auth_secret
+AIRTABLE_BASE_ID=your_base_id
+RESEND_API_KEY=your_resend_key
+RESEND_FROM_EMAIL=App Name <noreply@yourdomain.com>
+AUTH_SECRET=your_auth_secret_min_32_chars
 ```
 
-## Staff Access
+## Authentication
 
-To grant someone staff access (for managing events):
+The app uses **magic link authentication** with separate login flows for staff and students:
+
+### User Types
+
+| Type | Login Page | Validates Against | Default Redirect |
+|------|------------|-------------------|------------------|
+| Staff | `/admin/login` | Staff table (collaborator email) | `/admin` |
+| Student | `/login` | Apprentices table (learner email) | `/` |
+
+### How It Works
+
+1. User enters email on the appropriate login page
+2. Server validates email exists in the corresponding Airtable table
+3. JWT token generated (15-minute expiry) and emailed via Resend
+4. User clicks link → token verified → session cookie set (90-day expiry)
+5. User redirected to appropriate dashboard
+
+### Route Protection
+
+The app uses SvelteKit hooks (`src/hooks.server.ts`) for centralized route protection:
+
+- `/admin/*` → Staff only (redirects students to `/`)
+- `/checkin` → Any authenticated user
+- `/login`, `/admin/login` → Redirects away if already authenticated
+
+### Adding Staff Members
 
 1. Add them as a **collaborator** in the Airtable workspace
-2. Add a record for them in the **Staff - Apprentice Pulse** table (`tblJjn62ExE1LVjmx`), selecting their collaborator profile in the Staff Name field
-
-Staff members can then log in using their collaborator email address.
+2. Add a record in the **Staff - Apprentice Pulse** table, selecting their collaborator profile
+3. They can now log in at `/admin/login` using their collaborator email
 
 ## Development
 
@@ -34,20 +59,31 @@ npm run dev
 
 ## Testing Authentication (Development)
 
-Since magic links are logged to the console (not emailed) during development, follow these steps to test login:
+In development, you can test login using the UI or via curl:
 
-1. **Start the dev server** - `npm run dev`
-2. **Call the login endpoint** - Use Postman or curl:
-   ```sh
-   curl -X POST http://localhost:5173/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"email": "your@email.com"}'
-   ```
-3. **Copy the token** - Check the server terminal for the magic link URL containing the token
-4. **Visit verify in your browser** - Navigate to `http://localhost:5173/api/auth/verify?token=YOUR_TOKEN`
-5. **You're logged in** - The session cookie is set and you'll be redirected to `/`
+### Via UI
+1. Start the dev server: `npm run dev`
+2. Go to `/login` (students) or `/admin/login` (staff)
+3. Enter an email that exists in the appropriate Airtable table
+4. Check your email for the magic link
 
-**Important:** The verify step must be done in the browser (not Postman) because the session cookie needs to be set in the browser where you're viewing the app.
+### Via curl
+```sh
+# Staff login
+curl -X POST http://localhost:5173/api/auth/staff/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "staff@example.com"}'
+
+# Student login
+curl -X POST http://localhost:5173/api/auth/student/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "student@example.com"}'
+```
+
+Then click the magic link in your email, or manually visit:
+`http://localhost:5173/api/auth/verify?token=YOUR_TOKEN`
+
+**Note:** The verify step must be done in the browser so the session cookie is set correctly.
 
 ## Scripts
 

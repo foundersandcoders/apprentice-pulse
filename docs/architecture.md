@@ -54,11 +54,23 @@ Server-side endpoints handling:
 
 | Route | Purpose |
 |-------|---------|
-| `/api/auth/send-link` | Send magic link email |
+| `/api/auth/staff/login` | Send magic link email to staff |
+| `/api/auth/student/login` | Send magic link email to students |
 | `/api/auth/verify` | Verify magic link token, create session |
+| `/api/auth/logout` | Clear session cookie |
 | `/api/checkin` | Record attendance to Airtable |
 | `/api/events` | Fetch today's events |
 | `/api/webhooks/airtable` | Receive Airtable automation triggers |
+
+### Pages
+
+| Route | Purpose | Access |
+|-------|---------|--------|
+| `/` | Home page | Public |
+| `/login` | Student login | Public (redirects if authenticated) |
+| `/admin/login` | Staff login | Public (redirects if authenticated) |
+| `/admin` | Admin dashboard | Staff only |
+| `/checkin` | Student check-in | Authenticated users |
 
 ### Cron Jobs
 
@@ -224,7 +236,7 @@ Type safety helps when working with Airtable data structures. Catches errors at 
 Faster, native ES modules support, works well with SvelteKit out of the box.
 
 **Magic link auth**
-No password management. Students enter email once, click link, session stored for ~90 days. Minimal friction for daily check-ins.
+No password management. Separate login flows for staff (`/admin/login`) and students (`/login`). JWT tokens with 15-minute expiry sent via email. Session stored as HTTP-only cookie for 90 days. Minimal friction for daily check-ins.
 
 **Airtable as database**
 Already in use at FAC. No migration needed. System acts as automation layer on top of existing data.
@@ -244,10 +256,10 @@ Built into Vercel, no external scheduler needed. Runs API routes on schedule for
 ## Environment Variables
 
 ```
-AIRTABLE_API_KEY=
-AIRTABLE_BASE_ID=
-RESEND_API_KEY=
-DISCORD_WEBHOOK_URL=
-MAGIC_LINK_SECRET=
-SESSION_SECRET=
+AIRTABLE_API_KEY=       # Airtable personal access token
+AIRTABLE_BASE_ID=       # Airtable base ID
+RESEND_API_KEY=         # Resend API key for emails
+RESEND_FROM_EMAIL=      # Sender email (e.g., "App Name <noreply@domain.com>")
+DISCORD_WEBHOOK_URL=    # Discord webhook for notifications
+AUTH_SECRET=            # Secret for JWT signing (min 32 chars)
 ```
