@@ -48,7 +48,29 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		});
 	}
 
+	/**
+	 * Get a single event by ID
+	 */
+	async function getEvent(id: string): Promise<Event | null> {
+		try {
+			const record = await eventsTable.find(id);
+			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			return {
+				id: record.id,
+				name: record.get(EVENT_FIELDS.NAME) as string,
+				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+				cohortId: cohortLookup?.[0] ?? '',
+				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+			};
+		}
+		catch {
+			return null;
+		}
+	}
+
 	return {
 		listEvents,
+		getEvent,
 	};
 }
