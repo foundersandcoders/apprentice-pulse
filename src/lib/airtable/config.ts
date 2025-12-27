@@ -8,6 +8,7 @@ export const TABLES = {
 	COHORTS: 'tbllAnSw8VPYFAa1a',
 	APPRENTICES: 'tbl0HJM700Jmd5Oob',
 	STAFF: 'tblJjn62ExE1LVjmx',
+	EVENTS: 'tblkbskw4fuTq0E9p',
 } as const;
 
 // Fields - Cohorts
@@ -26,4 +27,12 @@ export const APPRENTICE_FIELDS = {
 // Fields - Staff
 export const STAFF_FIELDS = {
 	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
+} as const;
+
+// Fields - Events
+export const EVENT_FIELDS = {
+	NAME: 'fldMCZijN6TJeUdFR',
+	COHORT: 'fldcXDEDkeHvWTnxE', // multipleRecordLinks to Cohorts
+	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (combined date and time)
+	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
 } as const;

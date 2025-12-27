@@ -14,6 +14,7 @@ Apprentices (tbl0HJM700Jmd5Oob) - primary learner record
   ├── Support log (tblWINmz4JDtVUucD)
   ├── Learner Touchpoint Log (tbl2O3QcYpss1SaP4)
   └── Cohorts (tbllAnSw8VPYFAa1a)
+        └── Events - Apprentice Pulse (tblkbskw4fuTq0E9p)
 
 Progress Reviews (Employer Feedback) (tblwdSYGgGMXJ1DX7)
   └── Apprentice record → links to Apprentices
@@ -199,6 +200,21 @@ Cohort reference for filtering and grouping.
 | Start year | `fldJSDsO4yILnvvMj` | singleSelect | Start year |
 | Apprentices | `fldF2zEQCRaWglKl0` | multipleRecordLinks | Links to Apprentices |
 | Planned hours | `fldnjvEkFizWKyAOs` | number | Expected OTJ hours |
+
+---
+
+## Events - Apprentice Pulse
+
+**Table ID:** `tblkbskw4fuTq0E9p`
+
+Scheduled events/sessions for attendance tracking.
+
+| Field | ID | Type | Purpose |
+|-------|-----|------|---------|
+| Name | `fldMCZijN6TJeUdFR` | singleLineText | Event name |
+| FAC Cohort | `fldcXDEDkeHvWTnxE` | multipleRecordLinks | Links to Cohorts |
+| Date Time | `fld8AkM3EanzZa5QX` | dateTime | Event start date and time |
+| Survey | `fld9XBHnCWBtZiZah` | url | Optional survey form URL |
 
 ---
 
