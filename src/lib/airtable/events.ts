@@ -1,7 +1,7 @@
 import Airtable from 'airtable';
 
 import { TABLES, EVENT_FIELDS } from './config.js';
-import type { Event, EventFilters, EventType } from '$lib/types/event.js';
+import type { Event, EventFilters, EventType, CreateEventInput } from '$lib/types/event.js';
 
 export function createEventsClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });
@@ -69,8 +69,31 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		}
 	}
 
+	/**
+	 * Create a new event
+	 */
+	async function createEvent(data: CreateEventInput): Promise<Event> {
+		const record = await eventsTable.create({
+			[EVENT_FIELDS.NAME]: data.name,
+			[EVENT_FIELDS.DATE_TIME]: data.dateTime,
+			[EVENT_FIELDS.COHORT]: [data.cohortId],
+			[EVENT_FIELDS.EVENT_TYPE]: data.eventType,
+			[EVENT_FIELDS.SURVEY]: data.surveyUrl,
+		});
+
+		return {
+			id: record.id,
+			name: data.name,
+			dateTime: data.dateTime,
+			cohortId: data.cohortId,
+			eventType: data.eventType,
+			surveyUrl: data.surveyUrl,
+		};
+	}
+
 	return {
 		listEvents,
 		getEvent,
+		createEvent,
 	};
 }
