@@ -95,7 +95,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 	 * Update an existing event
 	 */
 	async function updateEvent(id: string, data: UpdateEventInput): Promise<Event> {
-		const fields: Record<string, unknown> = {};
+		const fields: Airtable.FieldSet = {};
 
 		if (data.name !== undefined) fields[EVENT_FIELDS.NAME] = data.name;
 		if (data.dateTime !== undefined) fields[EVENT_FIELDS.DATE_TIME] = data.dateTime;
@@ -116,10 +116,18 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		};
 	}
 
+	/**
+	 * Delete an event
+	 */
+	async function deleteEvent(id: string): Promise<void> {
+		await eventsTable.destroy(id);
+	}
+
 	return {
 		listEvents,
 		getEvent,
 		createEvent,
 		updateEvent,
+		deleteEvent,
 	};
 }
