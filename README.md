@@ -121,3 +121,20 @@ const value = record.get('fldXXXXXXXXXXXXXX'); // field ID
 ```
 
 **Limitation:** `filterByFormula` still requires field **names**, not IDs. This is an Airtable API limitation. Document any field names used in formulas to track potential breaking changes.
+
+### Fetching Schema IDs
+
+When adding new functionality or when Airtable schema changes, use the schema fetch script to get the correct table and field IDs:
+
+```sh
+npx tsx scripts/fetch-schema.ts
+```
+
+This script:
+1. Connects to your configured Airtable bases
+2. Presents an interactive prompt to select which tables to include
+3. Outputs a timestamped markdown file (e.g., `scripts/schema-2025-01-15-10-30-00.md`) with all table IDs and field IDs
+
+**Always use this script** to get IDs rather than copying them manually from the Airtable UI. This ensures accuracy and provides documentation of the schema at that point in time.
+
+The generated schema file can be used to update `src/lib/airtable/config.ts` with new field IDs.
