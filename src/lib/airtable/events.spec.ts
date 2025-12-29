@@ -94,7 +94,8 @@ describe('events', () => {
 				}),
 			};
 
-			mockTable.find.mockResolvedValue(mockRecord);
+			// getEvent uses select() with RECORD_ID filter instead of find()
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([mockRecord]) });
 
 			const event = await client.getEvent('rec123');
 
@@ -111,7 +112,8 @@ describe('events', () => {
 		});
 
 		it('should return null when not found', async () => {
-			mockTable.find.mockRejectedValue(new Error('Record not found'));
+			// getEvent uses select() - empty array means not found
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
 
 			const event = await client.getEvent('nonexistent');
 
