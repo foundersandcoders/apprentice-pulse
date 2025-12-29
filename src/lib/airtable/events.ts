@@ -55,7 +55,20 @@ export function createEventsClient(apiKey: string, baseId: string) {
 	 */
 	async function getEvent(id: string): Promise<Event | null> {
 		try {
-			const record = await eventsTable.find(id);
+			// Use select() with RECORD_ID filter to get returnFieldsByFieldId support
+			const records = await eventsTable
+				.select({
+					filterByFormula: `RECORD_ID() = "${id}"`,
+					maxRecords: 1,
+					returnFieldsByFieldId: true,
+				})
+				.all();
+
+			if (records.length === 0) {
+				return null;
+			}
+
+			const record = records[0];
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
 			return {
 				id: record.id,
