@@ -15,23 +15,28 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 ## Epic 1: Attendance Management
 
 ### US-1: Event management
-**As** FAC staff  
-**I want to** create, modify, and delete events via a calendar interface  
+**As** FAC staff
+**I want to** create, modify, and delete events via an admin interface
 **So that** I can manage the training schedule and enable attendance tracking
 
 **Acceptance Criteria:**
-- Calendar view displays existing events from Airtable
-- Create event: select date, cohort, and event type (regular class, workshop, hackathon)
-- Edit event: update date, cohort, or event type
-- Delete event: remove event from Airtable
-- Event syncs to Attendance (Current) table
+- Admin page displays existing events from Airtable (list view)
+- Filter events by cohort
+- Create event: name, date/time, cohort (optional), event type
+- Edit event: update any field
+- Delete event: remove from Airtable
+- 4-digit check-in code auto-generated for each event
 - Event type stored for filtering and reporting
+
+**Event Types:**
+- Cohort event (has cohort) → only that cohort's apprentices can check in
+- Open event (no cohort) → anyone can check in (registered + external)
 
 ---
 
 ### US-2: Check-in to event
-**As an** apprentice  
-**I want to** register my attendance by tapping an NFC sticker or scanning a QR code  
+**As an** apprentice
+**I want to** register my attendance by tapping an NFC sticker or scanning a QR code
 **So that** I can check in quickly without manual roll calls
 
 **Acceptance Criteria:**
@@ -40,6 +45,73 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 - If session exists: single tap to check in
 - Attendance record written to Airtable
 - Confirmation message displayed
+
+#### Check-in Workflow (Detailed)
+
+**Single URL:** `/checkin` - used for all check-in methods (QR, NFC, direct link)
+
+**Event Types:**
+| Type | Has Cohort | Who Can Attend |
+|------|------------|----------------|
+| Cohort Event | Yes | Only apprentices in that cohort |
+| Open Event | No | Anyone (registered + external) |
+
+**Flow 1: Registered User (has session cookie)**
+```
+/checkin
+    ↓
+Show available events:
+  - User's cohort events
+  - All open events (no cohort)
+    ↓
+One-tap check-in button
+    ↓
+Attendance record created (linked to Apprentice)
+```
+
+**Flow 2: Registered User (no session)**
+```
+/checkin
+    ↓
+Show login prompt
+    ↓
+Enter email → Magic link sent
+    ↓
+Click link → Session created (90 days)
+    ↓
+Redirect to check-in → Show events → One-tap check-in
+```
+
+**Flow 3: External User (public events only)**
+```
+/checkin
+    ↓
+Select "Check in to public event"
+    ↓
+Enter 4-digit event code (displayed at venue)
+    ↓
+Enter name + email
+    ↓
+Attendance record created (External Name/Email fields)
+```
+
+**Security:**
+| User Type | Security Mechanism |
+|-----------|-------------------|
+| Registered | Magic link authentication (email verification) |
+| External | 4-digit event code (proves physical presence) |
+
+**Edge Case:** If external user enters email that matches an Apprentice record → prompt them to log in instead (keeps attendance data consistent)
+
+**Airtable Attendance Record:**
+| Field | Registered User | External User |
+|-------|-----------------|---------------|
+| Apprentice (link) | ✓ Populated | Empty |
+| External Name | Empty | ✓ Populated |
+| External Email | Empty | ✓ Populated |
+| Event (link) | ✓ | ✓ |
+| Check-in Time | ✓ | ✓ |
+| Status | ✓ | ✓ |
 
 ---
 
