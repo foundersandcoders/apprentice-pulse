@@ -35,6 +35,10 @@
 			goto(baseUrl);
 		}
 	}
+
+	function getEditUrl(eventId: string): string {
+		return resolve('/admin/events') + '/' + eventId;
+	}
 </script>
 
 <div class="p-6 max-w-4xl mx-auto">
@@ -77,6 +81,7 @@
 						<th class="p-3 border-b font-semibold">Date/Time</th>
 						<th class="p-3 border-b font-semibold">Type</th>
 						<th class="p-3 border-b font-semibold">Cohort</th>
+						<th class="p-3 border-b font-semibold w-16"></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -91,6 +96,14 @@
 								{:else}
 									<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Open</span>
 								{/if}
+							</td>
+							<td class="p-3">
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+								<a href={getEditUrl(event.id)} class="text-gray-500 hover:text-blue-600" title="Edit event">
+									<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+										<path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+									</svg>
+								</a>
 							</td>
 						</tr>
 					{/each}
