@@ -41,19 +41,27 @@
 		<h1 class="text-2xl font-bold mt-2">Events</h1>
 	</header>
 
-	<div class="mb-4">
-		<label for="cohort-filter" class="text-sm text-gray-600 mr-2">Filter by cohort:</label>
-		<select
-			id="cohort-filter"
-			class="border rounded px-3 py-1.5"
-			value={data.selectedCohortId ?? ''}
-			onchange={handleCohortFilter}
+	<div class="mb-4 flex items-center justify-between">
+		<div>
+			<label for="cohort-filter" class="text-sm text-gray-600 mr-2">Filter by cohort:</label>
+			<select
+				id="cohort-filter"
+				class="border rounded px-3 py-1.5"
+				value={data.selectedCohortId ?? ''}
+				onchange={handleCohortFilter}
+			>
+				<option value="">All cohorts</option>
+				{#each data.cohorts as cohort}
+					<option value={cohort.name}>{cohort.name}</option>
+				{/each}
+			</select>
+		</div>
+		<a
+			href="/admin/events/new"
+			class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
 		>
-			<option value="">All cohorts</option>
-			{#each data.cohorts as cohort}
-				<option value={cohort.name}>{cohort.name}</option>
-			{/each}
-		</select>
+			+ Add Event
+		</a>
 	</div>
 
 	{#if data.events.length === 0}
