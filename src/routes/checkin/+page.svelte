@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onDestroy } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -16,6 +17,42 @@
 	let guestEvent = $state<{ id: string; name: string; dateTime: string } | null>(null);
 	let guestError = $state('');
 	let guestLoading = $state(false);
+
+	// Live countdown timer
+	let now = $state(Date.now());
+	const timerInterval = setInterval(() => {
+		now = Date.now();
+	}, 1000);
+	onDestroy(() => clearInterval(timerInterval));
+
+	// Calculate countdown/late status for an event
+	function getTimeStatus(dateTime: string): { text: string; isLate: boolean; isStartingSoon: boolean } {
+		const eventTime = new Date(dateTime).getTime();
+		const diff = eventTime - now;
+		const absDiff = Math.abs(diff);
+
+		const hours = Math.floor(absDiff / (1000 * 60 * 60));
+		const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+		const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+
+		if (diff > 0) {
+			// Event hasn't started yet
+			let text = 'Starts in ';
+			if (hours > 0) text += `${hours}h `;
+			if (hours > 0 || minutes > 0) text += `${minutes}m `;
+			text += `${seconds}s`;
+			return { text, isLate: false, isStartingSoon: diff < 10 * 60 * 1000 }; // < 10 min
+		}
+		else {
+			// Event has started - user is late
+			let text = '';
+			if (hours > 0) text += `${hours}h `;
+			if (hours > 0 || minutes > 0) text += `${minutes}m `;
+			if (hours === 0) text += `${seconds}s `;
+			text += 'late';
+			return { text, isLate: true, isStartingSoon: false };
+		}
+	}
 
 	// Format date for display
 	function formatDate(dateTime: string): string {
@@ -157,11 +194,21 @@
 		{:else}
 			<div class="events-list">
 				{#each data.events as event (event.id)}
+					{@const timeStatus = getTimeStatus(event.dateTime)}
 					<div class="event-card" class:checked-in={event.alreadyCheckedIn}>
 						<div class="event-info">
 							<h2>{event.name}</h2>
 							<p class="event-time">{formatDate(event.dateTime)}</p>
 							<p class="event-type">{event.eventType}</p>
+							{#if !event.alreadyCheckedIn}
+								<p
+									class="countdown"
+									class:late={timeStatus.isLate}
+									class:starting-soon={timeStatus.isStartingSoon}
+								>
+									{timeStatus.text}
+								</p>
+							{/if}
 						</div>
 						<div class="event-action">
 							{#if event.alreadyCheckedIn}
@@ -219,9 +266,19 @@
 				</p>
 
 			{:else if guestStep === 'details'}
+				{@const guestTimeStatus = guestEvent ? getTimeStatus(guestEvent.dateTime) : null}
 				<div class="event-preview">
 					<h2>{guestEvent?.name}</h2>
 					<p>{guestEvent ? formatDate(guestEvent.dateTime) : ''}</p>
+					{#if guestTimeStatus}
+						<p
+							class="countdown"
+							class:late={guestTimeStatus.isLate}
+							class:starting-soon={guestTimeStatus.isStartingSoon}
+						>
+							{guestTimeStatus.text}
+						</p>
+					{/if}
 				</div>
 
 				<form onsubmit={handleGuestCheckIn}>
@@ -317,6 +374,28 @@
 		margin: 0.25rem 0 0 0;
 		color: #888;
 		font-size: 0.8rem;
+	}
+
+	.countdown {
+		margin: 0.5rem 0 0 0;
+		padding: 0.25rem 0.5rem;
+		background: #e8f4fd;
+		color: #0066cc;
+		font-size: 0.85rem;
+		font-weight: 500;
+		border-radius: 4px;
+		display: inline-block;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.countdown.starting-soon {
+		background: #fff3e0;
+		color: #e65100;
+	}
+
+	.countdown.late {
+		background: #ffebee;
+		color: #c62828;
 	}
 
 	.event-action button {
