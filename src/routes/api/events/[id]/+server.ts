@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateEvent, deleteEvent, getEvent } from '$lib/airtable/sveltekit-wrapper';
-import type { EventType } from '$lib/types/event';
+import { EVENT_TYPES } from '$lib/types/event';
 
 export const PUT: RequestHandler = async ({ params, request }) => {
 	try {
@@ -16,11 +16,8 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		const body = await request.json();
 
 		// Validate event type if provided
-		if (body.eventType) {
-			const validEventTypes: EventType[] = ['Regular class', 'Workshop', 'Hackathon'];
-			if (!validEventTypes.includes(body.eventType)) {
-				return json({ success: false, error: 'Invalid event type' }, { status: 400 });
-			}
+		if (body.eventType && !EVENT_TYPES.includes(body.eventType)) {
+			return json({ success: false, error: 'Invalid event type' }, { status: 400 });
 		}
 
 		const event = await updateEvent(id, {

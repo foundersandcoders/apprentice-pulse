@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { EVENT_TYPES, type EventType } from '$lib/types/event';
 
 	let { data } = $props();
 
 	let name = $state('');
 	let dateTime = $state('');
 	let cohortId = $state('');
-	let eventType = $state<'Regular class' | 'Workshop' | 'Hackathon'>('Regular class');
+	let eventType = $state<EventType>(EVENT_TYPES[0]);
 	let isPublic = $state(false);
 	let checkInCode = $state<number | undefined>(undefined);
 	// svelte-ignore state_referenced_locally
@@ -102,9 +103,9 @@
 				required
 				class="w-full border rounded px-3 py-2"
 			>
-				<option value="Regular class">Regular class</option>
-				<option value="Workshop">Workshop</option>
-				<option value="Hackathon">Hackathon</option>
+				{#each EVENT_TYPES as type (type)}
+					<option value={type}>{type}</option>
+				{/each}
 			</select>
 		</div>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { EVENT_TYPES } from '$lib/types/event';
 
 	let { data } = $props();
 
@@ -147,9 +148,9 @@
 				required
 				class="w-full border rounded px-3 py-2"
 			>
-				<option value="Regular class">Regular class</option>
-				<option value="Workshop">Workshop</option>
-				<option value="Hackathon">Hackathon</option>
+				{#each EVENT_TYPES as type (type)}
+					<option value={type}>{type}</option>
+				{/each}
 			</select>
 		</div>
 
