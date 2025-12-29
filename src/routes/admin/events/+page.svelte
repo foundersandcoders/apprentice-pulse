@@ -81,6 +81,7 @@
 						<th class="p-3 border-b font-semibold">Date/Time</th>
 						<th class="p-3 border-b font-semibold">Type</th>
 						<th class="p-3 border-b font-semibold">Cohort</th>
+						<th class="p-3 border-b font-semibold">Public</th>
 						<th class="p-3 border-b font-semibold w-16"></th>
 					</tr>
 				</thead>
@@ -95,6 +96,13 @@
 									<span class="text-sm">{getCohortName(event.cohortId) || event.cohortId}</span>
 								{:else}
 									<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Open</span>
+								{/if}
+							</td>
+							<td class="p-3">
+								{#if event.isPublic}
+									<span class="text-green-600">Yes</span>
+								{:else}
+									<span class="text-gray-400">No</span>
 								{/if}
 							</td>
 							<td class="p-3">
