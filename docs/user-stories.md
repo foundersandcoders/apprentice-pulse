@@ -56,37 +56,61 @@ Requirements for Apprentice Pulse, derived from project proposal acceptance crit
 | Cohort Event | Yes | Only apprentices in that cohort |
 | Open Event | No | Anyone (registered + external) |
 
-**Flow 1: Registered User (has session cookie)**
+**Flow 1: Apprentice (has session + apprentice record)**
 ```
 /checkin
     ↓
 Show available events:
   - User's cohort events
-  - All open events (no cohort)
+  - All public events
     ↓
 One-tap check-in button
     ↓
 Attendance record created (linked to Apprentice)
 ```
 
-**Flow 2: Registered User (no session)**
+**Flow 2: Staff with Apprentice Record**
 ```
 /checkin
     ↓
-Show login prompt
+System checks: does email match an Apprentice record?
+    ↓
+Yes → Same as Flow 1 (show cohort + public events)
+    ↓
+One-tap check-in (linked to Apprentice record)
+```
+
+**Flow 3: Staff without Apprentice Record**
+```
+/checkin
+    ↓
+System checks: does email match an Apprentice record?
+    ↓
+No → Show public events only
+    ↓
+One-tap check-in
+    ↓
+Attendance record created (External Name/Email from session)
+```
+
+**Flow 4: Unauthenticated User**
+```
+/checkin
+    ↓
+Redirect to /login?redirect=/checkin
     ↓
 Enter email → Magic link sent
     ↓
 Click link → Session created (90 days)
     ↓
-Redirect to check-in → Show events → One-tap check-in
+Redirect back to /checkin → Continue as Flow 1, 2, or 3
 ```
 
-**Flow 3: External User (public events only)**
+**Flow 5: Guest Check-in (no account)**
 ```
 /checkin
     ↓
-Select "Check in to public event"
+Select "Check in as guest"
     ↓
 Enter 4-digit event code (displayed at venue)
     ↓
@@ -98,10 +122,18 @@ Attendance record created (External Name/Email fields)
 **Security:**
 | User Type | Security Mechanism |
 |-----------|-------------------|
-| Registered | Magic link authentication (email verification) |
-| External | 4-digit event code (proves physical presence) |
+| Apprentice | Magic link authentication (email verification) |
+| Staff | Magic link authentication (email verification) |
+| Guest | 4-digit event code (proves physical presence) |
 
-**Edge Case:** If external user enters email that matches an Apprentice record → prompt them to log in instead (keeps attendance data consistent)
+**Check-in Method Determination:**
+The system determines check-in method based on apprentice record existence, not session type:
+- Email matches Apprentice table → `checkInMethod: 'apprentice'` (attendance linked to apprentice ID)
+- Email does not match → `checkInMethod: 'external'` (attendance uses session email)
+
+This allows staff to check in even without an apprentice record, using the external attendance flow.
+
+**Edge Case:** If guest enters email that matches an Apprentice record → prompt them to log in instead (keeps attendance data consistent)
 
 **Airtable Attendance Record:**
 | Field | Registered User | External User |

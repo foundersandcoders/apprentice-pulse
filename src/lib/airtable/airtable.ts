@@ -10,6 +10,13 @@ export interface Apprentice {
 	cohortNumber: string | null;
 }
 
+export interface ApprenticeRecord {
+	id: string;
+	name: string;
+	email: string;
+	cohortId: string | null; // Record ID of cohort
+}
+
 export interface Cohort {
 	id: string;
 	name: string;
@@ -137,6 +144,36 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	}
 
 	/**
+	 * Get apprentice record by email (includes cohort ID for check-in)
+	 */
+	async function getApprenticeByEmail(email: string): Promise<ApprenticeRecord | null> {
+		const apprenticesTable = base(TABLES.APPRENTICES);
+
+		const records = await apprenticesTable
+			.select({
+				filterByFormula: `{Learner email} = "${email}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (records.length === 0) {
+			return null;
+		}
+
+		const record = records[0];
+		const emailLookup = record.get(APPRENTICE_FIELDS.EMAIL) as string[] | undefined;
+		const cohortLink = record.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
+
+		return {
+			id: record.id,
+			name: record.get(APPRENTICE_FIELDS.NAME) as string,
+			email: emailLookup?.[0] ?? email,
+			cohortId: cohortLink?.[0] ?? null,
+		};
+	}
+
+	/**
 	 * List all cohorts
 	 */
 	async function listCohorts(): Promise<Cohort[]> {
@@ -159,6 +196,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		findUserByEmail,
 		findStaffByEmail,
 		findApprenticeByEmail,
+		getApprenticeByEmail,
 		listCohorts,
 	};
 }

@@ -23,6 +23,7 @@ export const APPRENTICE_FIELDS = {
 	NAME: 'fldtvHx7pP5FgUWvh',
 	STATUS: 'fldFP9b6CfhNzeVNQ',
 	EMAIL: 'fldC3xdKGd96U0aoZ',
+	COHORT: 'fldbSlfS7cQTl2hpF', // multipleRecordLinks to Cohorts
 } as const;
 
 // Fields - Staff
