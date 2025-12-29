@@ -1,7 +1,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createEvent } from '$lib/airtable/sveltekit-wrapper';
+import { createEvent, listEvents } from '$lib/airtable/sveltekit-wrapper';
 import type { EventType } from '$lib/types/event';
+
+export const GET: RequestHandler = async () => {
+	try {
+		const events = await listEvents();
+		return json({ success: true, events });
+	}
+	catch (error) {
+		console.error('Failed to list events:', error);
+		return json({ success: false, error: 'Failed to list events' }, { status: 500 });
+	}
+};
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
