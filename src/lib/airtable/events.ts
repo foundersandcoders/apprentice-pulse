@@ -44,6 +44,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 				cohortId: cohortLookup?.[0] ?? '',
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
+				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
 			};
 		});
 	}
@@ -62,6 +64,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 				cohortId: cohortLookup?.[0] ?? '',
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
+				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
 			};
 		}
 		catch {
@@ -73,21 +77,28 @@ export function createEventsClient(apiKey: string, baseId: string) {
 	 * Create a new event
 	 */
 	async function createEvent(data: CreateEventInput): Promise<Event> {
-		const record = await eventsTable.create({
+		const fields: Airtable.FieldSet = {
 			[EVENT_FIELDS.NAME]: data.name,
 			[EVENT_FIELDS.DATE_TIME]: data.dateTime,
-			[EVENT_FIELDS.COHORT]: [data.cohortId],
 			[EVENT_FIELDS.EVENT_TYPE]: data.eventType,
-			[EVENT_FIELDS.SURVEY]: data.surveyUrl,
-		});
+		};
+
+		if (data.cohortId) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
+		if (data.surveyUrl) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
+		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
+		if (data.checkInCode !== undefined) fields[EVENT_FIELDS.CHECK_IN_CODE] = data.checkInCode;
+
+		const record = await eventsTable.create(fields);
 
 		return {
 			id: record.id,
 			name: data.name,
 			dateTime: data.dateTime,
-			cohortId: data.cohortId,
+			cohortId: data.cohortId ?? '',
 			eventType: data.eventType,
 			surveyUrl: data.surveyUrl,
+			isPublic: data.isPublic ?? false,
+			checkInCode: data.checkInCode,
 		};
 	}
 
@@ -102,6 +113,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		if (data.cohortId !== undefined) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
 		if (data.eventType !== undefined) fields[EVENT_FIELDS.EVENT_TYPE] = data.eventType;
 		if (data.surveyUrl !== undefined) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
+		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
+		if (data.checkInCode !== undefined) fields[EVENT_FIELDS.CHECK_IN_CODE] = data.checkInCode;
 
 		const record = await eventsTable.update(id, fields);
 		const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
@@ -113,6 +126,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			cohortId: cohortLookup?.[0] ?? '',
 			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+			isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
+			checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
 		};
 	}
 

@@ -65,6 +65,8 @@ Attendance tracking using a junction table pattern (one record per apprentice pe
 | Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status |
 | Date Time (from Event) | `fldokfSk68MhJGlm6` | multipleLookupValues | Event date/time lookup |
 | FAC Cohort (from Event) | `fldkc9zLJe7NZVAz1` | multipleLookupValues | Cohort lookup from Event |
+| External Name | `fldIhZnMxfjh9ps78` | singleLineText | Name for non-registered attendees |
+| External Email | `fldHREfpkx1bGv3K3` | email | Email for non-registered attendees |
 
 ---
 
@@ -221,6 +223,8 @@ Scheduled events/sessions for attendance tracking.
 | Survey | `fld9XBHnCWBtZiZah` | url | Optional survey form URL |
 | Attendance | `fldcPf53fVfStFZsa` | multipleRecordLinks | Linked attendance records |
 | Name - Date | `fld7POykodV0LGsg1` | formula | Display name with date |
+| Public | `fldatQzdAo8evWlNc` | checkbox | Visible on public check-in page |
+| Check-in Code | `fldKMWSFmYONkvYMK` | number | 4-digit code for external attendees |
 
 ---
 

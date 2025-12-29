@@ -72,6 +72,8 @@ describe('events', () => {
 				cohortId: 'recCohort1',
 				eventType: 'Regular class',
 				surveyUrl: 'https://survey.example.com',
+				isPublic: false,
+				checkInCode: undefined,
 			});
 		});
 	});
@@ -103,6 +105,8 @@ describe('events', () => {
 				cohortId: 'recCohort2',
 				eventType: 'Workshop',
 				surveyUrl: undefined,
+				isPublic: false,
+				checkInCode: undefined,
 			});
 		});
 
@@ -133,6 +137,8 @@ describe('events', () => {
 			expect(event).toEqual({
 				id: 'recNew123',
 				...input,
+				isPublic: false,
+				checkInCode: undefined,
 			});
 			expect(mockTable.create).toHaveBeenCalled();
 		});
