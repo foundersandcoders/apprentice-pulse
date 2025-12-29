@@ -148,7 +148,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		return records.map((record) => ({
+		return records.map(record => ({
 			id: record.id,
 			name: (record.get(COHORT_FIELDS.NUMBER) as string) || record.id,
 		}));

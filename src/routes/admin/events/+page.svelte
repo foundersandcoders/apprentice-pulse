@@ -19,7 +19,7 @@
 
 	function getCohortName(cohortId: string | undefined): string | null {
 		if (!cohortId) return null;
-		const cohort = data.cohorts.find((c) => c.id === cohortId);
+		const cohort = data.cohorts.find(c => c.id === cohortId);
 		return cohort?.name ?? null;
 	}
 
@@ -27,10 +27,10 @@
 		const select = event.target as HTMLSelectElement;
 		const cohortId = select.value;
 		if (cohortId) {
-			goto(`?cohort=${cohortId}`);
+			goto(resolve(`/admin/events?cohort=${cohortId}`));
 		}
 		else {
-			goto('?');
+			goto(resolve('/admin/events'));
 		}
 	}
 </script>
@@ -51,13 +51,13 @@
 				onchange={handleCohortFilter}
 			>
 				<option value="">All cohorts</option>
-				{#each data.cohorts as cohort}
+				{#each data.cohorts as cohort (cohort.id)}
 					<option value={cohort.name}>{cohort.name}</option>
 				{/each}
 			</select>
 		</div>
 		<a
-			href="/admin/events/new"
+			href={resolve('/admin/events/new')}
 			class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
 		>
 			+ Add Event
@@ -78,7 +78,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.events as event}
+					{#each data.events as event (event.id)}
 						<tr class="border-b hover:bg-gray-50">
 							<td class="p-3">{event.name || '(Untitled)'}</td>
 							<td class="p-3">{formatDate(event.dateTime)}</td>
