@@ -8,14 +8,18 @@ export interface Event {
 	cohortName?: string;
 	eventType: EventType;
 	surveyUrl?: string;
+	isPublic: boolean;
+	checkInCode?: number;
 }
 
 export interface CreateEventInput {
 	name: string;
 	dateTime: string;
-	cohortId: string;
+	cohortId?: string;
 	eventType: EventType;
 	surveyUrl?: string;
+	isPublic?: boolean;
+	checkInCode?: number;
 }
 
 export interface UpdateEventInput {
@@ -24,6 +28,8 @@ export interface UpdateEventInput {
 	cohortId?: string;
 	eventType?: EventType;
 	surveyUrl?: string;
+	isPublic?: boolean;
+	checkInCode?: number;
 }
 
 export interface EventFilters {

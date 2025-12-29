@@ -26,11 +26,13 @@
 	function handleCohortFilter(event: Event) {
 		const select = event.target as HTMLSelectElement;
 		const cohortId = select.value;
+		const baseUrl = resolve('/admin/events');
 		if (cohortId) {
-			goto(resolve(`/admin/events?cohort=${cohortId}`));
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- query params require string concat
+			goto(baseUrl + '?cohort=' + cohortId);
 		}
 		else {
-			goto(resolve('/admin/events'));
+			goto(baseUrl);
 		}
 	}
 </script>

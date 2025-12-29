@@ -39,6 +39,8 @@ export const EVENT_FIELDS = {
 	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
 	ATTENDANCE: 'fldcPf53fVfStFZsa', // multipleRecordLinks to Attendance (reverse link)
 	NAME_DATE: 'fld7POykodV0LGsg1', // formula (display name)
+	PUBLIC: 'fldatQzdAo8evWlNc', // checkbox (visible to all on check-in page)
+	CHECK_IN_CODE: 'fldKMWSFmYONkvYMK', // number (4-digit code for external attendees)
 } as const;
 
 // Fields - Attendance
@@ -48,4 +50,6 @@ export const ATTENDANCE_FIELDS = {
 	EVENT: 'fldiHd75LYtopwyN9', // multipleRecordLinks to Events
 	CHECKIN_TIME: 'fldvXHPmoLlEA8EuN', // dateTime
 	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Absent/Late)
+	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
+	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
 } as const;
