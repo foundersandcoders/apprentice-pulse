@@ -2,4 +2,6 @@ Show time counter negative and positive
 
 Show mii plaza
 
-integrstion with LUMA
+Integration with LUMA
+
+Workshops for external people (emails not on airtable)

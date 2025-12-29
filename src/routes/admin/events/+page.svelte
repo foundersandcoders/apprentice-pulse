@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	let { data } = $props();
 
 	function formatDate(dateTime: string | undefined): string {
@@ -15,6 +16,23 @@
 			minute: '2-digit',
 		});
 	}
+
+	function getCohortName(cohortId: string | undefined): string | null {
+		if (!cohortId) return null;
+		const cohort = data.cohorts.find((c) => c.id === cohortId);
+		return cohort?.name ?? null;
+	}
+
+	function handleCohortFilter(event: Event) {
+		const select = event.target as HTMLSelectElement;
+		const cohortId = select.value;
+		if (cohortId) {
+			goto(`?cohort=${cohortId}`);
+		}
+		else {
+			goto('?');
+		}
+	}
 </script>
 
 <div class="p-6 max-w-4xl mx-auto">
@@ -22,6 +40,21 @@
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 		<h1 class="text-2xl font-bold mt-2">Events</h1>
 	</header>
+
+	<div class="mb-4">
+		<label for="cohort-filter" class="text-sm text-gray-600 mr-2">Filter by cohort:</label>
+		<select
+			id="cohort-filter"
+			class="border rounded px-3 py-1.5"
+			value={data.selectedCohortId ?? ''}
+			onchange={handleCohortFilter}
+		>
+			<option value="">All cohorts</option>
+			{#each data.cohorts as cohort}
+				<option value={cohort.name}>{cohort.name}</option>
+			{/each}
+		</select>
+	</div>
 
 	{#if data.events.length === 0}
 		<p class="text-gray-500">No events found.</p>
@@ -44,7 +77,7 @@
 							<td class="p-3">{event.eventType || '—'}</td>
 							<td class="p-3">
 								{#if event.cohortId}
-									<span class="text-gray-500 text-sm" title={event.cohortId}>Cohort</span>
+									<span class="text-sm">{getCohortName(event.cohortId) || event.cohortId}</span>
 								{:else}
 									<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Open</span>
 								{/if}

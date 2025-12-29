@@ -14,7 +14,7 @@ import { AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS } from '$env/static/private
 import { createAirtableClient } from './airtable.js';
 import { createEventsClient } from './events.js';
 
-export type { Apprentice } from './airtable.js';
+export type { Apprentice, Cohort } from './airtable.js';
 export type { Event, EventFilters, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
 
 const client = createAirtableClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
@@ -23,6 +23,7 @@ const eventsClient = createEventsClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARN
 export const getApprenticesByFacCohort = client.getApprenticesByFacCohort;
 export const findStaffByEmail = client.findStaffByEmail;
 export const findApprenticeByEmail = client.findApprenticeByEmail;
+export const listCohorts = client.listCohorts;
 
 // Events
 export const listEvents = eventsClient.listEvents;
