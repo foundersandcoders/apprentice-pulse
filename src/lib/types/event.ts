@@ -1,5 +1,6 @@
 // Single source of truth for event types
-export const EVENT_TYPES = ['Regular class', 'Workshop', 'Hackathon'] as const;
+// Must match Airtable single-select options exactly (case-sensitive)
+export const EVENT_TYPES = ['Regular Class', 'Workshop', 'Hackathon'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 
 export interface Event {
