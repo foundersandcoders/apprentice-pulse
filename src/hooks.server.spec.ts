@@ -80,7 +80,7 @@ describe('hooks.server', () => {
 		});
 	});
 
-	describe('protected routes', () => {
+	describe('checkin route', () => {
 		it('should allow authenticated users to access /checkin', async () => {
 			const session = { email: 'student@example.com', type: 'student' as const };
 			mockGetSession.mockReturnValue(session);
@@ -91,18 +91,19 @@ describe('hooks.server', () => {
 			await handle({ event: event as never, resolve });
 
 			expect(resolve).toHaveBeenCalled();
+			expect(event.locals.user).toEqual(session);
 		});
 
-		it('should redirect unauthenticated users from /checkin to /login', async () => {
+		it('should allow unauthenticated access to /checkin for guest check-in', async () => {
 			mockGetSession.mockReturnValue(null);
 
 			const event = createMockEvent('/checkin');
 			const resolve = createMockResolve();
 
-			await expect(handle({ event: event as never, resolve })).rejects.toMatchObject({
-				status: 303,
-				location: '/login?redirect=%2Fcheckin',
-			});
+			await handle({ event: event as never, resolve });
+
+			expect(resolve).toHaveBeenCalled();
+			expect(event.locals.user).toBeNull();
 		});
 	});
 

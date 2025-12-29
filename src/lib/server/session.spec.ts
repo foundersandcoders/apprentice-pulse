@@ -56,7 +56,7 @@ describe('session', () => {
 				expect.objectContaining({
 					path: '/',
 					httpOnly: true,
-					secure: true,
+					secure: false, // false in dev/test, true in production
 					sameSite: 'lax',
 					maxAge: 60 * 60 * 24 * 90, // 90 days
 				}),
