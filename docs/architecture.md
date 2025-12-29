@@ -34,16 +34,21 @@ flowchart TB
 
 ### Frontend (PWA)
 
-Mobile-first web app for student attendance check-in.
+Mobile-first web app for attendance check-in (staff and students).
 
 **Check-in flow:**
-1. Student taps NFC sticker or scans QR code → opens app
+1. User taps NFC sticker or scans QR code → opens app
 2. First visit: enter email → magic link → session stored (90 days)
 3. Subsequent visits: tap → check in → done (single action)
 
+**Check-in method determination:**
+- System looks up user's email in Apprentice table
+- If apprentice record exists → show cohort events + public events, use `apprenticeId` for attendance
+- If no apprentice record (staff) → show public events only, use email for external attendance
+
 **Event detection:**
-- App fetches today's events from Airtable
-- Filters to events within ±1 hour of current time
+- App fetches upcoming events via `/api/checkin/events`
+- Filters based on user's apprentice record (cohort + public) or public only
 - Single event: one-tap check-in
 - Multiple events: show list to select
 - No events: display "No session right now"
@@ -58,8 +63,11 @@ Server-side endpoints handling:
 | `/api/auth/student/login` | Send magic link email to students |
 | `/api/auth/verify` | Verify magic link token, create session |
 | `/api/auth/logout` | Clear session cookie |
-| `/api/checkin` | Record attendance to Airtable |
-| `/api/events` | Fetch today's events |
+| `/api/checkin` | Record attendance (apprentice method) |
+| `/api/checkin/events` | Get available events for check-in (cohort + public) |
+| `/api/checkin/validate-code` | Validate 4-digit event code for guest check-in |
+| `/api/checkin/external` | Record attendance (guest/external method) |
+| `/api/events` | Fetch/manage events (admin) |
 | `/api/webhooks/airtable` | Receive Airtable automation triggers |
 
 ### Pages
@@ -70,7 +78,7 @@ Server-side endpoints handling:
 | `/login` | Student login | Public (redirects if authenticated) |
 | `/admin/login` | Staff login | Public (redirects if authenticated) |
 | `/admin` | Admin dashboard | Staff only |
-| `/checkin` | Student check-in | Authenticated users |
+| `/checkin` | Attendance check-in | Any authenticated user (staff or student) |
 
 ### Cron Jobs
 

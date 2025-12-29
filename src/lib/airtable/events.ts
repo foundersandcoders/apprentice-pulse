@@ -151,9 +151,41 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		await eventsTable.destroy(id);
 	}
 
+	/**
+	 * Get a public event by its check-in code
+	 * Returns null if code doesn't match or event is not public
+	 */
+	async function getEventByCode(code: number): Promise<Event | null> {
+		const records = await eventsTable
+			.select({
+				filterByFormula: `AND({Number} = ${code}, {Public} = TRUE())`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (records.length === 0) {
+			return null;
+		}
+
+		const record = records[0];
+		const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+		return {
+			id: record.id,
+			name: record.get(EVENT_FIELDS.NAME) as string,
+			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+			cohortId: cohortLookup?.[0] ?? '',
+			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+			isPublic: true,
+			checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
+		};
+	}
+
 	return {
 		listEvents,
 		getEvent,
+		getEventByCode,
 		createEvent,
 		updateEvent,
 		deleteEvent,

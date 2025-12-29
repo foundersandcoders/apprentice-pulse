@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { RESEND_API_KEY, RESEND_FROM_EMAIL } from '$env/static/private';
+import { dev } from '$app/environment';
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -43,6 +44,11 @@ ${magicLinkUrl}
 This link expires in 15 minutes.
 If you didn't request this, you can safely ignore this email.
 	`.trim();
+
+	if (dev) {
+		console.log('\n📧 Magic link for', to);
+		console.log(magicLinkUrl, '\n');
+	}
 
 	try {
 		const { error } = await resend.emails.send({

@@ -42,8 +42,18 @@ The app uses **magic link authentication** with separate login flows for staff a
 The app uses SvelteKit hooks (`src/hooks.server.ts`) for centralized route protection:
 
 - `/admin/*` → Staff only (redirects students to `/`)
-- `/checkin` → Any authenticated user
+- `/checkin` → Any authenticated user (staff or student)
 - `/login`, `/admin/login` → Redirects away if already authenticated
+
+### Check-in Access
+
+Both staff and students can access `/checkin`. The system determines check-in behavior based on apprentice record:
+
+| User | Has Apprentice Record? | Events Shown | Attendance Method |
+|------|------------------------|--------------|-------------------|
+| Student | Yes | Cohort + public | Linked to apprentice ID |
+| Staff | Yes (if also apprentice) | Cohort + public | Linked to apprentice ID |
+| Staff | No | Public only | External (uses session email) |
 
 ### Adding Staff Members
 

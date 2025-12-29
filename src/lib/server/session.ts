@@ -1,4 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { UserType } from './auth';
 
 const SESSION_COOKIE_NAME = 'session';
@@ -34,7 +35,7 @@ export function setSession(cookies: Cookies, data: SessionData): void {
 	cookies.set(SESSION_COOKIE_NAME, JSON.stringify(data), {
 		path: '/',
 		httpOnly: true,
-		secure: true,
+		secure: !dev,
 		sameSite: 'lax',
 		maxAge: SESSION_MAX_AGE,
 	});
