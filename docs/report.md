@@ -193,3 +193,107 @@ Created 13 unit tests covering both success paths and validation failures:
 - Email already checked in → throws error
 
 This ensures validation logic is tested in isolation from the API layer. [P6 - 40%] [P7 - 40%]
+
+
+# Unified Check-in Page with Adaptive UI (AP-22)
+
+Created a single check-in page at `/checkin` that adapts its interface based on authentication state, supporting both registered users and guest attendees.
+
+## Adaptive UI Pattern
+
+The page renders different views based on authentication status, determined server-side:
+
+```typescript
+// +page.server.ts
+export const load: PageServerLoad = async ({ locals }) => {
+    if (!user) {
+        return { authenticated: false, events: [], checkInMethod: null };
+    }
+    // ... fetch events for authenticated user
+    return { authenticated: true, events: eventsWithStatus, checkInMethod };
+};
+```
+
+```svelte
+<!-- +page.svelte -->
+{#if data.authenticated}
+    <!-- Event list with one-tap check-in -->
+{:else}
+    <!-- Guest flow: code → details → success -->
+{/if}
+```
+
+This approach avoids separate routes while providing tailored experiences for each user type. [P5 - 70%] [D4 - 50%]
+
+## User Flow Diagram
+
+```mermaid
+flowchart TD
+    A[Visit /checkin] --> B{Authenticated?}
+    B -->|Yes| C[Fetch user's events]
+    C --> D{Has apprentice record?}
+    D -->|Yes| E[Show cohort + public events]
+    D -->|No| F[Show public events only]
+    E --> G[One-tap check-in]
+    F --> G
+
+    B -->|No| H[Show code input]
+    H --> I[Validate 4-digit code]
+    I -->|Valid| J[Show name/email form]
+    I -->|Invalid| K[Show error]
+    J --> L{Email registered?}
+    L -->|Yes| M[Prompt to login]
+    L -->|No| N[Create external attendance]
+```
+
+## Live Countdown Timer
+
+Added a real-time countdown that updates every second, providing visual feedback on event timing:
+
+```typescript
+// Reactive timer updates every second
+let now = $state(Date.now());
+const timerInterval = setInterval(() => { now = Date.now(); }, 1000);
+onDestroy(() => clearInterval(timerInterval));
+
+function getTimeStatus(dateTime: string) {
+    const diff = new Date(dateTime).getTime() - now;
+    if (diff > 0) {
+        return { text: 'Starts in Xh Xm Xs', isLate: false, isStartingSoon: diff < 10 * 60 * 1000 };
+    }
+    return { text: 'Xm late', isLate: true, isStartingSoon: false };
+}
+```
+
+The timer uses `font-variant-numeric: tabular-nums` to prevent layout shifts as digits change. Visual states:
+- **Blue**: Event upcoming (normal)
+- **Orange**: Starting within 10 minutes
+- **Red**: Event started, user is late
+
+This provides immediate visual feedback encouraging timely attendance. [P3 - 40%] [S16 - 30%]
+
+## Route Protection Update
+
+Modified `hooks.server.ts` to allow unauthenticated access to `/checkin` for guest check-in support. The page handles authentication internally rather than redirecting to login.
+
+```typescript
+// Previously protected, now public with internal auth handling
+const PROTECTED_ROUTES: string[] = []; // /checkin handles auth internally
+```
+
+Updated tests to reflect this change, verifying that unauthenticated users can access the page (for guest check-in) while authenticated users see their personalised event list. [P6 - 30%] [P7 - 35%]
+
+## Development Environment Cookie Fix
+
+Fixed session cookies for local development by making the `Secure` flag environment-aware:
+
+```typescript
+import { dev } from '$app/environment';
+
+cookies.set('session', JSON.stringify(data), {
+    secure: !dev,  // false in dev (HTTP), true in production (HTTPS)
+    // ...
+});
+```
+
+This resolved "Authentication required" errors when testing locally over HTTP. [P8 - 50%] [D3 - 40%]
