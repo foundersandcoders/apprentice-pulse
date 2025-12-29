@@ -13,12 +13,15 @@
 import { AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS } from '$env/static/private';
 import { createAirtableClient } from './airtable.js';
 import { createEventsClient } from './events.js';
+import { createAttendanceClient } from './attendance.js';
 
 export type { Apprentice, Cohort } from './airtable.js';
 export type { Event, EventFilters, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
+export type { Attendance, CreateAttendanceInput, CreateExternalAttendanceInput } from '$lib/types/attendance.js';
 
 const client = createAirtableClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
 const eventsClient = createEventsClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
+const attendanceClient = createAttendanceClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
 
 export const getApprenticesByFacCohort = client.getApprenticesByFacCohort;
 export const findStaffByEmail = client.findStaffByEmail;
@@ -31,3 +34,10 @@ export const getEvent = eventsClient.getEvent;
 export const createEvent = eventsClient.createEvent;
 export const updateEvent = eventsClient.updateEvent;
 export const deleteEvent = eventsClient.deleteEvent;
+
+// Attendance
+export const hasUserCheckedIn = attendanceClient.hasUserCheckedIn;
+export const hasExternalCheckedIn = attendanceClient.hasExternalCheckedIn;
+export const createAttendance = attendanceClient.createAttendance;
+export const createExternalAttendance = attendanceClient.createExternalAttendance;
+export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
