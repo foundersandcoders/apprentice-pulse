@@ -146,3 +146,50 @@ if (isPathMatch(pathname, ADMIN_ROUTES)) {
 - **Redirect parameter**: Login preserves intended destination via `?redirect=` query param, improving user experience after authentication
 - **API routes excluded**: `/api/*` routes handle their own auth to support different response formats (JSON vs redirects)
 - **Session helpers module**: Extracted cookie handling into reusable functions (`getSession`, `setSession`, `clearSession`) following DRY principles [K7 - 50%] [S17 - 60%]
+
+
+# Attendance Service with Cross-Table Validation (AP-21)
+
+Extended the Airtable factory pattern to create an attendance service module. A key design decision was implementing validation at the service layer rather than the API layer.
+
+## Validation Pattern
+
+The `createAttendance` and `createExternalAttendance` functions validate against the Events table before creating records:
+
+```typescript
+async function createAttendance(input: CreateAttendanceInput): Promise<Attendance> {
+    // Validate event exists
+    const eventInfo = await getEventInfo(input.eventId);
+    if (!eventInfo.exists) {
+        throw new Error('Event not found');
+    }
+
+    // Prevent duplicate check-in
+    const alreadyCheckedIn = await hasUserCheckedIn(input.eventId, input.apprenticeId);
+    if (alreadyCheckedIn) {
+        throw new Error('User has already checked in to this event');
+    }
+
+    // Create record...
+}
+```
+
+## Design Decision: Service Layer vs API Layer Validation
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Service layer** (chosen) | Reusable across API routes, testable in isolation, single source of truth | Extra queries per request |
+| API layer | Could batch validations, closer to request context | Duplicated logic if multiple endpoints use same service |
+
+Chose service layer validation because the attendance functions will be used by multiple API endpoints (student check-in, admin manual check-in, potential future bulk operations). [P5 - 60%] [D2 - 50%] [K7 - 40%]
+
+## Testing Validation Scenarios
+
+Created 13 unit tests covering both success paths and validation failures:
+
+- Event not found → throws error
+- User already checked in → throws error
+- External check-in on non-public event → throws error
+- Email already checked in → throws error
+
+This ensures validation logic is tested in isolation from the API layer. [P6 - 40%] [P7 - 40%]
