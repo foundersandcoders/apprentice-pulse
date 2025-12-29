@@ -41,7 +41,7 @@ export const EVENT_FIELDS = {
 	ATTENDANCE: 'fldcPf53fVfStFZsa', // multipleRecordLinks to Attendance (reverse link)
 	NAME_DATE: 'fld7POykodV0LGsg1', // formula (display name)
 	PUBLIC: 'fldatQzdAo8evWlNc', // checkbox (visible to all on check-in page)
-	CHECK_IN_CODE: 'fldKMWSFmYONkvYMK', // number (4-digit code for external attendees)
+	CHECK_IN_CODE: 'fldKMWSFmYONkvYMK', // number - field name is "Number" (4-digit code for external attendees)
 } as const;
 
 // Fields - Attendance

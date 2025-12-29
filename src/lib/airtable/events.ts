@@ -158,7 +158,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 	async function getEventByCode(code: number): Promise<Event | null> {
 		const records = await eventsTable
 			.select({
-				filterByFormula: `AND({Check-in Code} = ${code}, {Public} = TRUE())`,
+				filterByFormula: `AND({Number} = ${code}, {Public} = TRUE())`,
 				maxRecords: 1,
 				returnFieldsByFieldId: true,
 			})

@@ -7,7 +7,7 @@ const ADMIN_ROUTES = ['/admin'];
 const ADMIN_LOGIN = '/admin/login';
 
 // Routes that require any authenticated user
-const PROTECTED_ROUTES = ['/checkin'];
+const PROTECTED_ROUTES: string[] = []; // /checkin now handles auth internally for guest support
 
 // Login routes - redirect if already authenticated
 const AUTH_ROUTES = ['/login', '/admin/login'];
