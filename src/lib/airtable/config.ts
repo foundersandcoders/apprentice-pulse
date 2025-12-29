@@ -53,3 +53,8 @@ export const ATTENDANCE_FIELDS = {
 	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
 	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
 } as const;
+
+// Defaults
+export const DEFAULTS = {
+	SURVEY_URL: 'https://airtable.com/app75iT6Or0Rya1KE/tblkbskw4fuTq0E9p/viwMPduDi2Cl0Bwa3/rec3vWwKLpAycDCSL/fld9XBHnCWBtZiZah?copyLinkToCellOrRecordOrigin=gridView',
+} as const;

@@ -152,10 +152,21 @@ The generated schema file can be used to update `src/lib/airtable/config.ts` wit
 
 ### Event Types
 
-Event types are defined in `src/lib/types/event.ts`. The `EventType` union currently includes:
+Event types are defined as a single source of truth in `src/lib/types/event.ts`:
 
-- `Regular class`
-- `Workshop`
-- `Hackathon`
+```typescript
+export const EVENT_TYPES = ['Regular class', 'Workshop', 'Hackathon'] as const;
+export type EventType = typeof EVENT_TYPES[number];
+```
 
-If new event types are added in Airtable's "Select" field, update this type definition to match.
+To add a new event type, update the `EVENT_TYPES` array - all forms and validation will automatically use the new values.
+
+### Default Values
+
+Default values used in forms are stored in `src/lib/airtable/config.ts` under `DEFAULTS`:
+
+| Key | Description |
+|-----|-------------|
+| `SURVEY_URL` | Default survey URL pre-filled when creating events |
+
+To change the default survey URL, update `DEFAULTS.SURVEY_URL` in the config file.

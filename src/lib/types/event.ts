@@ -1,4 +1,6 @@
-export type EventType = 'Regular class' | 'Workshop' | 'Hackathon';
+// Single source of truth for event types
+export const EVENT_TYPES = ['Regular class', 'Workshop', 'Hackathon'] as const;
+export type EventType = typeof EVENT_TYPES[number];
 
 export interface Event {
 	id: string;

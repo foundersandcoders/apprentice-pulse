@@ -1,21 +1,40 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { EVENT_TYPES, type EventType } from '$lib/types/event';
+	import { EVENT_TYPES } from '$lib/types/event';
 
 	let { data } = $props();
 
-	let name = $state('');
-	let dateTime = $state('');
-	let cohortId = $state('');
-	let eventType = $state<EventType>(EVENT_TYPES[0]);
-	let isPublic = $state(false);
-	let checkInCode = $state<number | undefined>(undefined);
+	// Format datetime for input (needs YYYY-MM-DDTHH:MM format)
+	function formatDateTimeForInput(isoString: string): string {
+		const date = new Date(isoString);
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		const hours = String(date.getHours()).padStart(2, '0');
+		const minutes = String(date.getMinutes()).padStart(2, '0');
+		return `${year}-${month}-${day}T${hours}:${minutes}`;
+	}
+
+	// Form state - intentionally captures initial values for editing
 	// svelte-ignore state_referenced_locally
-	let surveyUrl = $state(data.defaultSurveyUrl);
+	let name = $state(data.event.name);
+	// svelte-ignore state_referenced_locally
+	let dateTime = $state(formatDateTimeForInput(data.event.dateTime));
+	// svelte-ignore state_referenced_locally
+	let cohortId = $state(data.event.cohortId || '');
+	// svelte-ignore state_referenced_locally
+	let eventType = $state(data.event.eventType);
+	// svelte-ignore state_referenced_locally
+	let isPublic = $state(data.event.isPublic);
+	// svelte-ignore state_referenced_locally
+	let checkInCode = $state<number | undefined>(data.event.checkInCode);
+	// svelte-ignore state_referenced_locally
+	let surveyUrl = $state(data.event.surveyUrl || data.defaultSurveyUrl);
 
 	let error = $state('');
 	let submitting = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -23,8 +42,8 @@
 		submitting = true;
 
 		try {
-			const response = await fetch('/api/events', {
-				method: 'POST',
+			const response = await fetch(`/api/events/${data.event.id}`, {
+				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
@@ -40,14 +59,41 @@
 			const result = await response.json();
 
 			if (!result.success) {
-				error = result.error || 'Failed to create event';
+				error = result.error || 'Failed to update event';
 				return;
 			}
 
 			goto(resolve('/admin/events'));
 		}
 		catch {
-			error = 'Failed to create event';
+			error = 'Failed to update event';
+		}
+		finally {
+			submitting = false;
+		}
+	}
+
+	async function handleDelete() {
+		submitting = true;
+
+		try {
+			const response = await fetch(`/api/events/${data.event.id}`, {
+				method: 'DELETE',
+			});
+
+			const result = await response.json();
+
+			if (!result.success) {
+				error = result.error || 'Failed to delete event';
+				showDeleteConfirm = false;
+				return;
+			}
+
+			goto(resolve('/admin/events'));
+		}
+		catch {
+			error = 'Failed to delete event';
+			showDeleteConfirm = false;
 		}
 		finally {
 			submitting = false;
@@ -57,7 +103,7 @@
 
 <div class="p-6 max-w-2xl mx-auto">
 	<a href={resolve('/admin/events')} class="text-blue-600 hover:underline text-sm">← Back to Events</a>
-	<h1 class="text-2xl font-bold mt-2 mb-6">Add Event</h1>
+	<h1 class="text-2xl font-bold mt-2 mb-6">Edit Event</h1>
 
 	{#if error}
 		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -76,7 +122,6 @@
 				bind:value={name}
 				required
 				class="w-full border rounded px-3 py-2"
-				placeholder="e.g. Week 1 Monday"
 			/>
 		</div>
 
@@ -174,7 +219,7 @@
 				disabled={submitting}
 				class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
 			>
-				{submitting ? 'Creating...' : 'Create Event'}
+				{submitting ? 'Saving...' : 'Save Changes'}
 			</button>
 			<a
 				href={resolve('/admin/events')}
@@ -182,6 +227,41 @@
 			>
 				Cancel
 			</a>
+			<button
+				type="button"
+				onclick={() => showDeleteConfirm = true}
+				disabled={submitting}
+				class="ml-auto text-red-600 hover:text-red-800 disabled:opacity-50"
+			>
+				Delete
+			</button>
 		</div>
 	</form>
 </div>
+
+{#if showDeleteConfirm}
+	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+		<div class="bg-white rounded-lg p-6 max-w-md w-full">
+			<h2 class="text-lg font-bold mb-2">Delete Event?</h2>
+			<p class="text-gray-600 mb-4">
+				Are you sure you want to delete "{data.event.name}"? This will also remove all attendance records linked to this event.
+			</p>
+			<div class="flex gap-3 justify-end">
+				<button
+					onclick={() => showDeleteConfirm = false}
+					disabled={submitting}
+					class="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={handleDelete}
+					disabled={submitting}
+					class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+				>
+					{submitting ? 'Deleting...' : 'Delete'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
