@@ -159,3 +159,13 @@ Event types are defined in `src/lib/types/event.ts`. The `EventType` union curre
 - `Hackathon`
 
 If new event types are added in Airtable's "Select" field, update this type definition to match.
+
+### Default Values
+
+Default values used in forms are stored in `src/lib/airtable/config.ts` under `DEFAULTS`:
+
+| Key | Description |
+|-----|-------------|
+| `SURVEY_URL` | Default survey URL pre-filled when creating events |
+
+To change the default survey URL, update `DEFAULTS.SURVEY_URL` in the config file.
