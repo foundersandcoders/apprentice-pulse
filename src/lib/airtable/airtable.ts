@@ -10,6 +10,11 @@ export interface Apprentice {
 	cohortNumber: string | null;
 }
 
+export interface Cohort {
+	id: string;
+	name: string;
+}
+
 export type UserType = 'staff' | 'student';
 
 export function createAirtableClient(apiKey: string, baseId: string) {
@@ -131,10 +136,29 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		return apprenticeRecords.length > 0;
 	}
 
+	/**
+	 * List all cohorts
+	 */
+	async function listCohorts(): Promise<Cohort[]> {
+		const cohortsTable = base(TABLES.COHORTS);
+
+		const records = await cohortsTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map(record => ({
+			id: record.id,
+			name: (record.get(COHORT_FIELDS.NUMBER) as string) || record.id,
+		}));
+	}
+
 	return {
 		getApprenticesByFacCohort,
 		findUserByEmail,
 		findStaffByEmail,
 		findApprenticeByEmail,
+		listCohorts,
 	};
 }
