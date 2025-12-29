@@ -54,6 +54,12 @@
 		return cohort?.name ?? null;
 	}
 
+	function getCohortApprenticeCount(cohortId: string | undefined): number | null {
+		if (!cohortId) return null;
+		const cohort = data.cohorts.find(c => c.id === cohortId);
+		return cohort?.apprenticeCount ?? null;
+	}
+
 	function handleCohortFilter(event: Event) {
 		const select = event.target as HTMLSelectElement;
 		const cohortId = select.value;
@@ -307,12 +313,14 @@
 							<th class="p-3 border-b font-semibold">Date/Time</th>
 							<th class="p-3 border-b font-semibold">Type</th>
 							<th class="p-3 border-b font-semibold">Cohort</th>
+							<th class="p-3 border-b font-semibold">Attendance</th>
 							<th class="p-3 border-b font-semibold">Public</th>
 							<th class="p-3 border-b font-semibold w-16"></th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each data.events as event (event.id)}
+							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
 							<tr class="border-b hover:bg-gray-50">
 								<td class="p-3">{event.name || '(Untitled)'}</td>
 								<td class="p-3">{formatDate(event.dateTime)}</td>
@@ -322,6 +330,13 @@
 										<span class="text-sm">{getCohortName(event.cohortId) || event.cohortId}</span>
 									{:else}
 										<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Open</span>
+									{/if}
+								</td>
+								<td class="p-3">
+									{#if expectedAttendance !== null}
+										<span class="font-mono text-sm">{event.attendanceCount ?? 0}/{expectedAttendance}</span>
+									{:else}
+										<span class="text-gray-400">{event.attendanceCount ?? 0}</span>
 									{/if}
 								</td>
 								<td class="p-3">

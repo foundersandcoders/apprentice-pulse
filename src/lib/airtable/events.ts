@@ -37,6 +37,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 		return records.map((record) => {
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
@@ -46,6 +47,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
+				attendanceCount: attendanceLinks?.length ?? 0,
 			};
 		});
 	}

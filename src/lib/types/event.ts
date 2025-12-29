@@ -13,6 +13,7 @@ export interface Event {
 	surveyUrl?: string;
 	isPublic: boolean;
 	checkInCode?: number;
+	attendanceCount?: number;
 }
 
 export interface CreateEventInput {

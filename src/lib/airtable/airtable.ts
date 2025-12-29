@@ -20,6 +20,7 @@ export interface ApprenticeRecord {
 export interface Cohort {
 	id: string;
 	name: string;
+	apprenticeCount: number;
 }
 
 export type UserType = 'staff' | 'student';
@@ -185,10 +186,14 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		return records.map(record => ({
-			id: record.id,
-			name: (record.get(COHORT_FIELDS.NUMBER) as string) || record.id,
-		}));
+		return records.map((record) => {
+			const apprenticeIds = record.get(COHORT_FIELDS.APPRENTICES) as string[] | undefined;
+			return {
+				id: record.id,
+				name: (record.get(COHORT_FIELDS.NUMBER) as string) || record.id,
+				apprenticeCount: apprenticeIds?.length ?? 0,
+			};
+		});
 	}
 
 	return {

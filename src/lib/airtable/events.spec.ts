@@ -54,6 +54,7 @@ describe('events', () => {
 							fldcXDEDkeHvWTnxE: ['recCohort1'],
 							fldo7fwAsFhkA1icC: 'Regular class',
 							fld9XBHnCWBtZiZah: 'https://survey.example.com',
+							fldcPf53fVfStFZsa: ['recAttend1', 'recAttend2'], // ATTENDANCE field
 						};
 						return data[field];
 					}),
@@ -74,6 +75,7 @@ describe('events', () => {
 				surveyUrl: 'https://survey.example.com',
 				isPublic: false,
 				checkInCode: undefined,
+				attendanceCount: 2,
 			});
 		});
 	});
