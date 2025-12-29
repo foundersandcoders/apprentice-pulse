@@ -28,6 +28,7 @@ export const findStaffByEmail = client.findStaffByEmail;
 export const findApprenticeByEmail = client.findApprenticeByEmail;
 export const getApprenticeByEmail = client.getApprenticeByEmail;
 export const listCohorts = client.listCohorts;
+export const getApprenticesByCohortId = client.getApprenticesByCohortId;
 
 // Events
 export const listEvents = eventsClient.listEvents;

@@ -196,6 +196,52 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		});
 	}
 
+	/**
+	 * Get apprentices by cohort record ID
+	 */
+	async function getApprenticesByCohortId(cohortId: string): Promise<ApprenticeRecord[]> {
+		const cohortsTable = base(TABLES.COHORTS);
+		const apprenticesTable = base(TABLES.APPRENTICES);
+
+		// Get the cohort to find linked apprentice IDs
+		const cohortRecords = await cohortsTable
+			.select({
+				filterByFormula: `RECORD_ID() = "${cohortId}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (cohortRecords.length === 0) {
+			return [];
+		}
+
+		const apprenticeIds = cohortRecords[0].get(COHORT_FIELDS.APPRENTICES) as string[] | undefined;
+		if (!apprenticeIds || apprenticeIds.length === 0) {
+			return [];
+		}
+
+		// Fetch apprentice details
+		const recordIdFormula = apprenticeIds.map(id => `RECORD_ID() = "${id}"`).join(', ');
+		const records = await apprenticesTable
+			.select({
+				filterByFormula: `OR(${recordIdFormula})`,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map((record) => {
+			const emailLookup = record.get(APPRENTICE_FIELDS.EMAIL) as string[] | undefined;
+			const cohortLink = record.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
+			return {
+				id: record.id,
+				name: record.get(APPRENTICE_FIELDS.NAME) as string,
+				email: emailLookup?.[0] ?? '',
+				cohortId: cohortLink?.[0] ?? null,
+			};
+		});
+	}
+
 	return {
 		getApprenticesByFacCohort,
 		findUserByEmail,
@@ -203,5 +249,6 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		findApprenticeByEmail,
 		getApprenticeByEmail,
 		listCohorts,
+		getApprenticesByCohortId,
 	};
 }

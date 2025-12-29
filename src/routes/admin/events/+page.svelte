@@ -34,6 +34,19 @@
 	let seriesSubmitting = $state(false);
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);
 
+	// Expandable row state
+	interface RosterEntry {
+		id: string;
+		name: string;
+		email: string;
+		type: 'apprentice' | 'external';
+		checkedIn: boolean;
+		checkinTime?: string;
+	}
+	let expandedEventId = $state<string | null>(null);
+	let rosterData = $state<RosterEntry[]>([]);
+	let rosterLoading = $state(false);
+
 	function formatDate(dateTime: string | undefined): string {
 		if (!dateTime) return '—';
 		const date = new Date(dateTime);
@@ -60,6 +73,41 @@
 		return cohort?.apprenticeCount ?? null;
 	}
 
+	async function toggleEventRow(eventId: string) {
+		if (expandedEventId === eventId) {
+			// Collapse
+			expandedEventId = null;
+			rosterData = [];
+			return;
+		}
+
+		// Expand and load roster
+		expandedEventId = eventId;
+		rosterLoading = true;
+		rosterData = [];
+
+		try {
+			const response = await fetch(`/api/events/${eventId}/roster`);
+			const result = await response.json();
+
+			if (result.success) {
+				rosterData = result.roster;
+			}
+		}
+		catch {
+			console.error('Failed to load roster');
+		}
+		finally {
+			rosterLoading = false;
+		}
+	}
+
+	function formatCheckinTime(time: string | undefined): string {
+		if (!time) return '';
+		const date = new Date(time);
+		return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+	}
+
 	function handleCohortFilter(event: Event) {
 		const select = event.target as HTMLSelectElement;
 		const cohortId = select.value;
@@ -71,10 +119,6 @@
 		else {
 			goto(baseUrl);
 		}
-	}
-
-	function getEditUrl(eventId: string): string {
-		return resolve('/admin/events') + '/' + eventId;
 	}
 
 	function resetSingleForm() {
@@ -321,8 +365,26 @@
 					<tbody>
 						{#each data.events as event (event.id)}
 							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
-							<tr class="border-b hover:bg-gray-50">
-								<td class="p-3">{event.name || '(Untitled)'}</td>
+							{@const isExpanded = expandedEventId === event.id}
+							<tr
+								class="border-b hover:bg-gray-50 cursor-pointer"
+								class:bg-blue-50={isExpanded}
+								onclick={() => toggleEventRow(event.id)}
+							>
+								<td class="p-3">
+									<span class="inline-flex items-center gap-2">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-4 w-4 text-gray-400 transition-transform"
+											class:rotate-90={isExpanded}
+											viewBox="0 0 20 20"
+											fill="currentColor"
+										>
+											<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+										</svg>
+										{event.name || '(Untitled)'}
+									</span>
+								</td>
 								<td class="p-3">{formatDate(event.dateTime)}</td>
 								<td class="p-3">{event.eventType || '—'}</td>
 								<td class="p-3">
@@ -347,14 +409,56 @@
 									{/if}
 								</td>
 								<td class="p-3">
-									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-									<a href={getEditUrl(event.id)} class="text-gray-500 hover:text-blue-600" title="Edit event">
+									<a
+										href={resolve(`/admin/events/${event.id}`)}
+										class="text-gray-500 hover:text-blue-600"
+										title="Edit event"
+										onclick={e => e.stopPropagation()}
+									>
 										<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 											<path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
 										</svg>
 									</a>
 								</td>
 							</tr>
+							{#if isExpanded}
+								<tr class="bg-gray-50">
+									<td colspan="7" class="p-4">
+										{#if rosterLoading}
+											<div class="text-gray-500 text-sm">Loading roster...</div>
+										{:else if rosterData.length === 0}
+											<div class="text-gray-500 text-sm">No attendees</div>
+										{:else}
+											<div class="grid gap-2 max-h-64 overflow-y-auto">
+												{#each rosterData as person (person.id)}
+													<div class="flex items-center gap-3 text-sm py-1">
+														{#if person.checkedIn}
+															<span class="text-green-600" title="Checked in">
+																<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+																	<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+																</svg>
+															</span>
+														{:else}
+															<span class="text-gray-300" title="Not checked in">
+																<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+																	<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+																</svg>
+															</span>
+														{/if}
+														<span class="font-medium">{person.name}</span>
+														{#if person.type === 'external'}
+															<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">Guest</span>
+														{/if}
+														{#if person.checkedIn && person.checkinTime}
+															<span class="text-gray-400 text-xs">at {formatCheckinTime(person.checkinTime)}</span>
+														{/if}
+													</div>
+												{/each}
+											</div>
+										{/if}
+									</td>
+								</tr>
+							{/if}
 						{/each}
 					</tbody>
 				</table>
