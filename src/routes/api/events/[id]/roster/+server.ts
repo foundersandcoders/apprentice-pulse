@@ -20,8 +20,11 @@ export const GET: RequestHandler = async ({ params }) => {
 			return json({ success: false, error: 'Event not found' }, { status: 404 });
 		}
 
-		// Get attendance records using the linked IDs from the event
-		const attendance = await getAttendanceByIds(event.attendanceIds ?? []);
+		// Fetch attendance and cohort apprentices in parallel
+		const [attendance, cohortApprentices] = await Promise.all([
+			getAttendanceByIds(event.attendanceIds ?? []),
+			event.cohortId ? getApprenticesByCohortId(event.cohortId) : Promise.resolve([]),
+		]);
 
 		// Build a map of apprentice IDs to their attendance info
 		const attendanceByApprentice = new Map<string, { status: AttendanceStatus; checkinTime: string }>();
@@ -37,22 +40,18 @@ export const GET: RequestHandler = async ({ params }) => {
 		const roster: RosterEntry[] = [];
 		const addedApprenticeIds = new Set<string>();
 
-		// If event has a cohort, get all apprentices from that cohort
-		if (event.cohortId) {
-			const apprentices = await getApprenticesByCohortId(event.cohortId);
-
-			for (const apprentice of apprentices) {
-				const attendanceInfo = attendanceByApprentice.get(apprentice.id);
-				roster.push({
-					id: apprentice.id,
-					name: apprentice.name,
-					email: apprentice.email,
-					type: 'apprentice',
-					status: attendanceInfo?.status ?? 'Absent',
-					checkinTime: attendanceInfo?.checkinTime,
-				});
-				addedApprenticeIds.add(apprentice.id);
-			}
+		// Add apprentices from the cohort
+		for (const apprentice of cohortApprentices) {
+			const attendanceInfo = attendanceByApprentice.get(apprentice.id);
+			roster.push({
+				id: apprentice.id,
+				name: apprentice.name,
+				email: apprentice.email,
+				type: 'apprentice',
+				status: attendanceInfo?.status ?? 'Absent',
+				checkinTime: attendanceInfo?.checkinTime,
+			});
+			addedApprenticeIds.add(apprentice.id);
 		}
 
 		// Collect apprentice IDs that checked in but aren't in the cohort

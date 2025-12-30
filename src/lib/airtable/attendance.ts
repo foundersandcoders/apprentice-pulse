@@ -14,9 +14,13 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	const eventsTable = base(TABLES.EVENTS);
 
 	/**
-	 * Check if an event exists and return its public status
+	 * Check if an event exists and return its details for check-in validation
 	 */
-	async function getEventInfo(eventId: string): Promise<{ exists: boolean; isPublic: boolean }> {
+	async function getEventInfo(eventId: string): Promise<{
+		exists: boolean;
+		isPublic: boolean;
+		dateTime: string | null;
+	}> {
 		const records = await eventsTable
 			.select({
 				filterByFormula: `RECORD_ID() = "${eventId}"`,
@@ -26,11 +30,27 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			.all();
 
 		if (records.length === 0) {
-			return { exists: false, isPublic: false };
+			return { exists: false, isPublic: false, dateTime: null };
 		}
 
 		const isPublic = (records[0].get(EVENT_FIELDS.PUBLIC) as boolean) ?? false;
-		return { exists: true, isPublic };
+		const dateTime = (records[0].get(EVENT_FIELDS.DATE_TIME) as string) ?? null;
+		return { exists: true, isPublic, dateTime };
+	}
+
+	/**
+	 * Determine attendance status based on check-in time vs event start time
+	 */
+	function determineStatus(eventDateTime: string | null): 'Present' | 'Late' {
+		if (!eventDateTime) {
+			return 'Present';
+		}
+
+		const eventTime = new Date(eventDateTime);
+		const now = new Date();
+
+		// If checking in after the event start time, mark as late
+		return now > eventTime ? 'Late' : 'Present';
 	}
 
 	/**
@@ -78,11 +98,12 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			throw new Error('User has already checked in to this event');
 		}
 
+		const status = determineStatus(eventInfo.dateTime);
 		const fields: Airtable.FieldSet = {
 			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
 			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
 			[ATTENDANCE_FIELDS.CHECKIN_TIME]: new Date().toISOString(),
-			[ATTENDANCE_FIELDS.STATUS]: 'Present',
+			[ATTENDANCE_FIELDS.STATUS]: status,
 		};
 
 		const record = await attendanceTable.create(fields);
@@ -92,7 +113,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			eventId: input.eventId,
 			apprenticeId: input.apprenticeId,
 			checkinTime: fields[ATTENDANCE_FIELDS.CHECKIN_TIME] as string,
-			status: 'Present',
+			status,
 		};
 	}
 
@@ -116,12 +137,13 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			throw new Error('This email has already checked in to this event');
 		}
 
+		const status = determineStatus(eventInfo.dateTime);
 		const fields: Airtable.FieldSet = {
 			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
 			[ATTENDANCE_FIELDS.EXTERNAL_NAME]: input.name,
 			[ATTENDANCE_FIELDS.EXTERNAL_EMAIL]: input.email,
 			[ATTENDANCE_FIELDS.CHECKIN_TIME]: new Date().toISOString(),
-			[ATTENDANCE_FIELDS.STATUS]: 'Present',
+			[ATTENDANCE_FIELDS.STATUS]: status,
 		};
 
 		const record = await attendanceTable.create(fields);
@@ -132,7 +154,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			externalName: input.name,
 			externalEmail: input.email,
 			checkinTime: fields[ATTENDANCE_FIELDS.CHECKIN_TIME] as string,
-			status: 'Present',
+			status,
 		};
 	}
 
