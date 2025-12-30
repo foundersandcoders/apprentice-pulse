@@ -430,17 +430,11 @@
 											<div class="text-gray-500 text-sm">No attendees</div>
 										{:else}
 											<table class="w-full text-sm max-h-64 overflow-y-auto">
-												<thead>
-													<tr class="text-left text-gray-500 text-xs border-b">
-														<th class="py-2 font-medium">Name</th>
-														<th class="py-2 font-medium">Status</th>
-													</tr>
-												</thead>
 												<tbody>
 													{#each rosterData as person (person.id)}
-														<tr class="border-b border-gray-100 last:border-0">
-															<td class="py-2 font-medium">{person.name}</td>
-															<td class="py-2">
+														<tr>
+															<td class="py-1 font-medium">{person.name}</td>
+															<td class="py-1">
 																{#if person.checkedIn}
 																	<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
 																		Checked in{#if person.checkinTime} at {formatCheckinTime(person.checkinTime)}{/if}
