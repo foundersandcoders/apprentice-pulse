@@ -1,25 +1,87 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { EVENT_TYPES, type EventType } from '$lib/types/event';
+	import { onMount } from 'svelte';
+	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType } from '$lib/types/event';
 	import CalendarPicker from '$lib/components/CalendarPicker.svelte';
+	import { ScheduleXCalendar } from '@schedule-x/svelte';
+	import { createCalendar, createViewMonthGrid } from '@schedule-x/calendar';
+	import '@schedule-x/theme-default/dist/index.css';
+	import 'temporal-polyfill/global';
 
 	let { data } = $props();
 
-	// Page mode: list view or creation forms
-	let mode = $state<'list' | 'single' | 'series'>('list');
+	// Schedule-X calendar instance
+	let calendarApp = $state<ReturnType<typeof createCalendar> | null>(null);
 
-	// Single event form state
-	let name = $state('');
-	let dateTime = $state('');
-	let cohortId = $state('');
-	let eventType = $state<EventType>(EVENT_TYPES[0]);
-	let isPublic = $state(false);
-	let checkInCode = $state<number | undefined>(undefined);
+	onMount(() => {
+		// Transform events into Schedule-X format using Temporal API
+		const timeZone = Temporal.Now.timeZoneId();
+		const calendarEvents = data.events.map((event) => {
+			// Parse ISO datetime string and create ZonedDateTime
+			const dateTime = event.dateTime.slice(0, 19); // "YYYY-MM-DDTHH:MM:SS"
+			const plainDateTime = Temporal.PlainDateTime.from(dateTime);
+			const startDateTime = plainDateTime.toZonedDateTime(timeZone);
+			const endDateTime = startDateTime.add({ hours: 1 });
+
+			return {
+				id: event.id,
+				title: event.name || '(Untitled)',
+				start: startDateTime,
+				end: endDateTime,
+				calendarId: event.eventType.toLowerCase().replace(' ', '-'),
+			};
+		});
+
+		calendarApp = createCalendar({
+			views: [createViewMonthGrid()],
+			defaultView: 'month-grid',
+			calendars: {
+				'regular-class': {
+					colorName: 'regular-class',
+					lightColors: {
+						main: EVENT_TYPE_COLORS['Regular Class'].main,
+						container: EVENT_TYPE_COLORS['Regular Class'].container,
+						onContainer: EVENT_TYPE_COLORS['Regular Class'].onContainer,
+					},
+				},
+				'workshop': {
+					colorName: 'workshop',
+					lightColors: {
+						main: EVENT_TYPE_COLORS['Workshop'].main,
+						container: EVENT_TYPE_COLORS['Workshop'].container,
+						onContainer: EVENT_TYPE_COLORS['Workshop'].onContainer,
+					},
+				},
+				'hackathon': {
+					colorName: 'hackathon',
+					lightColors: {
+						main: EVENT_TYPE_COLORS['Hackathon'].main,
+						container: EVENT_TYPE_COLORS['Hackathon'].container,
+						onContainer: EVENT_TYPE_COLORS['Hackathon'].onContainer,
+					},
+				},
+			},
+			events: calendarEvents,
+		});
+	});
+
+	// Page mode: list view or series creation form
+	let mode = $state<'list' | 'series'>('list');
+
+	// Inline event creation state
+	let isAddingEvent = $state(false);
 	// svelte-ignore state_referenced_locally
-	let surveyUrl = $state(data.defaultSurveyUrl);
-	let error = $state('');
-	let submitting = $state(false);
+	let newEvent = $state({
+		name: '',
+		dateTime: '',
+		cohortId: '',
+		eventType: EVENT_TYPES[0] as EventType,
+		isPublic: false,
+		surveyUrl: data.defaultSurveyUrl,
+	});
+	let addEventError = $state('');
+	let addEventSubmitting = $state(false);
 
 	// Series form state
 	let seriesName = $state('');
@@ -129,15 +191,16 @@
 		}
 	}
 
-	function resetSingleForm() {
-		name = '';
-		dateTime = '';
-		cohortId = '';
-		eventType = EVENT_TYPES[0];
-		isPublic = false;
-		checkInCode = undefined;
-		surveyUrl = data.defaultSurveyUrl;
-		error = '';
+	function resetNewEventForm() {
+		newEvent = {
+			name: '',
+			dateTime: '',
+			cohortId: '',
+			eventType: EVENT_TYPES[0],
+			isPublic: false,
+			surveyUrl: data.defaultSurveyUrl,
+		};
+		addEventError = '';
 	}
 
 	function resetSeriesForm() {
@@ -154,35 +217,65 @@
 
 	function cancelForm() {
 		mode = 'list';
-		resetSingleForm();
+		isAddingEvent = false;
+		resetNewEventForm();
 		resetSeriesForm();
 	}
 
-	// Submit single event
-	async function handleSingleSubmit(e: Event) {
-		e.preventDefault();
-		error = '';
-		submitting = true;
+	function cancelAddEvent() {
+		isAddingEvent = false;
+		resetNewEventForm();
+	}
+
+	// Delete event
+	async function handleDeleteEvent(eventId: string, eventName: string) {
+		if (!confirm(`Delete "${eventName || 'Untitled'}"? This cannot be undone.`)) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/events/${eventId}`, {
+				method: 'DELETE',
+			});
+
+			const result = await response.json();
+
+			if (!result.success) {
+				alert(result.error || 'Failed to delete event');
+				return;
+			}
+
+			// Reload page to reflect deletion
+			window.location.reload();
+		}
+		catch {
+			alert('Failed to delete event');
+		}
+	}
+
+	// Submit inline event
+	async function handleAddEventSubmit() {
+		addEventError = '';
+		addEventSubmitting = true;
 
 		try {
 			const response = await fetch('/api/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name,
-					dateTime: new Date(dateTime).toISOString(),
-					cohortId: cohortId || undefined,
-					eventType,
-					isPublic,
-					checkInCode: checkInCode || undefined,
-					surveyUrl: surveyUrl || undefined,
+					name: newEvent.name,
+					dateTime: new Date(newEvent.dateTime).toISOString(),
+					cohortId: newEvent.cohortId || undefined,
+					eventType: newEvent.eventType,
+					isPublic: newEvent.isPublic,
+					surveyUrl: newEvent.surveyUrl || undefined,
 				}),
 			});
 
 			const result = await response.json();
 
 			if (!result.success) {
-				error = result.error || 'Failed to create event';
+				addEventError = result.error || 'Failed to create event';
 				return;
 			}
 
@@ -190,10 +283,10 @@
 			window.location.reload();
 		}
 		catch {
-			error = 'Failed to create event';
+			addEventError = 'Failed to create event';
 		}
 		finally {
-			submitting = false;
+			addEventSubmitting = false;
 		}
 	}
 
@@ -315,9 +408,7 @@
 			<h1 class="text-2xl font-bold mt-2">Events</h1>
 		{:else}
 			<button onclick={cancelForm} class="text-blue-600 hover:underline text-sm">← Cancel</button>
-			<h1 class="text-2xl font-bold mt-2">
-				{mode === 'single' ? 'Add Event' : 'Add Event Series'}
-			</h1>
+			<h1 class="text-2xl font-bold mt-2">Add Event Series</h1>
 		{/if}
 	</header>
 
@@ -340,8 +431,9 @@
 			</div>
 			<div class="flex gap-2">
 				<button
-					onclick={() => { mode = 'single'; }}
+					onclick={() => { isAddingEvent = true; }}
 					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+					disabled={isAddingEvent}
 				>
 					+ Add Event
 				</button>
@@ -367,34 +459,136 @@
 							<th class="p-3 border-b font-semibold">Cohort</th>
 							<th class="p-3 border-b font-semibold">Attendance</th>
 							<th class="p-3 border-b font-semibold">Public</th>
+							<th class="p-3 border-b font-semibold">Survey</th>
 							<th class="p-3 border-b font-semibold w-16"></th>
 						</tr>
 					</thead>
 					<tbody>
+						{#if isAddingEvent}
+							<!-- Inline event creation row -->
+							<tr class="border-b bg-blue-50">
+								<td class="p-2">
+									<input
+										type="text"
+										bind:value={newEvent.name}
+										placeholder="Event name"
+										class="w-full border rounded px-2 py-1 text-sm"
+										required
+									/>
+								</td>
+								<td class="p-2">
+									<input
+										type="datetime-local"
+										bind:value={newEvent.dateTime}
+										class="w-full border rounded px-2 py-1 text-sm"
+										required
+									/>
+								</td>
+								<td class="p-2">
+									<select
+										bind:value={newEvent.eventType}
+										class="w-full border rounded px-2 py-1 text-sm"
+									>
+										{#each EVENT_TYPES as type (type)}
+											<option value={type}>{type}</option>
+										{/each}
+									</select>
+								</td>
+								<td class="p-2">
+									<select
+										bind:value={newEvent.cohortId}
+										class="w-full border rounded px-2 py-1 text-sm"
+									>
+										<option value="">Open</option>
+										{#each data.cohorts as cohort (cohort.id)}
+											<option value={cohort.id}>{cohort.name}</option>
+										{/each}
+									</select>
+								</td>
+								<td class="p-2 text-center text-gray-400">—</td>
+								<td class="p-2 text-center">
+									<input
+										type="checkbox"
+										bind:checked={newEvent.isPublic}
+										class="rounded"
+									/>
+								</td>
+								<td class="p-2">
+									<input
+										type="url"
+										bind:value={newEvent.surveyUrl}
+										placeholder="Survey URL"
+										class="w-full border rounded px-2 py-1 text-sm"
+									/>
+								</td>
+								<td class="p-2">
+									<div class="flex gap-1">
+										<button
+											onclick={handleAddEventSubmit}
+											disabled={addEventSubmitting || !newEvent.name || !newEvent.dateTime}
+											class="text-green-600 hover:text-green-800 disabled:opacity-50"
+											title="Save"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+											</svg>
+										</button>
+										<button
+											onclick={cancelAddEvent}
+											class="text-red-600 hover:text-red-800"
+											title="Cancel"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+											</svg>
+										</button>
+									</div>
+								</td>
+							</tr>
+							{#if addEventError}
+								<tr class="bg-red-50">
+									<td colspan="8" class="p-2 text-red-600 text-sm">{addEventError}</td>
+								</tr>
+							{/if}
+						{/if}
 						{#each data.events as event (event.id)}
 							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
 							{@const isExpanded = expandedEventId === event.id}
+							{@const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null}
 							<tr
-								class="border-b hover:bg-gray-50 cursor-pointer"
+								class="border-b hover:bg-gray-50"
+								class:cursor-pointer={hasRoster}
 								class:bg-blue-50={isExpanded}
-								onclick={() => toggleEventRow(event.id)}
+								onclick={() => hasRoster && toggleEventRow(event.id)}
 							>
 								<td class="p-3">
 									<span class="inline-flex items-center gap-2">
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-4 w-4 text-gray-400 transition-transform"
-											class:rotate-90={isExpanded}
-											viewBox="0 0 20 20"
-											fill="currentColor"
-										>
-											<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-										</svg>
+										{#if hasRoster}
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-4 w-4 text-gray-400 transition-transform"
+												class:rotate-90={isExpanded}
+												viewBox="0 0 20 20"
+												fill="currentColor"
+											>
+												<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+											</svg>
+										{:else}
+											<span class="w-4"></span>
+										{/if}
 										{event.name || '(Untitled)'}
 									</span>
 								</td>
 								<td class="p-3">{formatDate(event.dateTime)}</td>
-								<td class="p-3">{event.eventType || '—'}</td>
+								<td class="p-3">
+									{#if event.eventType}
+										<span class="{EVENT_TYPE_COLORS[event.eventType].tailwind} font-medium">
+											{event.eventType}
+										</span>
+									{:else}
+										<span class="text-gray-400">—</span>
+									{/if}
+								</td>
 								<td class="p-3">
 									{#if event.cohortId}
 										<span class="text-sm">{getCohortName(event.cohortId) || event.cohortId}</span>
@@ -417,21 +611,54 @@
 									{/if}
 								</td>
 								<td class="p-3">
-									<a
-										href={resolve(`/admin/events/${event.id}`)}
-										class="text-gray-500 hover:text-blue-600"
-										title="Edit event"
-										onclick={e => e.stopPropagation()}
-									>
-										<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-											<path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-										</svg>
-									</a>
+									{#if event.surveyUrl}
+										<a
+											href={event.surveyUrl /* eslint-disable-line svelte/no-navigation-without-resolve -- external URL */}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-blue-600 hover:text-blue-800"
+											title="Open survey"
+											onclick={e => e.stopPropagation()}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+												<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+											</svg>
+										</a>
+									{:else}
+										<span class="text-gray-300">—</span>
+									{/if}
+								</td>
+								<td class="p-3">
+									<div class="flex gap-1">
+										<a
+											href={resolve(`/admin/events/${event.id}`)}
+											class="text-gray-500 hover:text-blue-600"
+											title="Edit event"
+											onclick={e => e.stopPropagation()}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+											</svg>
+										</a>
+										<button
+											onclick={(e) => {
+												e.stopPropagation();
+												handleDeleteEvent(event.id, event.name);
+											}}
+											class="text-gray-400 hover:text-red-600"
+											title="Delete event"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+											</svg>
+										</button>
+									</div>
 								</td>
 							</tr>
 							{#if isExpanded}
 								<tr class="bg-gray-50">
-									<td colspan="7" class="p-4">
+									<td colspan="8" class="p-4">
 										{#if rosterLoading}
 											<div class="text-gray-500 text-sm">Loading roster...</div>
 										{:else if rosterData.length === 0}
@@ -467,135 +694,30 @@
 			<p class="text-gray-400 text-sm mt-4">Showing {data.events.length} event(s)</p>
 		{/if}
 
-	{:else if mode === 'single'}
-		<!-- Single event form -->
-		<div class="max-w-2xl">
-			{#if error}
-				<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-					{error}
+		<!-- Calendar view -->
+		<div class="mt-8">
+			<h2 class="text-lg font-semibold mb-4">Calendar</h2>
+			<!-- Legend -->
+			<div class="flex gap-4 mb-4 text-sm">
+				{#each EVENT_TYPES as type (type)}
+					<div class="flex items-center gap-2">
+						<span
+							class="w-3 h-3 rounded-full"
+							style="background-color: {EVENT_TYPE_COLORS[type].main}"
+						></span>
+						<span class="{EVENT_TYPE_COLORS[type].tailwind}">{type}</span>
+					</div>
+				{/each}
+			</div>
+			{#if calendarApp}
+				<div class="sx-svelte-calendar-wrapper">
+					<ScheduleXCalendar {calendarApp} />
+				</div>
+			{:else}
+				<div class="h-96 flex items-center justify-center bg-gray-50 rounded border">
+					<span class="text-gray-400">Loading calendar...</span>
 				</div>
 			{/if}
-
-			<form onsubmit={handleSingleSubmit} class="space-y-4">
-				<div>
-					<label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-						Name <span class="text-red-500">*</span>
-					</label>
-					<input
-						type="text"
-						id="name"
-						bind:value={name}
-						required
-						class="w-full border rounded px-3 py-2"
-						placeholder="e.g. Week 1 Monday"
-					/>
-				</div>
-
-				<div>
-					<label for="dateTime" class="block text-sm font-medium text-gray-700 mb-1">
-						Date & Time <span class="text-red-500">*</span>
-					</label>
-					<input
-						type="datetime-local"
-						id="dateTime"
-						bind:value={dateTime}
-						required
-						class="w-full border rounded px-3 py-2"
-					/>
-				</div>
-
-				<div>
-					<label for="eventType" class="block text-sm font-medium text-gray-700 mb-1">
-						Event Type <span class="text-red-500">*</span>
-					</label>
-					<select
-						id="eventType"
-						bind:value={eventType}
-						required
-						class="w-full border rounded px-3 py-2"
-					>
-						{#each EVENT_TYPES as type (type)}
-							<option value={type}>{type}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div>
-					<label for="cohort" class="block text-sm font-medium text-gray-700 mb-1">
-						Cohort
-					</label>
-					<select
-						id="cohort"
-						bind:value={cohortId}
-						class="w-full border rounded px-3 py-2"
-					>
-						<option value="">No cohort (open event)</option>
-						{#each data.cohorts as cohort (cohort.id)}
-							<option value={cohort.id}>{cohort.name}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<input
-						type="checkbox"
-						id="isPublic"
-						bind:checked={isPublic}
-						class="rounded"
-					/>
-					<label for="isPublic" class="text-sm font-medium text-gray-700">
-						Public event (visible on check-in page)
-					</label>
-				</div>
-
-				{#if isPublic}
-					<div>
-						<label for="checkInCode" class="block text-sm font-medium text-gray-700 mb-1">
-							Check-in Code
-						</label>
-						<input
-							type="number"
-							id="checkInCode"
-							bind:value={checkInCode}
-							class="w-full border rounded px-3 py-2"
-							placeholder="e.g. 1234"
-							min="0"
-							max="9999"
-						/>
-						<p class="text-sm text-gray-500 mt-1">4-digit code for external attendees</p>
-					</div>
-				{/if}
-
-				<div>
-					<label for="surveyUrl" class="block text-sm font-medium text-gray-700 mb-1">
-						Survey URL
-					</label>
-					<input
-						type="url"
-						id="surveyUrl"
-						bind:value={surveyUrl}
-						class="w-full border rounded px-3 py-2"
-						placeholder="https://..."
-					/>
-				</div>
-
-				<div class="flex gap-3 pt-4">
-					<button
-						type="submit"
-						disabled={submitting}
-						class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-					>
-						{submitting ? 'Creating...' : 'Create Event'}
-					</button>
-					<button
-						type="button"
-						onclick={cancelForm}
-						class="px-4 py-2 border rounded hover:bg-gray-50"
-					>
-						Cancel
-					</button>
-				</div>
-			</form>
 		</div>
 
 	{:else if mode === 'series'}
@@ -769,3 +891,10 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.sx-svelte-calendar-wrapper {
+		width: 100%;
+		height: 600px;
+	}
+</style>

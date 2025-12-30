@@ -1,3 +1,13 @@
+Events duration
+
+rows with no attendance not expandable
+
+delete event
+
+editable status by staff
+
+Schedule-x for creation
+
 Show time counter negative and positive
 
 Show mii plaza
