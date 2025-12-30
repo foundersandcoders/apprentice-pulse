@@ -91,6 +91,7 @@ describe('events', () => {
 						fldcXDEDkeHvWTnxE: ['recCohort2'],
 						fldo7fwAsFhkA1icC: 'Workshop',
 						fld9XBHnCWBtZiZah: undefined,
+						fldcPf53fVfStFZsa: ['recAttend1', 'recAttend2'], // ATTENDANCE field
 					};
 					return data[field];
 				}),
@@ -110,6 +111,7 @@ describe('events', () => {
 				surveyUrl: undefined,
 				isPublic: false,
 				checkInCode: undefined,
+				attendanceIds: ['recAttend1', 'recAttend2'],
 			});
 		});
 

@@ -29,6 +29,7 @@ export const findApprenticeByEmail = client.findApprenticeByEmail;
 export const getApprenticeByEmail = client.getApprenticeByEmail;
 export const listCohorts = client.listCohorts;
 export const getApprenticesByCohortId = client.getApprenticesByCohortId;
+export const getApprenticesByIds = client.getApprenticesByIds;
 
 // Events
 export const listEvents = eventsClient.listEvents;
@@ -44,3 +45,4 @@ export const hasExternalCheckedIn = attendanceClient.hasExternalCheckedIn;
 export const createAttendance = attendanceClient.createAttendance;
 export const createExternalAttendance = attendanceClient.createExternalAttendance;
 export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
+export const getAttendanceByIds = attendanceClient.getAttendanceByIds;

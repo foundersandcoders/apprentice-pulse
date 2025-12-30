@@ -14,6 +14,7 @@ export interface Event {
 	isPublic: boolean;
 	checkInCode?: number;
 	attendanceCount?: number;
+	attendanceIds?: string[]; // Linked attendance record IDs (from getEvent)
 }
 
 export interface CreateEventInput {

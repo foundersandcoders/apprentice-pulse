@@ -442,10 +442,15 @@
 													{#each rosterData as person (person.id)}
 														<tr>
 															<td class="py-1 pl-4 pr-4 font-medium">{person.name}</td>
-															<td class="py-1">
+															<td class="py-1 pr-2">
 																<span class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs">
-																	{person.status}{#if person.checkinTime && person.status !== 'Absent'} at {formatCheckinTime(person.checkinTime)}{/if}
+																	{person.status}
 																</span>
+															</td>
+															<td class="py-1 text-gray-500 text-xs">
+																{#if person.checkinTime}
+																	{formatCheckinTime(person.checkinTime)}
+																{/if}
 															</td>
 														</tr>
 													{/each}

@@ -137,7 +137,40 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	}
 
 	/**
+	 * Get attendance records by their IDs
+	 */
+	async function getAttendanceByIds(attendanceIds: string[]): Promise<Attendance[]> {
+		if (attendanceIds.length === 0) {
+			return [];
+		}
+
+		// Build OR formula to fetch multiple records by ID
+		const idFormula = attendanceIds.map(id => `RECORD_ID() = "${id}"`).join(', ');
+		const records = await attendanceTable
+			.select({
+				filterByFormula: `OR(${idFormula})`,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map((record) => {
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			return {
+				id: record.id,
+				eventId: eventLink?.[0] ?? '',
+				apprenticeId: apprenticeLink?.[0],
+				externalName: record.get(ATTENDANCE_FIELDS.EXTERNAL_NAME) as string | undefined,
+				externalEmail: record.get(ATTENDANCE_FIELDS.EXTERNAL_EMAIL) as string | undefined,
+				checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+				status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+			};
+		});
+	}
+
+	/**
 	 * Get all attendance records for an event
+	 * @deprecated Use getAttendanceByIds with event.attendanceIds instead
 	 */
 	async function getAttendanceForEvent(eventId: string): Promise<Attendance[]> {
 		const records = await attendanceTable
@@ -167,5 +200,6 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		createAttendance,
 		createExternalAttendance,
 		getAttendanceForEvent,
+		getAttendanceByIds,
 	};
 }

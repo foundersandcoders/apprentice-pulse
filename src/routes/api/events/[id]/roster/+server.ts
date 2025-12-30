@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { AttendanceStatus } from '$lib/types/attendance';
-import { getEvent, getApprenticesByCohortId, getAttendanceForEvent } from '$lib/airtable/sveltekit-wrapper';
+import { getEvent, getApprenticesByCohortId, getAttendanceByIds, getApprenticesByIds } from '$lib/airtable/sveltekit-wrapper';
 
 export interface RosterEntry {
 	id: string;
@@ -20,8 +20,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			return json({ success: false, error: 'Event not found' }, { status: 404 });
 		}
 
-		// Get attendance records for this event
-		const attendance = await getAttendanceForEvent(params.id);
+		// Get attendance records using the linked IDs from the event
+		const attendance = await getAttendanceByIds(event.attendanceIds ?? []);
 
 		// Build a map of apprentice IDs to their attendance info
 		const attendanceByApprentice = new Map<string, { status: AttendanceStatus; checkinTime: string }>();
@@ -35,8 +35,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		const roster: RosterEntry[] = [];
+		const addedApprenticeIds = new Set<string>();
 
-		// If event has a cohort, get all apprentices
+		// If event has a cohort, get all apprentices from that cohort
 		if (event.cohortId) {
 			const apprentices = await getApprenticesByCohortId(event.cohortId);
 
@@ -50,12 +51,38 @@ export const GET: RequestHandler = async ({ params }) => {
 					status: attendanceInfo?.status ?? 'Absent',
 					checkinTime: attendanceInfo?.checkinTime,
 				});
+				addedApprenticeIds.add(apprentice.id);
 			}
 		}
 
-		// Add external attendees (attendance records without an apprentice link)
+		// Collect apprentice IDs that checked in but aren't in the cohort
+		const nonCohortApprenticeIds = attendance
+			.filter(r => r.apprenticeId && !addedApprenticeIds.has(r.apprenticeId))
+			.map(r => r.apprenticeId!);
+
+		// Fetch details for non-cohort apprentices
+		const nonCohortApprentices = await getApprenticesByIds(nonCohortApprenticeIds);
+		const apprenticeDetailsMap = new Map(nonCohortApprentices.map(a => [a.id, a]));
+
+		// Add any checked-in apprentices not in the cohort (manually added or from other cohorts)
+		// and external attendees (attendance records without an apprentice link)
 		for (const record of attendance) {
-			if (!record.apprenticeId) {
+			if (record.apprenticeId) {
+				// Skip if already added from cohort
+				if (!addedApprenticeIds.has(record.apprenticeId)) {
+					const apprentice = apprenticeDetailsMap.get(record.apprenticeId);
+					roster.push({
+						id: record.apprenticeId,
+						name: apprentice?.name || 'Unknown Apprentice',
+						email: apprentice?.email || '',
+						type: 'apprentice',
+						status: record.status,
+						checkinTime: record.checkinTime,
+					});
+				}
+			}
+			else {
+				// External attendee
 				roster.push({
 					id: record.id,
 					name: record.externalName || 'Unknown',
