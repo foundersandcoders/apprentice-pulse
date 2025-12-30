@@ -53,13 +53,13 @@ export const GET: RequestHandler = async ({ params }) => {
 			}
 		}
 
-		// Add external attendees
+		// Add external attendees (attendance records without an apprentice link)
 		for (const record of attendance) {
-			if (record.externalName && record.externalEmail) {
+			if (!record.apprenticeId) {
 				roster.push({
 					id: record.id,
-					name: record.externalName,
-					email: record.externalEmail,
+					name: record.externalName || 'Unknown',
+					email: record.externalEmail || '',
 					type: 'external',
 					status: record.status,
 					checkinTime: record.checkinTime,
