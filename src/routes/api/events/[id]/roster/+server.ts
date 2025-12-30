@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { AttendanceStatus } from '$lib/types/attendance';
 import { getEvent, getApprenticesByCohortId, getAttendanceForEvent } from '$lib/airtable/sveltekit-wrapper';
 
 export interface RosterEntry {
@@ -7,7 +8,7 @@ export interface RosterEntry {
 	name: string;
 	email: string;
 	type: 'apprentice' | 'external';
-	checkedIn: boolean;
+	status: AttendanceStatus;
 	checkinTime?: string;
 }
 
@@ -22,11 +23,14 @@ export const GET: RequestHandler = async ({ params }) => {
 		// Get attendance records for this event
 		const attendance = await getAttendanceForEvent(params.id);
 
-		// Build a set of apprentice IDs who checked in
-		const checkedInApprentices = new Map<string, string>();
+		// Build a map of apprentice IDs to their attendance info
+		const attendanceByApprentice = new Map<string, { status: AttendanceStatus; checkinTime: string }>();
 		for (const record of attendance) {
 			if (record.apprenticeId) {
-				checkedInApprentices.set(record.apprenticeId, record.checkinTime);
+				attendanceByApprentice.set(record.apprenticeId, {
+					status: record.status,
+					checkinTime: record.checkinTime,
+				});
 			}
 		}
 
@@ -37,14 +41,14 @@ export const GET: RequestHandler = async ({ params }) => {
 			const apprentices = await getApprenticesByCohortId(event.cohortId);
 
 			for (const apprentice of apprentices) {
-				const checkinTime = checkedInApprentices.get(apprentice.id);
+				const attendanceInfo = attendanceByApprentice.get(apprentice.id);
 				roster.push({
 					id: apprentice.id,
 					name: apprentice.name,
 					email: apprentice.email,
 					type: 'apprentice',
-					checkedIn: !!checkinTime,
-					checkinTime,
+					status: attendanceInfo?.status ?? 'Absent',
+					checkinTime: attendanceInfo?.checkinTime,
 				});
 			}
 		}
@@ -57,17 +61,17 @@ export const GET: RequestHandler = async ({ params }) => {
 					name: record.externalName,
 					email: record.externalEmail,
 					type: 'external',
-					checkedIn: true,
+					status: record.status,
 					checkinTime: record.checkinTime,
 				});
 			}
 		}
 
-		// Sort: checked in first, then alphabetically by name
+		// Sort: Present first, then Late, Excused, Absent last; then alphabetically
+		const statusOrder: Record<AttendanceStatus, number> = { Present: 0, Late: 1, Excused: 2, Absent: 3 };
 		roster.sort((a, b) => {
-			if (a.checkedIn !== b.checkedIn) {
-				return a.checkedIn ? -1 : 1;
-			}
+			const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+			if (statusDiff !== 0) return statusDiff;
 			return a.name.localeCompare(b.name);
 		});
 
@@ -76,9 +80,10 @@ export const GET: RequestHandler = async ({ params }) => {
 			roster,
 			summary: {
 				total: roster.length,
-				checkedIn: roster.filter(r => r.checkedIn).length,
-				apprentices: roster.filter(r => r.type === 'apprentice').length,
-				external: roster.filter(r => r.type === 'external').length,
+				present: roster.filter(r => r.status === 'Present').length,
+				late: roster.filter(r => r.status === 'Late').length,
+				excused: roster.filter(r => r.status === 'Excused').length,
+				absent: roster.filter(r => r.status === 'Absent').length,
 			},
 		});
 	}

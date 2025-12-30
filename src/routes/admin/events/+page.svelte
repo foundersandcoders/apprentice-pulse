@@ -35,14 +35,22 @@
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);
 
 	// Expandable row state
+	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
 	interface RosterEntry {
 		id: string;
 		name: string;
 		email: string;
 		type: 'apprentice' | 'external';
-		checkedIn: boolean;
+		status: AttendanceStatus;
 		checkinTime?: string;
 	}
+
+	const statusStyles: Record<AttendanceStatus, string> = {
+		Present: 'bg-green-100 text-green-700',
+		Absent: 'bg-red-100 text-red-700',
+		Late: 'bg-yellow-100 text-yellow-700',
+		Excused: 'bg-blue-100 text-blue-700',
+	};
 	let expandedEventId = $state<string | null>(null);
 	let rosterData = $state<RosterEntry[]>([]);
 	let rosterLoading = $state(false);
@@ -435,13 +443,9 @@
 														<tr>
 															<td class="py-1 pl-4 pr-4 font-medium">{person.name}</td>
 															<td class="py-1">
-																{#if person.checkedIn}
-																	<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
-																		Checked in{#if person.checkinTime} at {formatCheckinTime(person.checkinTime)}{/if}
-																	</span>
-																{:else}
-																	<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Not checked in</span>
-																{/if}
+																<span class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs">
+																	{person.status}{#if person.checkinTime && person.status !== 'Absent'} at {formatCheckinTime(person.checkinTime)}{/if}
+																</span>
 															</td>
 														</tr>
 													{/each}
