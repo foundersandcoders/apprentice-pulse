@@ -429,11 +429,11 @@
 										{:else if rosterData.length === 0}
 											<div class="text-gray-500 text-sm">No attendees</div>
 										{:else}
-											<table class="w-full text-sm max-h-64 overflow-y-auto">
+											<table class="w-full text-sm max-h-64 overflow-y-auto ml-4">
 												<tbody>
 													{#each rosterData as person (person.id)}
 														<tr>
-															<td class="py-1 font-medium">{person.name}</td>
+															<td class="py-1 pl-4 font-medium">{person.name}</td>
 															<td class="py-1">
 																{#if person.checkedIn}
 																	<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
