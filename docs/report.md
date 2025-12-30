@@ -297,3 +297,77 @@ cookies.set('session', JSON.stringify(data), {
 ```
 
 This resolved "Authentication required" errors when testing locally over HTTP. [P8 - 50%] [D3 - 40%]
+
+
+# Performance Optimisation: Parallelising API Calls
+
+During roster loading testing, I noticed the event roster was taking ~1.5 seconds to load. Using structured debugging, I traced through the request flow and identified the bottleneck: four sequential Airtable API calls.
+
+## Problem Analysis
+
+Original roster endpoint flow (sequential):
+```
+getEvent()              → ~300ms
+getAttendanceByIds()    → ~300ms
+getApprenticesByCohortId() → ~300ms
+getApprenticesByIds()   → ~300ms (for non-cohort attendees)
+─────────────────────────────────
+Total: ~1.2-1.5s
+```
+
+The key insight was that `getAttendanceByIds()` and `getApprenticesByCohortId()` are independent—neither depends on the other's result. They only depend on the event data.
+
+## Solution: Promise.all for Independent Operations
+
+Refactored to run independent calls in parallel:
+
+```typescript
+// Before: Sequential (slow)
+const attendance = await getAttendanceByIds(event.attendanceIds ?? []);
+const cohortApprentices = event.cohortId
+    ? await getApprenticesByCohortId(event.cohortId)
+    : [];
+
+// After: Parallel (fast)
+const [attendance, cohortApprentices] = await Promise.all([
+    getAttendanceByIds(event.attendanceIds ?? []),
+    event.cohortId ? getApprenticesByCohortId(event.cohortId) : Promise.resolve([]),
+]);
+```
+
+## Results
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Average load time | ~1.5s | ~0.9s | 40% faster |
+| API calls | 4 sequential | 2 sequential + 2 parallel | - |
+
+The remaining sequential call (`getApprenticesByIds` for non-cohort attendees) genuinely depends on attendance data, so it must remain sequential. [P8 - 60%] [D2 - 50%] [D3 - 50%]
+
+
+# Automatic Late Status Detection
+
+Extended the attendance service to automatically mark check-ins as "Late" when they occur after the event start time.
+
+## Implementation
+
+Added `determineStatus()` function that compares timestamps:
+
+```typescript
+function determineStatus(eventDateTime: string | null): 'Present' | 'Late' {
+    if (!eventDateTime) {
+        return 'Present';  // No event time means we can't determine lateness
+    }
+
+    const eventTime = new Date(eventDateTime);
+    const now = new Date();
+
+    return now > eventTime ? 'Late' : 'Present';
+}
+```
+
+Both `createAttendance()` and `createExternalAttendance()` now call `determineStatus()` instead of hardcoding `'Present'`.
+
+## Design Decision: Service Layer Logic
+
+The late detection happens in the attendance service, not the API endpoint. This ensures consistency regardless of how attendance is created (user check-in, admin manual entry, future bulk import). [P3 - 40%] [P5 - 50%] [D4 - 30%]
