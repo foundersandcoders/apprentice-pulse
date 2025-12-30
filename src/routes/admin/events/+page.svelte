@@ -429,21 +429,38 @@
 										{:else if rosterData.length === 0}
 											<div class="text-gray-500 text-sm">No attendees</div>
 										{:else}
-											<div class="grid gap-2 max-h-64 overflow-y-auto">
-												{#each rosterData as person (person.id)}
-													<div class="flex items-center gap-3 text-sm py-1">
-														<span class="font-medium">{person.name}</span>
-														{#if person.type === 'external'}
-															<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">Guest</span>
-														{/if}
-														{#if person.checkedIn}
-															<span class="text-green-600 text-xs">Checked in{#if person.checkinTime} at {formatCheckinTime(person.checkinTime)}{/if}</span>
-														{:else}
-															<span class="text-gray-500 text-xs">Not checked in</span>
-														{/if}
-													</div>
-												{/each}
-											</div>
+											<table class="w-full text-sm max-h-64 overflow-y-auto">
+												<thead>
+													<tr class="text-left text-gray-500 text-xs border-b">
+														<th class="py-2 font-medium">Name</th>
+														<th class="py-2 font-medium">Type</th>
+														<th class="py-2 font-medium">Status</th>
+													</tr>
+												</thead>
+												<tbody>
+													{#each rosterData as person (person.id)}
+														<tr class="border-b border-gray-100 last:border-0">
+															<td class="py-2 font-medium">{person.name}</td>
+															<td class="py-2">
+																{#if person.type === 'external'}
+																	<span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">Guest</span>
+																{:else}
+																	<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Apprentice</span>
+																{/if}
+															</td>
+															<td class="py-2">
+																{#if person.checkedIn}
+																	<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">
+																		Checked in{#if person.checkinTime} at {formatCheckinTime(person.checkinTime)}{/if}
+																	</span>
+																{:else}
+																	<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Not checked in</span>
+																{/if}
+															</td>
+														</tr>
+													{/each}
+												</tbody>
+											</table>
 										{/if}
 									</td>
 								</tr>
