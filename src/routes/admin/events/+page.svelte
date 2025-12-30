@@ -432,25 +432,14 @@
 											<div class="grid gap-2 max-h-64 overflow-y-auto">
 												{#each rosterData as person (person.id)}
 													<div class="flex items-center gap-3 text-sm py-1">
-														{#if person.checkedIn}
-															<span class="text-green-600" title="Checked in">
-																<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-																	<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-																</svg>
-															</span>
-														{:else}
-															<span class="text-gray-300" title="Not checked in">
-																<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-																	<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-																</svg>
-															</span>
-														{/if}
 														<span class="font-medium">{person.name}</span>
 														{#if person.type === 'external'}
 															<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">Guest</span>
 														{/if}
-														{#if person.checkedIn && person.checkinTime}
-															<span class="text-gray-400 text-xs">at {formatCheckinTime(person.checkinTime)}</span>
+														{#if person.checkedIn}
+															<span class="text-green-600 text-xs">Checked in{#if person.checkinTime} at {formatCheckinTime(person.checkinTime)}{/if}</span>
+														{:else}
+															<span class="text-gray-500 text-xs">Not checked in</span>
 														{/if}
 													</div>
 												{/each}
