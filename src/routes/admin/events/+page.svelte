@@ -1,14 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
-	import CalendarPicker from '$lib/components/CalendarPicker.svelte';
-	import { ScheduleXCalendar } from '@schedule-x/svelte';
-	import { createCalendar, createViewMonthGrid } from '@schedule-x/calendar';
-	import '@schedule-x/theme-default/dist/index.css';
-	import 'temporal-polyfill/global';
+	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
+	import '@event-calendar/core/index.css';
 
 	let { data } = $props();
 
@@ -71,59 +67,93 @@
 		return new Date(dateTime) < new Date();
 	}
 
-	// Schedule-X calendar instance
-	let calendarApp = $state<ReturnType<typeof createCalendar> | null>(null);
+	// Calendar plugins
+	const calendarPlugins = [DayGrid, Interaction];
 
-	onMount(() => {
-		// Transform events into Schedule-X format using Temporal API
-		const timeZone = Temporal.Now.timeZoneId();
-		const calendarEvents = events.map((event) => {
-			// Parse ISO datetime string and create ZonedDateTime
-			const dateTime = event.dateTime.slice(0, 19); // "YYYY-MM-DDTHH:MM:SS"
-			const plainDateTime = Temporal.PlainDateTime.from(dateTime);
-			const startDateTime = plainDateTime.toZonedDateTime(timeZone);
-			const endDateTime = startDateTime.add({ hours: 1 });
+	// Helper to format date as YYYY-MM-DD
+	function formatDateKey(date: Date): string {
+		return date.toISOString().slice(0, 10);
+	}
+
+	// Check if two dates are the same day
+	function isSameDay(d1: Date, d2: Date): boolean {
+		return d1.getFullYear() === d2.getFullYear()
+			&& d1.getMonth() === d2.getMonth()
+			&& d1.getDate() === d2.getDate();
+	}
+
+	// Selected dates for series creation (declared early for use in calendarEvents)
+	let selectedDates = $state<Date[]>([]);
+
+	// Toggle date selection for series creation
+	function handleDateClick(info: { date: Date }) {
+		const clickedDate = info.date;
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- Event handler needs fresh Date
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		// Don't allow selecting past dates
+		if (clickedDate < today) return;
+
+		const index = selectedDates.findIndex(d => isSameDay(d, clickedDate));
+		if (index >= 0) {
+			selectedDates = selectedDates.filter((_, i) => i !== index);
+		}
+		else {
+			selectedDates = [...selectedDates, clickedDate].sort((a, b) => a.getTime() - b.getTime());
+		}
+	}
+
+	// Build calendar events: real events + selected date markers
+	let calendarEvents = $derived.by(() => {
+		// Real events from data
+		const realEvents = events.map((event) => {
+			const start = new Date(event.dateTime);
+			const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour
 
 			return {
 				id: event.id,
 				title: event.name || '(Untitled)',
-				start: startDateTime,
-				end: endDateTime,
-				calendarId: event.eventType.toLowerCase().replace(' ', '-'),
+				start: start.toISOString().slice(0, 16).replace('T', ' '),
+				end: end.toISOString().slice(0, 16).replace('T', ' '),
+				color: EVENT_TYPE_COLORS[event.eventType]?.main || '#3b82f6',
 			};
 		});
 
-		calendarApp = createCalendar({
-			views: [createViewMonthGrid()],
-			defaultView: 'month-grid',
-			calendars: {
-				'regular-class': {
-					colorName: 'regular-class',
-					lightColors: {
-						main: EVENT_TYPE_COLORS['Regular Class'].main,
-						container: EVENT_TYPE_COLORS['Regular Class'].container,
-						onContainer: EVENT_TYPE_COLORS['Regular Class'].onContainer,
-					},
-				},
-				'workshop': {
-					colorName: 'workshop',
-					lightColors: {
-						main: EVENT_TYPE_COLORS['Workshop'].main,
-						container: EVENT_TYPE_COLORS['Workshop'].container,
-						onContainer: EVENT_TYPE_COLORS['Workshop'].onContainer,
-					},
-				},
-				'hackathon': {
-					colorName: 'hackathon',
-					lightColors: {
-						main: EVENT_TYPE_COLORS['Hackathon'].main,
-						container: EVENT_TYPE_COLORS['Hackathon'].container,
-						onContainer: EVENT_TYPE_COLORS['Hackathon'].onContainer,
-					},
-				},
-			},
-			events: calendarEvents,
-		});
+		// Selected dates as background events (for series creation)
+		const selectedMarkers = selectedDates.map((date, i) => ({
+			id: `selected-${i}`,
+			start: formatDateKey(date),
+			end: formatDateKey(date),
+			display: 'background' as const,
+			color: '#22c55e',
+		}));
+
+		return [...realEvents, ...selectedMarkers];
+	});
+
+	// Calendar options
+	let calendarOptions = $derived({
+		view: 'dayGridMonth',
+		headerToolbar: {
+			start: 'prev,next today',
+			center: 'title',
+			end: '',
+		},
+		buttonText: {
+			today: 'Today',
+		},
+		events: calendarEvents,
+		eventClick: (info: { event: { id: string } }) => {
+			// If clicking a real event (not a selection marker), could navigate to it
+			if (!info.event.id.startsWith('selected-')) {
+				// Could add navigation here if desired
+			}
+		},
+		dateClick: handleDateClick,
+		dayMaxEvents: true,
+		nowIndicator: true,
+		selectable: false, // We handle selection via dateClick
 	});
 
 	// Page mode: list view or series creation form
@@ -151,7 +181,6 @@
 	let seriesIsPublic = $state(false);
 	// svelte-ignore state_referenced_locally
 	let seriesSurveyUrl = $state(data.defaultSurveyUrl);
-	let selectedDates = $state<Date[]>([]);
 	let seriesError = $state('');
 	let seriesSubmitting = $state(false);
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);
@@ -476,25 +505,6 @@
 		}
 		finally {
 			addEventSubmitting = false;
-		}
-	}
-
-	// Check if two dates are the same day
-	function isSameDay(d1: Date, d2: Date): boolean {
-		return d1.getFullYear() === d2.getFullYear()
-			&& d1.getMonth() === d2.getMonth()
-			&& d1.getDate() === d2.getDate();
-	}
-
-	// Handle date toggle for series
-	function handleDateToggle(date: Date) {
-		const index = selectedDates.findIndex(d => isSameDay(d, date));
-
-		if (index >= 0) {
-			selectedDates = selectedDates.filter((_, i) => i !== index);
-		}
-		else {
-			selectedDates = [...selectedDates, date].sort((a, b) => a.getTime() - b.getTime());
 		}
 	}
 
@@ -1052,11 +1062,26 @@
 			<p class="text-gray-400 text-sm mt-4">Showing {sortedEvents.length} event(s)</p>
 		{/if}
 
-		<!-- Calendar view -->
+		<!-- Calendar view with date selection for series creation -->
 		<div class="mt-8">
-			<h2 class="text-lg font-semibold mb-4">Calendar</h2>
+			<div class="flex items-center justify-between mb-4">
+				<h2 class="text-lg font-semibold">Calendar</h2>
+				{#if selectedDates.length > 0}
+					<div class="flex items-center gap-3">
+						<span class="text-sm text-gray-600">
+							{selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''} selected
+						</span>
+						<button
+							onclick={() => { selectedDates = []; }}
+							class="text-sm text-red-600 hover:text-red-800"
+						>
+							Clear
+						</button>
+					</div>
+				{/if}
+			</div>
 			<!-- Legend -->
-			<div class="flex gap-4 mb-4 text-sm">
+			<div class="flex flex-wrap gap-4 mb-4 text-sm">
 				{#each EVENT_TYPES as type (type)}
 					<div class="flex items-center gap-2">
 						<span
@@ -1066,16 +1091,15 @@
 						<span class="{EVENT_TYPE_COLORS[type].tailwind}">{type}</span>
 					</div>
 				{/each}
+				<div class="flex items-center gap-2">
+					<span class="w-3 h-3 rounded-full bg-green-500"></span>
+					<span class="text-green-700">Selected for series</span>
+				</div>
 			</div>
-			{#if calendarApp}
-				<div class="sx-svelte-calendar-wrapper">
-					<ScheduleXCalendar {calendarApp} />
-				</div>
-			{:else}
-				<div class="h-96 flex items-center justify-center bg-gray-50 rounded border">
-					<span class="text-gray-400">Loading calendar...</span>
-				</div>
-			{/if}
+			<p class="text-sm text-gray-500 mb-4">Click on future dates to select them for creating an event series.</p>
+			<div class="ec-calendar-wrapper">
+				<Calendar plugins={calendarPlugins} options={calendarOptions} />
+			</div>
 		</div>
 
 	{:else if mode === 'series'}
@@ -1183,10 +1207,10 @@
 						<p class="block text-sm font-medium text-gray-700 mb-2">
 							Select Dates <span class="text-red-500">*</span>
 						</p>
-						<CalendarPicker
-							{selectedDates}
-							onDateToggle={handleDateToggle}
-						/>
+						<p class="text-sm text-gray-500 mb-2">Click on future dates to select/deselect them.</p>
+						<div class="ec-series-calendar">
+							<Calendar plugins={calendarPlugins} options={calendarOptions} />
+						</div>
 					</div>
 				</div>
 
@@ -1251,8 +1275,19 @@
 </div>
 
 <style>
-	.sx-svelte-calendar-wrapper {
+	.ec-calendar-wrapper {
 		width: 100%;
 		height: 600px;
+	}
+
+	.ec-series-calendar {
+		width: 100%;
+		height: 400px;
+	}
+
+	/* Style past dates as slightly muted */
+	.ec-calendar-wrapper :global(.ec-day.ec-past),
+	.ec-series-calendar :global(.ec-day.ec-past) {
+		opacity: 0.6;
 	}
 </style>
