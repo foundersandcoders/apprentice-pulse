@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType } from '$lib/types/event';
+	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import CalendarPicker from '$lib/components/CalendarPicker.svelte';
 	import { ScheduleXCalendar } from '@schedule-x/svelte';
 	import { createCalendar, createViewMonthGrid } from '@schedule-x/calendar';
@@ -11,13 +12,72 @@
 
 	let { data } = $props();
 
+	// Sorting state
+	type SortColumn = 'name' | 'dateTime' | 'eventType' | 'cohort' | 'attendance';
+	type SortDirection = 'asc' | 'desc';
+	let sortColumn = $state<SortColumn>('dateTime');
+	let sortDirection = $state<SortDirection>('desc'); // Newest first by default
+	let hidePastEvents = $state(false);
+
+	// Local reactive copy of events for updating attendance counts
+	let events = $state(data.events);
+
+	// Filtered and sorted events
+	let sortedEvents = $derived.by(() => {
+		const now = new Date();
+		const filtered = hidePastEvents
+			? events.filter(e => new Date(e.dateTime) >= now)
+			: events;
+
+		return [...filtered].sort((a, b) => {
+			let comparison = 0;
+
+			switch (sortColumn) {
+				case 'name':
+					comparison = (a.name || '').localeCompare(b.name || '');
+					break;
+				case 'dateTime':
+					comparison = new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+					break;
+				case 'eventType':
+					comparison = (a.eventType || '').localeCompare(b.eventType || '');
+					break;
+				case 'cohort': {
+					const cohortA = getCohortName(a.cohortId) || '';
+					const cohortB = getCohortName(b.cohortId) || '';
+					comparison = cohortA.localeCompare(cohortB);
+					break;
+				}
+				case 'attendance':
+					comparison = (a.attendanceCount ?? 0) - (b.attendanceCount ?? 0);
+					break;
+			}
+
+			return sortDirection === 'asc' ? comparison : -comparison;
+		});
+	});
+
+	function toggleSort(column: SortColumn) {
+		if (sortColumn === column) {
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+		}
+		else {
+			sortColumn = column;
+			sortDirection = column === 'dateTime' ? 'desc' : 'asc'; // Default desc for date, asc for others
+		}
+	}
+
+	function isPastEvent(dateTime: string): boolean {
+		return new Date(dateTime) < new Date();
+	}
+
 	// Schedule-X calendar instance
 	let calendarApp = $state<ReturnType<typeof createCalendar> | null>(null);
 
 	onMount(() => {
 		// Transform events into Schedule-X format using Temporal API
 		const timeZone = Temporal.Now.timeZoneId();
-		const calendarEvents = data.events.map((event) => {
+		const calendarEvents = events.map((event) => {
 			// Parse ISO datetime string and create ZonedDateTime
 			const dateTime = event.dateTime.slice(0, 19); // "YYYY-MM-DDTHH:MM:SS"
 			const plainDateTime = Temporal.PlainDateTime.from(dateTime);
@@ -99,7 +159,8 @@
 	// Expandable row state
 	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
 	interface RosterEntry {
-		id: string;
+		id: string; // Apprentice ID or external attendance ID
+		attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
 		name: string;
 		email: string;
 		type: 'apprentice' | 'external';
@@ -114,8 +175,15 @@
 		Excused: 'bg-blue-100 text-blue-700',
 	};
 	let expandedEventId = $state<string | null>(null);
+	let expandedEventDateTime = $state<string | null>(null);
 	let rosterData = $state<RosterEntry[]>([]);
 	let rosterLoading = $state(false);
+
+	// Status editing state
+	let editingPersonId = $state<string | null>(null);
+	let editingStatus = $state<AttendanceStatus>('Present');
+	let editingCheckinTime = $state<string>('');
+	let statusUpdateLoading = $state(false);
 
 	function formatDate(dateTime: string | undefined): string {
 		if (!dateTime) return '—';
@@ -143,18 +211,22 @@
 		return cohort?.apprenticeCount ?? null;
 	}
 
-	async function toggleEventRow(eventId: string) {
+	async function toggleEventRow(eventId: string, eventDateTime: string) {
 		if (expandedEventId === eventId) {
 			// Collapse
 			expandedEventId = null;
+			expandedEventDateTime = null;
 			rosterData = [];
+			editingPersonId = null;
 			return;
 		}
 
 		// Expand and load roster
 		expandedEventId = eventId;
+		expandedEventDateTime = eventDateTime;
 		rosterLoading = true;
 		rosterData = [];
+		editingPersonId = null;
 
 		try {
 			const response = await fetch(`/api/events/${eventId}/roster`);
@@ -162,6 +234,15 @@
 
 			if (result.success) {
 				rosterData = result.roster;
+
+				// Recalculate attendance count based on actual Present/Late statuses
+				const actualAttendance = rosterData.filter(
+					p => p.status === 'Present' || p.status === 'Late',
+				).length;
+
+				events = events.map(e =>
+					e.id === eventId ? { ...e, attendanceCount: actualAttendance } : e,
+				);
 			}
 		}
 		catch {
@@ -169,6 +250,114 @@
 		}
 		finally {
 			rosterLoading = false;
+		}
+	}
+
+	function startEditingStatus(person: RosterEntry) {
+		editingPersonId = person.id;
+		editingStatus = person.status;
+		// Default check-in time: use existing or event start time
+		if (person.checkinTime) {
+			editingCheckinTime = person.checkinTime.slice(0, 16); // Format for datetime-local
+		}
+		else if (expandedEventDateTime) {
+			editingCheckinTime = expandedEventDateTime.slice(0, 16);
+		}
+		else {
+			editingCheckinTime = new Date().toISOString().slice(0, 16);
+		}
+	}
+
+	function cancelEditingStatus() {
+		editingPersonId = null;
+	}
+
+	async function saveStatus(person: RosterEntry) {
+		// No change - just close editor
+		if (person.status === editingStatus) {
+			editingPersonId = null;
+			return;
+		}
+
+		const hasExistingRecord = !!person.attendanceId;
+		const needsRecord = editingStatus !== 'Absent'; // Excused still needs a record for tracking
+		const countsAsAttendance = editingStatus === 'Present' || editingStatus === 'Late';
+
+		// Case: No record and changing to Absent - just update local UI
+		if (!hasExistingRecord && !needsRecord) {
+			rosterData = rosterData.map(p =>
+				p.id === person.id ? { ...p, status: editingStatus, checkinTime: undefined } : p,
+			);
+			editingPersonId = null;
+			return;
+		}
+
+		statusUpdateLoading = true;
+
+		try {
+			const checkinTime = (editingStatus === 'Present' || editingStatus === 'Late')
+				? new Date(editingCheckinTime).toISOString()
+				: undefined;
+
+			let result;
+
+			if (hasExistingRecord) {
+				// Update existing record
+				const response = await fetch(`/api/attendance/${person.attendanceId}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ status: editingStatus, checkinTime }),
+				});
+				result = await response.json();
+			}
+			else {
+				// Create new record (only reaches here if needsRecord is true)
+				const response = await fetch('/api/attendance', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						eventId: expandedEventId,
+						apprenticeId: person.id,
+						status: editingStatus,
+						checkinTime,
+					}),
+				});
+				result = await response.json();
+			}
+
+			if (result.success) {
+				// Update roster
+				rosterData = rosterData.map(p =>
+					p.id === person.id
+						? { ...p, attendanceId: result.attendance?.id ?? p.attendanceId, status: editingStatus, checkinTime }
+						: p,
+				);
+
+				// Update event attendance count based on state change
+				if (expandedEventId) {
+					const prevCountsAsAttendance = person.status === 'Present' || person.status === 'Late';
+					const countDelta = (countsAsAttendance ? 1 : 0) - (prevCountsAsAttendance ? 1 : 0);
+
+					if (countDelta !== 0) {
+						events = events.map(e =>
+							e.id === expandedEventId
+								? { ...e, attendanceCount: (e.attendanceCount ?? 0) + countDelta }
+								: e,
+						);
+					}
+				}
+
+				editingPersonId = null;
+			}
+			else {
+				alert(result.error || 'Failed to update status');
+			}
+		}
+		catch {
+			alert('Failed to update status');
+		}
+		finally {
+			statusUpdateLoading = false;
 		}
 	}
 
@@ -415,19 +604,29 @@
 	{#if mode === 'list'}
 		<!-- List view -->
 		<div class="mb-4 flex items-center justify-between flex-wrap gap-4">
-			<div>
-				<label for="cohort-filter" class="text-sm text-gray-600 mr-2">Filter by cohort:</label>
-				<select
-					id="cohort-filter"
-					class="border rounded px-3 py-1.5"
-					value={data.selectedCohortId ?? ''}
-					onchange={handleCohortFilter}
-				>
-					<option value="">All cohorts</option>
-					{#each data.cohorts as cohort (cohort.id)}
-						<option value={cohort.name}>{cohort.name}</option>
-					{/each}
-				</select>
+			<div class="flex items-center gap-6">
+				<div>
+					<label for="cohort-filter" class="text-sm text-gray-600 mr-2">Filter by cohort:</label>
+					<select
+						id="cohort-filter"
+						class="border rounded px-3 py-1.5"
+						value={data.selectedCohortId ?? ''}
+						onchange={handleCohortFilter}
+					>
+						<option value="">All cohorts</option>
+						{#each data.cohorts as cohort (cohort.id)}
+							<option value={cohort.name}>{cohort.name}</option>
+						{/each}
+					</select>
+				</div>
+				<label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={hidePastEvents}
+						class="rounded"
+					/>
+					Hide past events
+				</label>
 			</div>
 			<div class="flex gap-2">
 				<button
@@ -446,18 +645,118 @@
 			</div>
 		</div>
 
-		{#if data.events.length === 0}
+		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
 		{:else}
 			<div class="overflow-x-auto">
 				<table class="w-full border-collapse">
 					<thead>
 						<tr class="bg-gray-100 text-left">
-							<th class="p-3 border-b font-semibold">Name</th>
-							<th class="p-3 border-b font-semibold">Date/Time</th>
-							<th class="p-3 border-b font-semibold">Type</th>
-							<th class="p-3 border-b font-semibold">Cohort</th>
-							<th class="p-3 border-b font-semibold">Attendance</th>
+							<th class="p-3 border-b font-semibold">
+								<button
+									onclick={() => toggleSort('name')}
+									class="inline-flex items-center gap-1 hover:text-blue-600"
+								>
+									Name
+									{#if sortColumn === 'name'}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											{#if sortDirection === 'asc'}
+												<path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+											{:else}
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											{/if}
+										</svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							</th>
+							<th class="p-3 border-b font-semibold">
+								<button
+									onclick={() => toggleSort('dateTime')}
+									class="inline-flex items-center gap-1 hover:text-blue-600"
+								>
+									Date/Time
+									{#if sortColumn === 'dateTime'}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											{#if sortDirection === 'asc'}
+												<path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+											{:else}
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											{/if}
+										</svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							</th>
+							<th class="p-3 border-b font-semibold">
+								<button
+									onclick={() => toggleSort('eventType')}
+									class="inline-flex items-center gap-1 hover:text-blue-600"
+								>
+									Type
+									{#if sortColumn === 'eventType'}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											{#if sortDirection === 'asc'}
+												<path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+											{:else}
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											{/if}
+										</svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							</th>
+							<th class="p-3 border-b font-semibold">
+								<button
+									onclick={() => toggleSort('cohort')}
+									class="inline-flex items-center gap-1 hover:text-blue-600"
+								>
+									Cohort
+									{#if sortColumn === 'cohort'}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											{#if sortDirection === 'asc'}
+												<path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+											{:else}
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											{/if}
+										</svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							</th>
+							<th class="p-3 border-b font-semibold">
+								<button
+									onclick={() => toggleSort('attendance')}
+									class="inline-flex items-center gap-1 hover:text-blue-600"
+								>
+									Attendance
+									{#if sortColumn === 'attendance'}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											{#if sortDirection === 'asc'}
+												<path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+											{:else}
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											{/if}
+										</svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+										</svg>
+									{/if}
+								</button>
+							</th>
 							<th class="p-3 border-b font-semibold">Public</th>
 							<th class="p-3 border-b font-semibold">Survey</th>
 							<th class="p-3 border-b font-semibold w-16"></th>
@@ -551,15 +850,17 @@
 								</tr>
 							{/if}
 						{/if}
-						{#each data.events as event (event.id)}
+						{#each sortedEvents as event (event.id)}
 							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
 							{@const isExpanded = expandedEventId === event.id}
 							{@const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null}
+							{@const isPast = isPastEvent(event.dateTime)}
 							<tr
-								class="border-b hover:bg-gray-50"
+								class="border-b hover:bg-gray-100"
 								class:cursor-pointer={hasRoster}
 								class:bg-blue-50={isExpanded}
-								onclick={() => hasRoster && toggleEventRow(event.id)}
+								class:bg-stone-100={isPast && !isExpanded}
+								onclick={() => hasRoster && toggleEventRow(event.id, event.dateTime)}
 							>
 								<td class="p-3">
 									<span class="inline-flex items-center gap-2">
@@ -670,13 +971,70 @@
 														<tr>
 															<td class="py-1 pl-4 pr-4 font-medium">{person.name}</td>
 															<td class="py-1 pr-2">
-																<span class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs">
-																	{person.status}
-																</span>
+																{#if editingPersonId === person.id}
+																	<select
+																		bind:value={editingStatus}
+																		class="border rounded px-1 py-0.5 text-xs"
+																		onclick={e => e.stopPropagation()}
+																	>
+																		{#each ATTENDANCE_STATUSES as status (status)}
+																			<option value={status}>{status}</option>
+																		{/each}
+																	</select>
+																{:else}
+																	<button
+																		onclick={(e) => {
+																			e.stopPropagation();
+																			startEditingStatus(person);
+																		}}
+																		class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs hover:ring-2 hover:ring-offset-1 hover:ring-gray-300"
+																		title="Click to change status"
+																	>
+																		{person.status}
+																	</button>
+																{/if}
 															</td>
-															<td class="py-1 text-gray-500 text-xs">
-																{#if person.checkinTime}
-																	{formatCheckinTime(person.checkinTime)}
+															<td class="py-1 pr-2">
+																{#if editingPersonId === person.id && (editingStatus === 'Present' || editingStatus === 'Late')}
+																	<input
+																		type="datetime-local"
+																		bind:value={editingCheckinTime}
+																		class="border rounded px-1 py-0.5 text-xs"
+																		onclick={e => e.stopPropagation()}
+																	/>
+																{:else if person.checkinTime}
+																	<span class="text-gray-500 text-xs">{formatCheckinTime(person.checkinTime)}</span>
+																{/if}
+															</td>
+															<td class="py-1">
+																{#if editingPersonId === person.id}
+																	<div class="flex gap-1">
+																		<button
+																			onclick={(e) => {
+																				e.stopPropagation();
+																				saveStatus(person);
+																			}}
+																			disabled={statusUpdateLoading}
+																			class="text-green-600 hover:text-green-800 disabled:opacity-50"
+																			title="Save"
+																		>
+																			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+																				<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+																			</svg>
+																		</button>
+																		<button
+																			onclick={(e) => {
+																				e.stopPropagation();
+																				cancelEditingStatus();
+																			}}
+																			class="text-gray-500 hover:text-red-600"
+																			title="Cancel"
+																		>
+																			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+																				<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+																			</svg>
+																		</button>
+																	</div>
 																{/if}
 															</td>
 														</tr>
@@ -691,7 +1049,7 @@
 					</tbody>
 				</table>
 			</div>
-			<p class="text-gray-400 text-sm mt-4">Showing {data.events.length} event(s)</p>
+			<p class="text-gray-400 text-sm mt-4">Showing {sortedEvents.length} event(s)</p>
 		{/if}
 
 		<!-- Calendar view -->

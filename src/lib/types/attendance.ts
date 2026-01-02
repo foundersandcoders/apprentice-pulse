@@ -24,3 +24,8 @@ export interface CreateExternalAttendanceInput {
 	name: string;
 	email: string;
 }
+
+export interface UpdateAttendanceInput {
+	status: AttendanceStatus;
+	checkinTime?: string; // ISO datetime, required when setting to Present
+}

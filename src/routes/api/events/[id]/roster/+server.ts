@@ -4,7 +4,8 @@ import type { AttendanceStatus } from '$lib/types/attendance';
 import { getEvent, getApprenticesByCohortId, getAttendanceByIds, getApprenticesByIds } from '$lib/airtable/sveltekit-wrapper';
 
 export interface RosterEntry {
-	id: string;
+	id: string; // Apprentice ID or external attendance ID
+	attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
 	name: string;
 	email: string;
 	type: 'apprentice' | 'external';
@@ -26,11 +27,12 @@ export const GET: RequestHandler = async ({ params }) => {
 			event.cohortId ? getApprenticesByCohortId(event.cohortId) : Promise.resolve([]),
 		]);
 
-		// Build a map of apprentice IDs to their attendance info
-		const attendanceByApprentice = new Map<string, { status: AttendanceStatus; checkinTime: string }>();
+		// Build a map of apprentice IDs to their attendance info (including attendance record ID)
+		const attendanceByApprentice = new Map<string, { attendanceId: string; status: AttendanceStatus; checkinTime: string }>();
 		for (const record of attendance) {
 			if (record.apprenticeId) {
 				attendanceByApprentice.set(record.apprenticeId, {
+					attendanceId: record.id,
 					status: record.status,
 					checkinTime: record.checkinTime,
 				});
@@ -45,6 +47,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			const attendanceInfo = attendanceByApprentice.get(apprentice.id);
 			roster.push({
 				id: apprentice.id,
+				attendanceId: attendanceInfo?.attendanceId,
 				name: apprentice.name,
 				email: apprentice.email,
 				type: 'apprentice',
@@ -72,6 +75,7 @@ export const GET: RequestHandler = async ({ params }) => {
 					const apprentice = apprenticeDetailsMap.get(record.apprenticeId);
 					roster.push({
 						id: record.apprenticeId,
+						attendanceId: record.id,
 						name: apprentice?.name || 'Unknown Apprentice',
 						email: apprentice?.email || '',
 						type: 'apprentice',
@@ -81,9 +85,10 @@ export const GET: RequestHandler = async ({ params }) => {
 				}
 			}
 			else {
-				// External attendee
+				// External attendee - use attendance ID as the main ID
 				roster.push({
 					id: record.id,
+					attendanceId: record.id,
 					name: record.externalName || 'Unknown',
 					email: record.externalEmail || '',
 					type: 'external',

@@ -5,6 +5,7 @@ import type {
 	Attendance,
 	CreateAttendanceInput,
 	CreateExternalAttendanceInput,
+	UpdateAttendanceInput,
 } from '../types/attendance.js';
 
 export function createAttendanceClient(apiKey: string, baseId: string) {
@@ -191,6 +192,34 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	}
 
 	/**
+	 * Update an attendance record's status and optionally check-in time
+	 */
+	async function updateAttendance(attendanceId: string, input: UpdateAttendanceInput): Promise<Attendance> {
+		const fields: Airtable.FieldSet = {
+			[ATTENDANCE_FIELDS.STATUS]: input.status,
+		};
+
+		if (input.checkinTime) {
+			fields[ATTENDANCE_FIELDS.CHECKIN_TIME] = input.checkinTime;
+		}
+
+		const record = await attendanceTable.update(attendanceId, fields);
+
+		const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+		const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+
+		return {
+			id: record.id,
+			eventId: eventLink?.[0] ?? '',
+			apprenticeId: apprenticeLink?.[0],
+			externalName: record.get(ATTENDANCE_FIELDS.EXTERNAL_NAME) as string | undefined,
+			externalEmail: record.get(ATTENDANCE_FIELDS.EXTERNAL_EMAIL) as string | undefined,
+			checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+			status: record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status'],
+		};
+	}
+
+	/**
 	 * Get all attendance records for an event
 	 * @deprecated Use getAttendanceByIds with event.attendanceIds instead
 	 */
@@ -221,6 +250,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		hasExternalCheckedIn,
 		createAttendance,
 		createExternalAttendance,
+		updateAttendance,
 		getAttendanceForEvent,
 		getAttendanceByIds,
 	};
