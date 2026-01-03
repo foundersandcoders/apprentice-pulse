@@ -284,6 +284,10 @@
 	let editEventError = $state('');
 	let editEventSubmitting = $state(false);
 
+	// Survey URL dropdown state
+	let showNewEventSurvey = $state(false);
+	let showEditEventSurvey = $state(false);
+
 	// Auto-default end time to start + 4 hours for edit events
 	let prevEditEventStartTime = $state('');
 	$effect(() => {
@@ -573,6 +577,7 @@
 
 	function cancelAddEvent() {
 		isAddingEvent = false;
+		showNewEventSurvey = false;
 		resetNewEventForm();
 	}
 
@@ -689,6 +694,7 @@
 	// Cancel editing
 	function cancelEditEvent() {
 		editingEventId = null;
+		showEditEventSurvey = false;
 		editEventError = '';
 	}
 
@@ -710,7 +716,7 @@
 					cohortId: editEvent.cohortId || undefined,
 					eventType: editEvent.eventType,
 					isPublic: editEvent.isPublic,
-					surveyUrl: editEvent.surveyUrl || undefined,
+					surveyUrl: editEvent.surveyUrl || null, // null to clear, not undefined
 				}),
 			});
 
@@ -732,7 +738,7 @@
 							cohortId: editEvent.cohortId || e.cohortId,
 							eventType: editEvent.eventType,
 							isPublic: editEvent.isPublic,
-							surveyUrl: editEvent.surveyUrl || e.surveyUrl,
+							surveyUrl: editEvent.surveyUrl, // Allow clearing by using empty string
 						}
 					: e,
 			);
@@ -1087,12 +1093,36 @@
 									/>
 								</td>
 								<td class="p-2">
-									<input
-										type="url"
-										bind:value={newEvent.surveyUrl}
-										placeholder="Survey URL"
-										class="w-full border rounded px-2 py-1 text-sm"
-									/>
+									<div class="relative">
+										<button
+											type="button"
+											onclick={() => showNewEventSurvey = !showNewEventSurvey}
+											class="{newEvent.surveyUrl ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-gray-600'}"
+											title={newEvent.surveyUrl ? 'Edit survey URL' : 'Add survey URL'}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+												<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+											</svg>
+										</button>
+										{#if showNewEventSurvey}
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
+												<input
+													type="url"
+													bind:value={newEvent.surveyUrl}
+													placeholder="Paste survey URL..."
+													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+												/>
+												<button
+													type="button"
+													onclick={() => showNewEventSurvey = false}
+													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
+												>
+													Done
+												</button>
+											</div>
+										{/if}
+									</div>
 								</td>
 								<td class="p-2">
 									<div class="flex gap-1">
@@ -1196,13 +1226,43 @@
 										/>
 									</td>
 									<td class="p-2">
-										<input
-											type="url"
-											bind:value={editEvent.surveyUrl}
-											placeholder="Survey URL"
-											class="w-full border rounded px-2 py-1 text-sm"
-											onclick={e => e.stopPropagation()}
-										/>
+									<div class="relative">
+										<button
+											type="button"
+											onclick={(e) => {
+												e.stopPropagation();
+												showEditEventSurvey = !showEditEventSurvey;
+											}}
+											class="{editEvent.surveyUrl ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-gray-600'}"
+											title={editEvent.surveyUrl ? 'Edit survey URL' : 'Add survey URL'}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+												<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+											</svg>
+										</button>
+										{#if showEditEventSurvey}
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
+												<input
+													type="url"
+													bind:value={editEvent.surveyUrl}
+													placeholder="Paste survey URL..."
+													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+													onclick={e => e.stopPropagation()}
+												/>
+												<button
+													type="button"
+													onclick={(e) => {
+														e.stopPropagation();
+														showEditEventSurvey = false;
+													}}
+													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
+												>
+													Done
+												</button>
+											</div>
+										{/if}
+									</div>
 									</td>
 									<td class="p-2">
 										<div class="flex gap-1">
@@ -1244,10 +1304,13 @@
 								<tr
 									data-event-id={event.id}
 									class="border-b hover:bg-gray-100"
-									class:cursor-pointer={hasRoster}
+									class:cursor-pointer={hasRoster && !isAddingEvent}
 									class:bg-blue-50={isExpanded}
 									class:bg-stone-100={isPast && !isExpanded}
+									class:opacity-50={isAddingEvent}
+									class:pointer-events-none={isAddingEvent}
 									onclick={() => {
+										if (isAddingEvent) return;
 										selectedEventId = event.id;
 										if (hasRoster) toggleEventRow(event.id, event.dateTime);
 									}}
@@ -1322,7 +1385,12 @@
 											</svg>
 										</a>
 									{:else}
-										<span class="text-gray-300">—</span>
+										<span class="text-gray-300" title="No survey">
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+												<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+												<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+											</svg>
+										</span>
 									{/if}
 								</td>
 								<td class="p-3">
