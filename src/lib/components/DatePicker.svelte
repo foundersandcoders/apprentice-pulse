@@ -1,44 +1,39 @@
 <script lang="ts">
-	import { DatePicker } from '@svelte-plugins/datepicker';
+	import { DatePicker as SvelteDatePicker } from '@svelte-plugins/datepicker';
 	import { format } from 'date-fns';
 
 	interface Props {
-		value: string; // ISO string or datetime-local format
+		value: string; // YYYY-MM-DD format
 		onchange?: (value: string) => void;
 		placeholder?: string;
 		required?: boolean;
 		disabled?: boolean;
 	}
 
-	let { value = $bindable(), onchange, placeholder = 'Select date/time', required = false, disabled = false }: Props = $props();
+	let { value = $bindable(), onchange, placeholder = 'Select date', required = false, disabled = false }: Props = $props();
 
 	let isOpen = $state(false);
 	let startDate = $state<Date | null>(null);
-	let startDateTime = $state('10:00'); // HH:mm format for time picker
 	let lastSyncedValue = $state('');
 
-	// Sync value -> startDate and startDateTime (external changes)
+	// Sync value -> startDate (external changes)
 	$effect(() => {
 		if (value !== lastSyncedValue) {
 			if (value) {
 				try {
-					const date = new Date(value);
+					// Parse YYYY-MM-DD format
+					const [year, month, day] = value.split('-').map(Number);
+					const date = new Date(year, month - 1, day);
 					if (!isNaN(date.getTime())) {
 						startDate = date;
-						// Extract time in HH:mm format
-						const hours = String(date.getHours()).padStart(2, '0');
-						const minutes = String(date.getMinutes()).padStart(2, '0');
-						startDateTime = `${hours}:${minutes}`;
 					}
 				}
 				catch {
 					startDate = null;
-					startDateTime = '10:00';
 				}
 			}
 			else {
 				startDate = null;
-				startDateTime = '10:00';
 			}
 			lastSyncedValue = value;
 		}
@@ -46,13 +41,13 @@
 
 	// Format for display
 	let formattedDate = $derived(
-		startDate ? format(startDate, 'dd/MM/yyyy HH:mm') : '',
+		startDate ? format(startDate, 'dd/MM/yyyy') : '',
 	);
 
 	// Sync startDate -> value (picker changes)
 	$effect(() => {
 		if (startDate) {
-			const newValue = format(startDate, 'yyyy-MM-dd\'T\'HH:mm');
+			const newValue = format(startDate, 'yyyy-MM-dd');
 			if (newValue !== lastSyncedValue) {
 				value = newValue;
 				lastSyncedValue = newValue;
@@ -63,11 +58,10 @@
 </script>
 
 <div class="picker-field">
-	<DatePicker
+	<SvelteDatePicker
 		bind:isOpen
 		bind:startDate
-		bind:startDateTime
-		showTimePicker={true}
+		showTimePicker={false}
 		enableFutureDates={true}
 		enablePastDates={true}
 	>
@@ -77,11 +71,11 @@
 			{required}
 			{disabled}
 			value={formattedDate}
-			class="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+			class="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 focus:outline-none focus:ring-0"
 			readonly
 			onclick={() => !disabled && (isOpen = true)}
 		/>
-	</DatePicker>
+	</SvelteDatePicker>
 </div>
 
 <style>
@@ -89,8 +83,15 @@
 		position: relative;
 	}
 
-	/* The datepicker library wraps the popup - make it not affect layout */
-	.picker-field :global(.datepicker-wrapper) {
+	/* The datepicker wrapper should not have any styling */
+	.picker-field :global(.datepicker) {
+		border: none !important;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
+
+	/* Position the calendar popup */
+	.picker-field :global(.calendars-container) {
 		position: absolute !important;
 		top: 100% !important;
 		left: 0 !important;
@@ -98,8 +99,8 @@
 		margin-top: 4px !important;
 	}
 
-	/* Style the datepicker popup */
-	.picker-field :global(.datepicker) {
+	/* Style the calendar popup when shown */
+	.picker-field :global(.calendars-container.show) {
 		border: 2px solid #3b82f6 !important;
 		border-radius: 8px !important;
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
@@ -108,9 +109,5 @@
 
 	.picker-field :global(.datepicker .calendar) {
 		background: white !important;
-	}
-
-	.picker-field :global(.datepicker .time-picker) {
-		border-top: 1px solid #e5e7eb !important;
 	}
 </style>

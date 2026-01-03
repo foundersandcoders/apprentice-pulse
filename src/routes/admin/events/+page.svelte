@@ -6,7 +6,7 @@
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
-	import DateTimePicker from '$lib/components/DateTimePicker.svelte';
+	import DatePicker from '$lib/components/DatePicker.svelte';
 
 	let { data } = $props();
 
@@ -193,13 +193,58 @@
 		selectable: false, // We handle selection via dateClick
 	});
 
+	// Helper to get today's date in YYYY-MM-DD format
+	function getTodayDate(): string {
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = String(today.getMonth() + 1).padStart(2, '0');
+		const day = String(today.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
+	// Helper to calculate end time (+4 hours from start time)
+	function calculateDefaultEndTime(startTime: string): string {
+		if (!startTime) return '';
+		const [hours, minutes] = startTime.split(':').map(Number);
+		const endHours = (hours + 4) % 24;
+		return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+	}
+
+	// Helper to combine date + time into ISO string
+	function combineDateTime(date: string, time: string): string {
+		if (!date || !time) return '';
+		return new Date(`${date}T${time}`).toISOString();
+	}
+
+	// Helper to extract date from ISO string (YYYY-MM-DD)
+	function extractDate(isoString: string): string {
+		if (!isoString) return '';
+		const date = new Date(isoString);
+		if (isNaN(date.getTime())) return '';
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
+	// Helper to extract time from ISO string (HH:mm)
+	function extractTime(isoString: string): string {
+		if (!isoString) return '';
+		const date = new Date(isoString);
+		if (isNaN(date.getTime())) return '';
+		const hours = String(date.getHours()).padStart(2, '0');
+		const minutes = String(date.getMinutes()).padStart(2, '0');
+		return `${hours}:${minutes}`;
+	}
+
 	// Inline event creation state
 	let isAddingEvent = $state(false);
 	// svelte-ignore state_referenced_locally
 	let newEvent = $state({
 		name: '',
-		dateTime: '',
-		endDateTime: '',
+		date: '',
+		startTime: '10:00',
+		endTime: '14:00',
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
@@ -208,12 +253,25 @@
 	let addEventError = $state('');
 	let addEventSubmitting = $state(false);
 
+	// Auto-default end time to start + 4 hours for new events
+	let prevNewEventStartTime = $state('10:00');
+	$effect(() => {
+		if (newEvent.startTime && newEvent.startTime !== prevNewEventStartTime) {
+			// Only auto-set if endTime matches the previous auto-calculated value
+			if (newEvent.endTime === calculateDefaultEndTime(prevNewEventStartTime)) {
+				newEvent.endTime = calculateDefaultEndTime(newEvent.startTime);
+			}
+			prevNewEventStartTime = newEvent.startTime;
+		}
+	});
+
 	// Inline event editing state
 	let editingEventId = $state<string | null>(null);
 	let editEvent = $state({
 		name: '',
-		dateTime: '',
-		endDateTime: '',
+		date: '',
+		startTime: '',
+		endTime: '',
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
@@ -221,6 +279,18 @@
 	});
 	let editEventError = $state('');
 	let editEventSubmitting = $state(false);
+
+	// Auto-default end time to start + 4 hours for edit events
+	let prevEditEventStartTime = $state('');
+	$effect(() => {
+		if (editEvent.startTime && editEvent.startTime !== prevEditEventStartTime) {
+			// Only auto-set if endTime matches the previous auto-calculated value
+			if (editEvent.endTime === calculateDefaultEndTime(prevEditEventStartTime)) {
+				editEvent.endTime = calculateDefaultEndTime(editEvent.startTime);
+			}
+			prevEditEventStartTime = editEvent.startTime;
+		}
+	});
 
 	// Series form state
 	let seriesName = $state('');
@@ -472,8 +542,9 @@
 	function resetNewEventForm() {
 		newEvent = {
 			name: '',
-			dateTime: '',
-			endDateTime: '',
+			date: '',
+			startTime: '10:00',
+			endTime: '14:00',
 			cohortId: '',
 			eventType: EVENT_TYPES[0],
 			isPublic: false,
@@ -571,8 +642,8 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: newEvent.name,
-					dateTime: new Date(newEvent.dateTime).toISOString(),
-					endDateTime: newEvent.endDateTime ? new Date(newEvent.endDateTime).toISOString() : undefined,
+					dateTime: combineDateTime(newEvent.date, newEvent.startTime),
+					endDateTime: newEvent.endTime ? combineDateTime(newEvent.date, newEvent.endTime) : undefined,
 					cohortId: newEvent.cohortId || undefined,
 					eventType: newEvent.eventType,
 					isPublic: newEvent.isPublic,
@@ -598,29 +669,20 @@
 		}
 	}
 
-	// Format datetime for input (needs YYYY-MM-DDTHH:MM format)
-	function formatDateTimeForInput(isoString: string): string {
-		const date = new Date(isoString);
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
-		const hours = String(date.getHours()).padStart(2, '0');
-		const minutes = String(date.getMinutes()).padStart(2, '0');
-		return `${year}-${month}-${day}T${hours}:${minutes}`;
-	}
-
 	// Start editing an event inline
 	function startEditingEvent(event: typeof events[0]) {
 		editingEventId = event.id;
 		editEvent = {
 			name: event.name || '',
-			dateTime: formatDateTimeForInput(event.dateTime),
-			endDateTime: event.endDateTime ? formatDateTimeForInput(event.endDateTime) : '',
+			date: extractDate(event.dateTime),
+			startTime: extractTime(event.dateTime),
+			endTime: event.endDateTime ? extractTime(event.endDateTime) : calculateDefaultEndTime(extractTime(event.dateTime)),
 			cohortId: event.cohortId || '',
 			eventType: event.eventType,
 			isPublic: event.isPublic,
 			surveyUrl: event.surveyUrl || '',
 		};
+		prevEditEventStartTime = editEvent.startTime;
 		editEventError = '';
 	}
 
@@ -643,8 +705,8 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: editEvent.name,
-					dateTime: new Date(editEvent.dateTime).toISOString(),
-					endDateTime: editEvent.endDateTime ? new Date(editEvent.endDateTime).toISOString() : undefined,
+					dateTime: combineDateTime(editEvent.date, editEvent.startTime),
+					endDateTime: editEvent.endTime ? combineDateTime(editEvent.date, editEvent.endTime) : undefined,
 					cohortId: editEvent.cohortId || undefined,
 					eventType: editEvent.eventType,
 					isPublic: editEvent.isPublic,
@@ -665,8 +727,8 @@
 					? {
 							...e,
 							name: editEvent.name,
-							dateTime: new Date(editEvent.dateTime).toISOString(),
-							endDateTime: editEvent.endDateTime ? new Date(editEvent.endDateTime).toISOString() : undefined,
+							dateTime: combineDateTime(editEvent.date, editEvent.startTime),
+							endDateTime: editEvent.endTime ? combineDateTime(editEvent.date, editEvent.endTime) : undefined,
 							cohortId: editEvent.cohortId || e.cohortId,
 							eventType: editEvent.eventType,
 							isPublic: editEvent.isPublic,
@@ -811,7 +873,10 @@
 				</label>
 			</div>
 			<button
-				onclick={() => { isAddingEvent = true; }}
+				onclick={() => {
+					newEvent.date = getTodayDate();
+					isAddingEvent = true;
+				}}
 				class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
 				disabled={isAddingEvent}
 			>
@@ -976,15 +1041,26 @@
 								</td>
 								<td class="p-2">
 									<div class="flex flex-col gap-1">
-										<DateTimePicker
-											bind:value={newEvent.dateTime}
-											placeholder="Start time"
+										<DatePicker
+											bind:value={newEvent.date}
+											placeholder="Select date"
 											required
 										/>
-										<DateTimePicker
-											bind:value={newEvent.endDateTime}
-											placeholder="End time"
-										/>
+										<div class="flex gap-1 items-center">
+											<input
+												type="time"
+												bind:value={newEvent.startTime}
+												class="border border-gray-300 rounded px-2 py-1 text-sm"
+												required
+											/>
+											<span class="text-gray-400">–</span>
+											<input
+												type="time"
+												bind:value={newEvent.endTime}
+												class="border border-gray-300 rounded px-2 py-1 text-sm"
+												disabled={!newEvent.startTime}
+											/>
+										</div>
 									</div>
 								</td>
 								<td class="p-2">
@@ -1028,7 +1104,7 @@
 									<div class="flex gap-1">
 										<button
 											onclick={handleAddEventSubmit}
-											disabled={addEventSubmitting || !newEvent.name || !newEvent.dateTime}
+											disabled={addEventSubmitting || !newEvent.name || !newEvent.date || !newEvent.startTime}
 											class="text-green-600 hover:text-green-800 disabled:opacity-50"
 											title="Save"
 										>
@@ -1077,15 +1153,28 @@
 									</td>
 									<td class="p-2">
 									<div class="flex flex-col gap-1">
-										<DateTimePicker
-											bind:value={editEvent.dateTime}
-											placeholder="Start time"
+										<DatePicker
+											bind:value={editEvent.date}
+											placeholder="Select date"
 											required
 										/>
-										<DateTimePicker
-											bind:value={editEvent.endDateTime}
-											placeholder="End time"
-										/>
+										<div class="flex gap-1 items-center">
+											<input
+												type="time"
+												bind:value={editEvent.startTime}
+												class="border border-gray-300 rounded px-2 py-1 text-sm"
+												onclick={e => e.stopPropagation()}
+												required
+											/>
+											<span class="text-gray-400">–</span>
+											<input
+												type="time"
+												bind:value={editEvent.endTime}
+												class="border border-gray-300 rounded px-2 py-1 text-sm"
+												onclick={e => e.stopPropagation()}
+												disabled={!editEvent.startTime}
+											/>
+										</div>
 									</div>
 									</td>
 									<td class="p-2">
@@ -1136,7 +1225,7 @@
 													e.stopPropagation();
 													handleEditEventSubmit();
 												}}
-												disabled={editEventSubmitting || !editEvent.name || !editEvent.dateTime}
+												disabled={editEventSubmitting || !editEvent.name || !editEvent.date || !editEvent.startTime}
 												class="text-green-600 hover:text-green-800 disabled:opacity-50"
 												title="Save"
 											>
