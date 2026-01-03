@@ -37,6 +37,7 @@ export interface Event {
 	id: string;
 	name: string;
 	dateTime: string;
+	endDateTime?: string;
 	cohortId: string;
 	cohortName?: string;
 	eventType: EventType;
@@ -50,6 +51,7 @@ export interface Event {
 export interface CreateEventInput {
 	name: string;
 	dateTime: string;
+	endDateTime?: string;
 	cohortId?: string;
 	eventType: EventType;
 	surveyUrl?: string;
@@ -60,6 +62,7 @@ export interface CreateEventInput {
 export interface UpdateEventInput {
 	name?: string;
 	dateTime?: string;
+	endDateTime?: string;
 	cohortId?: string;
 	eventType?: EventType;
 	surveyUrl?: string;

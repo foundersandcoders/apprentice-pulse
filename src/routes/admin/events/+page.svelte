@@ -6,6 +6,7 @@
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
+	import DateTimePicker from '$lib/components/DateTimePicker.svelte';
 
 	let { data } = $props();
 
@@ -142,7 +143,10 @@
 		// Real events from data
 		const realEvents = events.map((event) => {
 			const start = new Date(event.dateTime);
-			const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour
+			// Use endDateTime if available, otherwise default to +1 hour
+			const end = event.endDateTime
+				? new Date(event.endDateTime)
+				: new Date(start.getTime() + 60 * 60 * 1000);
 
 			return {
 				id: event.id,
@@ -195,6 +199,7 @@
 	let newEvent = $state({
 		name: '',
 		dateTime: '',
+		endDateTime: '',
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
@@ -208,6 +213,7 @@
 	let editEvent = $state({
 		name: '',
 		dateTime: '',
+		endDateTime: '',
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
@@ -219,6 +225,7 @@
 	// Series form state
 	let seriesName = $state('');
 	let seriesTime = $state('10:00');
+	let seriesEndTime = $state('11:00');
 	let seriesCohortId = $state('');
 	let seriesEventType = $state<EventType>(EVENT_TYPES[0]);
 	let seriesIsPublic = $state(false);
@@ -274,6 +281,11 @@
 			hour: '2-digit',
 			minute: '2-digit',
 		});
+	}
+
+	function formatTimeOnly(dateTime: string): string {
+		const date = new Date(dateTime);
+		return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 	}
 
 	function getCohortName(cohortId: string | undefined): string | null {
@@ -461,6 +473,7 @@
 		newEvent = {
 			name: '',
 			dateTime: '',
+			endDateTime: '',
 			cohortId: '',
 			eventType: EVENT_TYPES[0],
 			isPublic: false,
@@ -472,6 +485,7 @@
 	function resetSeriesForm() {
 		seriesName = '';
 		seriesTime = '10:00';
+		seriesEndTime = '11:00';
 		seriesCohortId = '';
 		seriesEventType = EVENT_TYPES[0];
 		seriesIsPublic = false;
@@ -558,6 +572,7 @@
 				body: JSON.stringify({
 					name: newEvent.name,
 					dateTime: new Date(newEvent.dateTime).toISOString(),
+					endDateTime: newEvent.endDateTime ? new Date(newEvent.endDateTime).toISOString() : undefined,
 					cohortId: newEvent.cohortId || undefined,
 					eventType: newEvent.eventType,
 					isPublic: newEvent.isPublic,
@@ -600,6 +615,7 @@
 		editEvent = {
 			name: event.name || '',
 			dateTime: formatDateTimeForInput(event.dateTime),
+			endDateTime: event.endDateTime ? formatDateTimeForInput(event.endDateTime) : '',
 			cohortId: event.cohortId || '',
 			eventType: event.eventType,
 			isPublic: event.isPublic,
@@ -628,6 +644,7 @@
 				body: JSON.stringify({
 					name: editEvent.name,
 					dateTime: new Date(editEvent.dateTime).toISOString(),
+					endDateTime: editEvent.endDateTime ? new Date(editEvent.endDateTime).toISOString() : undefined,
 					cohortId: editEvent.cohortId || undefined,
 					eventType: editEvent.eventType,
 					isPublic: editEvent.isPublic,
@@ -646,14 +663,15 @@
 			events = events.map(e =>
 				e.id === editingEventId
 					? {
-						...e,
-						name: editEvent.name,
-						dateTime: new Date(editEvent.dateTime).toISOString(),
-						cohortId: editEvent.cohortId || e.cohortId,
-						eventType: editEvent.eventType,
-						isPublic: editEvent.isPublic,
-						surveyUrl: editEvent.surveyUrl || e.surveyUrl,
-					}
+							...e,
+							name: editEvent.name,
+							dateTime: new Date(editEvent.dateTime).toISOString(),
+							endDateTime: editEvent.endDateTime ? new Date(editEvent.endDateTime).toISOString() : undefined,
+							cohortId: editEvent.cohortId || e.cohortId,
+							eventType: editEvent.eventType,
+							isPublic: editEvent.isPublic,
+							surveyUrl: editEvent.surveyUrl || e.surveyUrl,
+						}
 					: e,
 			);
 
@@ -719,6 +737,7 @@
 					body: JSON.stringify({
 						name: eventName,
 						dateTime: combineDateAndTime(date, seriesTime),
+						endDateTime: combineDateAndTime(date, seriesEndTime),
 						cohortId: seriesCohortId || undefined,
 						eventType: seriesEventType,
 						isPublic: seriesIsPublic,
@@ -945,7 +964,7 @@
 					<tbody>
 						{#if isAddingEvent}
 							<!-- Inline event creation row -->
-							<tr class="border-b bg-blue-50">
+							<tr class="border-2 border-blue-300 bg-blue-50 shadow-sm">
 								<td class="p-2">
 									<input
 										type="text"
@@ -956,12 +975,17 @@
 									/>
 								</td>
 								<td class="p-2">
-									<input
-										type="datetime-local"
-										bind:value={newEvent.dateTime}
-										class="w-full border rounded px-2 py-1 text-sm"
-										required
-									/>
+									<div class="flex flex-col gap-1">
+										<DateTimePicker
+											bind:value={newEvent.dateTime}
+											placeholder="Start time"
+											required
+										/>
+										<DateTimePicker
+											bind:value={newEvent.endDateTime}
+											placeholder="End time"
+										/>
+									</div>
 								</td>
 								<td class="p-2">
 									<select
@@ -1041,7 +1065,7 @@
 							<tbody class="event-group" class:selected={isSelected}>
 							{#if isEditing}
 								<!-- Inline edit row -->
-								<tr class="border-b bg-yellow-50">
+								<tr class="border-2 border-yellow-300 bg-yellow-50 shadow-sm">
 									<td class="p-2">
 										<input
 											type="text"
@@ -1052,12 +1076,17 @@
 										/>
 									</td>
 									<td class="p-2">
-										<input
-											type="datetime-local"
+									<div class="flex flex-col gap-1">
+										<DateTimePicker
 											bind:value={editEvent.dateTime}
-											class="w-full border rounded px-2 py-1 text-sm"
-											onclick={e => e.stopPropagation()}
+											placeholder="Start time"
+											required
 										/>
+										<DateTimePicker
+											bind:value={editEvent.endDateTime}
+											placeholder="End time"
+										/>
+									</div>
 									</td>
 									<td class="p-2">
 										<select
@@ -1166,7 +1195,12 @@
 										{event.name || '(Untitled)'}
 									</span>
 								</td>
-								<td class="p-3">{formatDate(event.dateTime)}</td>
+								<td class="p-3">
+									{formatDate(event.dateTime)}
+									{#if event.endDateTime}
+										<span class="text-gray-400"> – {formatTimeOnly(event.endDateTime)}</span>
+									{/if}
+								</td>
 								<td class="p-3">
 									{#if event.eventType}
 										<span class="{EVENT_TYPE_COLORS[event.eventType].tailwind} font-medium">
@@ -1411,12 +1445,25 @@
 
 							<div>
 								<label for="seriesTime" class="block text-sm font-medium text-gray-700 mb-1">
-									Time <span class="text-red-500">*</span>
+									Start Time <span class="text-red-500">*</span>
 								</label>
 								<input
 									type="time"
 									id="seriesTime"
 									bind:value={seriesTime}
+									required
+									class="w-full border rounded px-3 py-2"
+								/>
+							</div>
+
+							<div>
+								<label for="seriesEndTime" class="block text-sm font-medium text-gray-700 mb-1">
+									End Time <span class="text-red-500">*</span>
+								</label>
+								<input
+									type="time"
+									id="seriesEndTime"
+									bind:value={seriesEndTime}
 									required
 									class="w-full border rounded px-3 py-2"
 								/>
@@ -1565,7 +1612,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="ec-calendar-wrapper" class:series-mode={isCreatingSeries}>
+			<div class="ec-calendar-wrapper border border-gray-200 rounded-lg p-4 bg-white" class:series-mode={isCreatingSeries}>
 				<Calendar plugins={calendarPlugins} options={calendarOptions} />
 			</div>
 		</section>

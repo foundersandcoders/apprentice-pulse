@@ -42,6 +42,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 				cohortId: cohortLookup?.[0] ?? '',
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
@@ -77,6 +78,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 				cohortId: cohortLookup?.[0] ?? '',
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
@@ -100,6 +102,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			[EVENT_FIELDS.EVENT_TYPE]: data.eventType,
 		};
 
+		if (data.endDateTime) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
 		if (data.cohortId) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
 		if (data.surveyUrl) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
 		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
@@ -111,6 +114,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: data.name,
 			dateTime: data.dateTime,
+			endDateTime: data.endDateTime,
 			cohortId: data.cohortId ?? '',
 			eventType: data.eventType,
 			surveyUrl: data.surveyUrl,
@@ -127,6 +131,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 		if (data.name !== undefined) fields[EVENT_FIELDS.NAME] = data.name;
 		if (data.dateTime !== undefined) fields[EVENT_FIELDS.DATE_TIME] = data.dateTime;
+		if (data.endDateTime !== undefined) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
 		if (data.cohortId !== undefined) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
 		if (data.eventType !== undefined) fields[EVENT_FIELDS.EVENT_TYPE] = data.eventType;
 		if (data.surveyUrl !== undefined) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
@@ -140,6 +145,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: record.get(EVENT_FIELDS.NAME) as string,
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 			cohortId: cohortLookup?.[0] ?? '',
 			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
@@ -178,6 +184,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: record.get(EVENT_FIELDS.NAME) as string,
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 			cohortId: cohortLookup?.[0] ?? '',
 			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,

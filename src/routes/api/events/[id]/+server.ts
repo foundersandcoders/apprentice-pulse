@@ -23,6 +23,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		const event = await updateEvent(id, {
 			name: body.name?.trim() || undefined,
 			dateTime: body.dateTime || undefined,
+			endDateTime: body.endDateTime,
 			cohortId: body.cohortId,
 			eventType: body.eventType || undefined,
 			surveyUrl: body.surveyUrl,

@@ -35,7 +35,8 @@ export const STAFF_FIELDS = {
 export const EVENT_FIELDS = {
 	NAME: 'fldMCZijN6TJeUdFR',
 	COHORT: 'fldcXDEDkeHvWTnxE', // multipleRecordLinks to Cohorts
-	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (combined date and time)
+	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (start time)
+	END_DATE_TIME: 'fldpBorZFMxhgNhNR', // dateTime (end time)
 	EVENT_TYPE: 'fldo7fwAsFhkA1icC', // singleSelect (Regular Class, Workshop, Hackathon)
 	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
 	ATTENDANCE: 'fldcPf53fVfStFZsa', // multipleRecordLinks to Attendance (reverse link)
