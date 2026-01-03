@@ -109,6 +109,34 @@
 		}
 	}
 
+	// Handle clicking an event in the calendar - scroll to it, select it, and expand if has attendance
+	function handleCalendarEventClick(eventId: string) {
+		// Find the row in the table
+		const row = document.querySelector(`[data-event-id="${eventId}"]`) as HTMLElement | null;
+		if (!row) return;
+
+		// Select this event
+		selectedEventId = eventId;
+
+		// Scroll to the row
+		row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+		// Find the event to check if it has roster data
+		const event = events.find(e => e.id === eventId);
+		if (!event) return;
+
+		// Check if this event has roster (can be expanded)
+		const expectedAttendance = getCohortApprenticeCount(event.cohortId);
+		const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null;
+
+		// If it has roster and isn't already expanded, expand it after scroll
+		if (hasRoster && expandedEventId !== eventId) {
+			setTimeout(() => {
+				toggleEventRow(eventId, event.dateTime);
+			}, 400);
+		}
+	}
+
 	// Build calendar events: real events + selected date markers
 	let calendarEvents = $derived.by(() => {
 		// Real events from data
@@ -150,9 +178,9 @@
 		},
 		events: calendarEvents,
 		eventClick: (info: { event: { id: string } }) => {
-			// If clicking a real event (not a selection marker), could navigate to it
+			// If clicking a real event (not a selection marker), scroll to it in the list
 			if (!info.event.id.startsWith('selected-')) {
-				// Could add navigation here if desired
+				handleCalendarEventClick(info.event.id);
 			}
 		},
 		dateClick: handleDateClick,
@@ -209,6 +237,7 @@
 	let expandedEventDateTime = $state<string | null>(null);
 	let rosterData = $state<RosterEntry[]>([]);
 	let rosterLoading = $state(false);
+	let selectedEventId = $state<string | null>(null);
 
 	// Status editing state
 	let editingPersonId = $state<string | null>(null);
@@ -846,17 +875,24 @@
 								</tr>
 							{/if}
 						{/if}
-						{#each sortedEvents as event (event.id)}
+					</tbody>
+					{#each sortedEvents as event (event.id)}
 							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
 							{@const isExpanded = expandedEventId === event.id}
 							{@const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null}
 							{@const isPast = isPastEvent(event.dateTime)}
+							{@const isSelected = selectedEventId === event.id}
+							<tbody class="event-group" class:selected={isSelected}>
 							<tr
+								data-event-id={event.id}
 								class="border-b hover:bg-gray-100"
 								class:cursor-pointer={hasRoster}
 								class:bg-blue-50={isExpanded}
 								class:bg-stone-100={isPast && !isExpanded}
-								onclick={() => hasRoster && toggleEventRow(event.id, event.dateTime)}
+								onclick={() => {
+									selectedEventId = event.id;
+									if (hasRoster) toggleEventRow(event.id, event.dateTime);
+								}}
 							>
 								<td class="p-3">
 									<span class="inline-flex items-center gap-2">
@@ -1041,8 +1077,8 @@
 									</td>
 								</tr>
 							{/if}
+							</tbody>
 						{/each}
-					</tbody>
 				</table>
 			</div>
 			<p class="text-gray-400 text-sm mt-4">Showing {sortedEvents.length} event(s)</p>
@@ -1302,5 +1338,11 @@
 
 	.ec-calendar-wrapper.series-mode :global(.ec-day:not(.ec-past):hover) {
 		background-color: rgba(34, 197, 94, 0.1);
+	}
+
+	/* Selected event group styling */
+	:global(.event-group.selected) {
+		outline: 2px solid rgb(59, 130, 246);
+		outline-offset: -2px;
 	}
 </style>
