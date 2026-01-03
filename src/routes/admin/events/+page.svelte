@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { slide } from 'svelte/transition';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
@@ -82,11 +83,15 @@
 			&& d1.getDate() === d2.getDate();
 	}
 
-	// Selected dates for series creation (declared early for use in calendarEvents)
+	// Series creation mode and selected dates
+	let isCreatingSeries = $state(false);
 	let selectedDates = $state<Date[]>([]);
 
-	// Toggle date selection for series creation
+	// Toggle date selection for series creation (only when in series mode)
 	function handleDateClick(info: { date: Date }) {
+		// Only allow date selection when in series creation mode
+		if (!isCreatingSeries) return;
+
 		const clickedDate = info.date;
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- Event handler needs fresh Date
 		const today = new Date();
@@ -155,9 +160,6 @@
 		nowIndicator: true,
 		selectable: false, // We handle selection via dateClick
 	});
-
-	// Page mode: list view or series creation form
-	let mode = $state<'list' | 'series'>('list');
 
 	// Inline event creation state
 	let isAddingEvent = $state(false);
@@ -433,10 +435,8 @@
 		seriesProgress = null;
 	}
 
-	function cancelForm() {
-		mode = 'list';
-		isAddingEvent = false;
-		resetNewEventForm();
+	function cancelSeriesForm() {
+		isCreatingSeries = false;
 		resetSeriesForm();
 	}
 
@@ -602,17 +602,11 @@
 
 <div class="p-6 max-w-4xl mx-auto">
 	<header class="mb-6">
-		{#if mode === 'list'}
-			<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
-			<h1 class="text-2xl font-bold mt-2">Events</h1>
-		{:else}
-			<button onclick={cancelForm} class="text-blue-600 hover:underline text-sm">← Cancel</button>
-			<h1 class="text-2xl font-bold mt-2">Add Event Series</h1>
-		{/if}
+		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
+		<h1 class="text-2xl font-bold mt-2">Events</h1>
 	</header>
 
-	{#if mode === 'list'}
-		<!-- List view -->
+	<!-- List view -->
 		<div class="mb-4 flex items-center justify-between flex-wrap gap-4">
 			<div class="flex items-center gap-6">
 				<div>
@@ -638,21 +632,13 @@
 					Hide past events
 				</label>
 			</div>
-			<div class="flex gap-2">
-				<button
-					onclick={() => { isAddingEvent = true; }}
-					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-					disabled={isAddingEvent}
-				>
-					+ Add Event
-				</button>
-				<button
-					onclick={() => { mode = 'series'; }}
-					class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-				>
-					+ Add Series
-				</button>
-			</div>
+			<button
+				onclick={() => { isAddingEvent = true; }}
+				class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+				disabled={isAddingEvent}
+			>
+				+ Add Event
+			</button>
 		</div>
 
 		{#if events.length === 0}
@@ -1063,11 +1049,11 @@
 		{/if}
 
 		<!-- Calendar view with date selection for series creation -->
-		<div class="mt-8">
+		<section class="mt-8 flex flex-col">
 			<div class="flex items-center justify-between mb-4">
 				<h2 class="text-lg font-semibold">Calendar</h2>
-				{#if selectedDates.length > 0}
-					<div class="flex items-center gap-3">
+				<div class="flex items-center gap-3">
+					{#if isCreatingSeries && selectedDates.length > 0}
 						<span class="text-sm text-gray-600">
 							{selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''} selected
 						</span>
@@ -1077,9 +1063,197 @@
 						>
 							Clear
 						</button>
-					</div>
-				{/if}
+					{/if}
+					{#if !isCreatingSeries}
+						<button
+							onclick={() => { isCreatingSeries = true; }}
+							class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+						>
+							+ Create Series
+						</button>
+					{/if}
+				</div>
 			</div>
+
+			{#if isCreatingSeries}
+				<!-- Series creation form (above calendar) -->
+				<div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-4" transition:slide={{ duration: 300 }}>
+					<div class="flex items-center justify-between mb-4">
+						<h3 class="text-lg font-semibold text-green-800">
+							Create Event Series
+							{#if selectedDates.length > 0}
+								<span class="font-normal text-green-600">({selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''} selected)</span>
+							{/if}
+						</h3>
+						<button
+							onclick={cancelSeriesForm}
+							class="text-green-700 hover:text-green-900 text-sm underline"
+						>
+							Cancel
+						</button>
+					</div>
+
+					{#if seriesError}
+						<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+							{seriesError}
+						</div>
+					{/if}
+
+					<form onsubmit={handleSeriesSubmit} class="space-y-4">
+						<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+							<div>
+								<label for="seriesName" class="block text-sm font-medium text-gray-700 mb-1">
+									Base Name <span class="text-red-500">*</span>
+								</label>
+								<input
+									type="text"
+									id="seriesName"
+									bind:value={seriesName}
+									required
+									class="w-full border rounded px-3 py-2"
+									placeholder="e.g. AI Workshop"
+								/>
+								<p class="text-xs text-gray-500 mt-1">Numbers appended if multiple dates</p>
+							</div>
+
+							<div>
+								<label for="seriesTime" class="block text-sm font-medium text-gray-700 mb-1">
+									Time <span class="text-red-500">*</span>
+								</label>
+								<input
+									type="time"
+									id="seriesTime"
+									bind:value={seriesTime}
+									required
+									class="w-full border rounded px-3 py-2"
+								/>
+							</div>
+
+							<div>
+								<label for="seriesEventType" class="block text-sm font-medium text-gray-700 mb-1">
+									Event Type <span class="text-red-500">*</span>
+								</label>
+								<select
+									id="seriesEventType"
+									bind:value={seriesEventType}
+									required
+									class="w-full border rounded px-3 py-2"
+								>
+									{#each EVENT_TYPES as type (type)}
+										<option value={type}>{type}</option>
+									{/each}
+								</select>
+							</div>
+
+							<div>
+								<label for="seriesCohort" class="block text-sm font-medium text-gray-700 mb-1">
+									Cohort
+								</label>
+								<select
+									id="seriesCohort"
+									bind:value={seriesCohortId}
+									class="w-full border rounded px-3 py-2"
+								>
+									<option value="">No cohort (open event)</option>
+									{#each data.cohorts as cohort (cohort.id)}
+										<option value={cohort.id}>{cohort.name}</option>
+									{/each}
+								</select>
+							</div>
+
+							<div>
+								<label for="seriesSurveyUrl" class="block text-sm font-medium text-gray-700 mb-1">
+									Survey URL
+								</label>
+								<input
+									type="url"
+									id="seriesSurveyUrl"
+									bind:value={seriesSurveyUrl}
+									class="w-full border rounded px-3 py-2"
+									placeholder="https://..."
+								/>
+							</div>
+
+							<div class="flex items-center pt-6">
+								<input
+									type="checkbox"
+									id="seriesIsPublic"
+									bind:checked={seriesIsPublic}
+									class="rounded"
+								/>
+								<label for="seriesIsPublic" class="ml-2 text-sm font-medium text-gray-700">
+									Public events
+								</label>
+							</div>
+						</div>
+
+						<!-- Instruction to select dates -->
+						<div class="bg-green-100 border border-green-300 rounded p-3">
+							<p class="text-sm text-green-800">
+								<strong>Next:</strong> Click on future dates in the calendar below to select them for this series.
+							</p>
+						</div>
+
+						<!-- Selected dates preview -->
+						{#if selectedDates.length > 0}
+							<div class="border-t border-green-200 pt-4">
+								<p class="text-sm font-medium text-gray-700 mb-2">Selected dates:</p>
+								<div class="flex flex-wrap gap-2">
+									{#each selectedDates as date, i (date.toISOString())}
+										<span class="inline-flex items-center gap-1 bg-white border border-green-300 rounded-full px-3 py-1 text-sm">
+											<span class="text-gray-700">{formatPreviewDate(date)}</span>
+											{#if selectedDates.length > 1}
+												<span class="text-gray-400">→ {seriesName || 'Event'} {i + 1}</span>
+											{/if}
+											<button
+												type="button"
+												onclick={() => removeDate(date)}
+												class="text-red-500 hover:text-red-700 ml-1"
+												aria-label="Remove date"
+											>
+												<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+													<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+												</svg>
+											</button>
+										</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Progress indicator -->
+						{#if seriesProgress}
+							<div class="bg-blue-50 border border-blue-200 px-4 py-3 rounded">
+								Creating events... {seriesProgress.created} / {seriesProgress.total}
+							</div>
+						{/if}
+
+						<div class="flex gap-3 pt-2">
+							<button
+								type="submit"
+								disabled={seriesSubmitting || !seriesName || selectedDates.length === 0}
+								class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+							>
+								{#if seriesSubmitting}
+									Creating...
+								{:else if selectedDates.length === 0}
+									Select dates below
+								{:else}
+									Create {selectedDates.length} Event{selectedDates.length !== 1 ? 's' : ''}
+								{/if}
+							</button>
+							<button
+								type="button"
+								onclick={cancelSeriesForm}
+								class="px-4 py-2 border rounded hover:bg-gray-50"
+							>
+								Cancel
+							</button>
+						</div>
+					</form>
+				</div>
+			{/if}
+
 			<!-- Legend -->
 			<div class="flex flex-wrap gap-4 mb-4 text-sm">
 				{#each EVENT_TYPES as type (type)}
@@ -1091,203 +1265,42 @@
 						<span class="{EVENT_TYPE_COLORS[type].tailwind}">{type}</span>
 					</div>
 				{/each}
-				<div class="flex items-center gap-2">
-					<span class="w-3 h-3 rounded-full bg-green-500"></span>
-					<span class="text-green-700">Selected for series</span>
-				</div>
+				{#if isCreatingSeries}
+					<div class="flex items-center gap-2">
+						<span class="w-3 h-3 rounded-full bg-green-500"></span>
+						<span class="text-green-700">Selected for series</span>
+					</div>
+				{/if}
 			</div>
-			<p class="text-sm text-gray-500 mb-4">Click on future dates to select them for creating an event series.</p>
-			<div class="ec-calendar-wrapper">
+			<div class="ec-calendar-wrapper" class:series-mode={isCreatingSeries}>
 				<Calendar plugins={calendarPlugins} options={calendarOptions} />
 			</div>
-		</div>
-
-	{:else if mode === 'series'}
-		<!-- Series event form -->
-		<div class="max-w-4xl">
-			{#if seriesError}
-				<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-					{seriesError}
-				</div>
-			{/if}
-
-			<form onsubmit={handleSeriesSubmit} class="space-y-6">
-				<div class="grid md:grid-cols-2 gap-6">
-					<!-- Left column: form fields -->
-					<div class="space-y-4">
-						<div>
-							<label for="seriesName" class="block text-sm font-medium text-gray-700 mb-1">
-								Base Name <span class="text-red-500">*</span>
-							</label>
-							<input
-								type="text"
-								id="seriesName"
-								bind:value={seriesName}
-								required
-								class="w-full border rounded px-3 py-2"
-								placeholder="e.g. AI Workshop"
-							/>
-							<p class="text-sm text-gray-500 mt-1">Numbers will be appended: "AI Workshop 1", "AI Workshop 2"...</p>
-						</div>
-
-						<div>
-							<label for="seriesTime" class="block text-sm font-medium text-gray-700 mb-1">
-								Time <span class="text-red-500">*</span>
-							</label>
-							<input
-								type="time"
-								id="seriesTime"
-								bind:value={seriesTime}
-								required
-								class="w-full border rounded px-3 py-2"
-							/>
-							<p class="text-sm text-gray-500 mt-1">Same time for all events</p>
-						</div>
-
-						<div>
-							<label for="seriesEventType" class="block text-sm font-medium text-gray-700 mb-1">
-								Event Type <span class="text-red-500">*</span>
-							</label>
-							<select
-								id="seriesEventType"
-								bind:value={seriesEventType}
-								required
-								class="w-full border rounded px-3 py-2"
-							>
-								{#each EVENT_TYPES as type (type)}
-									<option value={type}>{type}</option>
-								{/each}
-							</select>
-						</div>
-
-						<div>
-							<label for="seriesCohort" class="block text-sm font-medium text-gray-700 mb-1">
-								Cohort
-							</label>
-							<select
-								id="seriesCohort"
-								bind:value={seriesCohortId}
-								class="w-full border rounded px-3 py-2"
-							>
-								<option value="">No cohort (open event)</option>
-								{#each data.cohorts as cohort (cohort.id)}
-									<option value={cohort.id}>{cohort.name}</option>
-								{/each}
-							</select>
-						</div>
-
-						<div class="flex items-center gap-2">
-							<input
-								type="checkbox"
-								id="seriesIsPublic"
-								bind:checked={seriesIsPublic}
-								class="rounded"
-							/>
-							<label for="seriesIsPublic" class="text-sm font-medium text-gray-700">
-								Public events
-							</label>
-						</div>
-
-						<div>
-							<label for="seriesSurveyUrl" class="block text-sm font-medium text-gray-700 mb-1">
-								Survey URL
-							</label>
-							<input
-								type="url"
-								id="seriesSurveyUrl"
-								bind:value={seriesSurveyUrl}
-								class="w-full border rounded px-3 py-2"
-								placeholder="https://..."
-							/>
-						</div>
-					</div>
-
-					<!-- Right column: calendar -->
-					<div>
-						<p class="block text-sm font-medium text-gray-700 mb-2">
-							Select Dates <span class="text-red-500">*</span>
-						</p>
-						<p class="text-sm text-gray-500 mb-2">Click on future dates to select/deselect them.</p>
-						<div class="ec-series-calendar">
-							<Calendar plugins={calendarPlugins} options={calendarOptions} />
-						</div>
-					</div>
-				</div>
-
-				<!-- Selected dates preview -->
-				{#if selectedDates.length > 0}
-					<div class="border-t pt-4">
-						<p class="text-sm font-medium text-gray-700 mb-2">
-							Selected: {selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''}
-						</p>
-						<ul class="space-y-1">
-							{#each selectedDates as date, i (date.toISOString())}
-								<li class="flex items-center gap-2 text-sm">
-									<span class="text-gray-600">{formatPreviewDate(date)}</span>
-									<span class="text-gray-400">→</span>
-									<span class="font-medium">"{seriesName || 'Event'} {selectedDates.length > 1 ? i + 1 : ''}"</span>
-									<button
-										type="button"
-										onclick={() => removeDate(date)}
-										class="text-red-500 hover:text-red-700 ml-auto"
-										aria-label="Remove date"
-									>
-										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-											<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-										</svg>
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</div>
-				{/if}
-
-				<!-- Progress indicator -->
-				{#if seriesProgress}
-					<div class="bg-blue-50 border border-blue-200 px-4 py-3 rounded">
-						Creating events... {seriesProgress.created} / {seriesProgress.total}
-					</div>
-				{/if}
-
-				<div class="flex gap-3 pt-4">
-					<button
-						type="submit"
-						disabled={seriesSubmitting || selectedDates.length === 0}
-						class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-					>
-						{#if seriesSubmitting}
-							Creating...
-						{:else}
-							Create {selectedDates.length} Event{selectedDates.length !== 1 ? 's' : ''}
-						{/if}
-					</button>
-					<button
-						type="button"
-						onclick={cancelForm}
-						class="px-4 py-2 border rounded hover:bg-gray-50"
-					>
-						Cancel
-					</button>
-				</div>
-			</form>
-		</div>
-	{/if}
+		</section>
 </div>
 
 <style>
 	.ec-calendar-wrapper {
 		width: 100%;
-		height: 600px;
+		min-height: 0; /* Allow flex shrinking */
 	}
 
-	.ec-series-calendar {
-		width: 100%;
-		height: 400px;
+	/* Let the calendar component size itself naturally */
+	.ec-calendar-wrapper :global(.ec) {
+		height: auto !important;
+		min-height: 500px;
 	}
 
 	/* Style past dates as slightly muted */
-	.ec-calendar-wrapper :global(.ec-day.ec-past),
-	.ec-series-calendar :global(.ec-day.ec-past) {
+	.ec-calendar-wrapper :global(.ec-day.ec-past) {
 		opacity: 0.6;
+	}
+
+	/* Series mode: make future dates look clickable */
+	.ec-calendar-wrapper.series-mode :global(.ec-day:not(.ec-past)) {
+		cursor: pointer;
+	}
+
+	.ec-calendar-wrapper.series-mode :global(.ec-day:not(.ec-past):hover) {
+		background-color: rgba(34, 197, 94, 0.1);
 	}
 </style>
