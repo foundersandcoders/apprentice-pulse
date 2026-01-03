@@ -252,6 +252,7 @@
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
+		checkInCode: '' as string | number,
 		surveyUrl: data.defaultSurveyUrl,
 	});
 	let addEventError = $state('');
@@ -279,6 +280,7 @@
 		cohortId: '',
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
+		checkInCode: '' as string | number,
 		surveyUrl: '',
 	});
 	let editEventError = $state('');
@@ -375,16 +377,12 @@
 	}
 
 	async function toggleEventRow(eventId: string, eventDateTime: string) {
+		// If same row clicked, do nothing (don't collapse)
 		if (expandedEventId === eventId) {
-			// Collapse
-			expandedEventId = null;
-			expandedEventDateTime = null;
-			rosterData = [];
-			editingPersonId = null;
 			return;
 		}
 
-		// Expand and load roster
+		// Expand new row (previous one auto-collapses)
 		expandedEventId = eventId;
 		expandedEventDateTime = eventDateTime;
 		rosterLoading = true;
@@ -552,6 +550,7 @@
 			cohortId: '',
 			eventType: EVENT_TYPES[0],
 			isPublic: false,
+			checkInCode: '' as string | number,
 			surveyUrl: data.defaultSurveyUrl,
 		};
 		addEventError = '';
@@ -652,6 +651,7 @@
 					cohortId: newEvent.cohortId || undefined,
 					eventType: newEvent.eventType,
 					isPublic: newEvent.isPublic,
+					checkInCode: newEvent.isPublic && newEvent.checkInCode ? Number(newEvent.checkInCode) : undefined,
 					surveyUrl: newEvent.surveyUrl || undefined,
 				}),
 			});
@@ -685,6 +685,7 @@
 			cohortId: event.cohortId || '',
 			eventType: event.eventType,
 			isPublic: event.isPublic,
+			checkInCode: event.checkInCode ?? '',
 			surveyUrl: event.surveyUrl || '',
 		};
 		prevEditEventStartTime = editEvent.startTime;
@@ -716,6 +717,7 @@
 					cohortId: editEvent.cohortId || undefined,
 					eventType: editEvent.eventType,
 					isPublic: editEvent.isPublic,
+					checkInCode: editEvent.isPublic && editEvent.checkInCode ? Number(editEvent.checkInCode) : null,
 					surveyUrl: editEvent.surveyUrl || null, // null to clear, not undefined
 				}),
 			});
@@ -738,6 +740,7 @@
 							cohortId: editEvent.cohortId || e.cohortId,
 							eventType: editEvent.eventType,
 							isPublic: editEvent.isPublic,
+							checkInCode: editEvent.isPublic && editEvent.checkInCode ? Number(editEvent.checkInCode) : undefined,
 							surveyUrl: editEvent.surveyUrl, // Allow clearing by using empty string
 						}
 					: e,
@@ -1086,11 +1089,23 @@
 								</td>
 								<td class="p-2 text-center text-gray-400">—</td>
 								<td class="p-2 text-center">
-									<input
-										type="checkbox"
-										bind:checked={newEvent.isPublic}
-										class="rounded"
-									/>
+									<div class="flex flex-col items-center gap-1">
+										<input
+											type="checkbox"
+											bind:checked={newEvent.isPublic}
+											class="rounded"
+										/>
+										{#if newEvent.isPublic}
+											<input
+												type="number"
+												bind:value={newEvent.checkInCode}
+												placeholder="Code"
+												class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center"
+												min="0"
+												max="999999"
+											/>
+										{/if}
+									</div>
 								</td>
 								<td class="p-2">
 									<div class="relative">
@@ -1218,12 +1233,25 @@
 									</td>
 									<td class="p-2 text-center text-gray-400">—</td>
 									<td class="p-2 text-center">
-										<input
-											type="checkbox"
-											bind:checked={editEvent.isPublic}
-											class="rounded"
-											onclick={e => e.stopPropagation()}
-										/>
+										<div class="flex flex-col items-center gap-1">
+											<input
+												type="checkbox"
+												bind:checked={editEvent.isPublic}
+												class="rounded"
+												onclick={e => e.stopPropagation()}
+											/>
+											{#if editEvent.isPublic}
+												<input
+													type="number"
+													bind:value={editEvent.checkInCode}
+													placeholder="Code"
+													class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center"
+													min="0"
+													max="999999"
+													onclick={e => e.stopPropagation()}
+												/>
+											{/if}
+										</div>
 									</td>
 									<td class="p-2">
 									<div class="relative">
