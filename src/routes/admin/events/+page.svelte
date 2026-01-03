@@ -7,6 +7,7 @@
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
 	import DatePicker from '$lib/components/DatePicker.svelte';
+	import TimePicker from '$lib/components/TimePicker.svelte';
 
 	let { data } = $props();
 
@@ -72,9 +73,12 @@
 	// Calendar plugins
 	const calendarPlugins = [DayGrid, Interaction];
 
-	// Helper to format date as YYYY-MM-DD
+	// Helper to format date as YYYY-MM-DD (using local time, not UTC)
 	function formatDateKey(date: Date): string {
-		return date.toISOString().slice(0, 10);
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
 	}
 
 	// Check if two dates are the same day
@@ -339,18 +343,14 @@
 	let editingCheckinTime = $state<string>('');
 	let statusUpdateLoading = $state(false);
 
-	function formatDate(dateTime: string | undefined): string {
+	function formatDateOnly(dateTime: string | undefined): string {
 		if (!dateTime) return '—';
 		const date = new Date(dateTime);
 		if (isNaN(date.getTime())) return '—';
-		return date.toLocaleDateString('en-GB', {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
-		});
+		const day = String(date.getDate()).padStart(2, '0');
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const year = date.getFullYear();
+		return `${day}/${month}/${year}`;
 	}
 
 	function formatTimeOnly(dateTime: string): string {
@@ -762,7 +762,7 @@
 	}
 
 	/* eslint-disable svelte/prefer-svelte-reactivity -- pure function for computation */
-	// Combine date and time
+	// Combine date and time into ISO string (converts local time to UTC for storage)
 	function combineDateAndTime(date: Date, timeStr: string): string {
 		const [hours, minutes] = timeStr.split(':').map(Number);
 		const combined = new Date(date);
@@ -1035,7 +1035,7 @@
 										type="text"
 										bind:value={newEvent.name}
 										placeholder="Event name"
-										class="w-full border rounded px-2 py-1 text-sm"
+										class="w-full border rounded px-2 py-1 text-sm {newEvent.name ? 'border-gray-300' : 'border-red-400'}"
 										required
 									/>
 								</td>
@@ -1047,17 +1047,11 @@
 											required
 										/>
 										<div class="flex gap-1 items-center">
-											<input
-												type="time"
-												bind:value={newEvent.startTime}
-												class="border border-gray-300 rounded px-2 py-1 text-sm"
-												required
-											/>
+											<TimePicker bind:value={newEvent.startTime} />
 											<span class="text-gray-400">–</span>
-											<input
-												type="time"
+											<TimePicker
 												bind:value={newEvent.endTime}
-												class="border border-gray-300 rounded px-2 py-1 text-sm"
+												minTime={newEvent.startTime}
 												disabled={!newEvent.startTime}
 											/>
 										</div>
@@ -1147,7 +1141,7 @@
 											type="text"
 											bind:value={editEvent.name}
 											placeholder="Event name"
-											class="w-full border rounded px-2 py-1 text-sm"
+											class="w-full border rounded px-2 py-1 text-sm {editEvent.name ? 'border-gray-300' : 'border-red-400'}"
 											onclick={e => e.stopPropagation()}
 										/>
 									</td>
@@ -1159,19 +1153,11 @@
 											required
 										/>
 										<div class="flex gap-1 items-center">
-											<input
-												type="time"
-												bind:value={editEvent.startTime}
-												class="border border-gray-300 rounded px-2 py-1 text-sm"
-												onclick={e => e.stopPropagation()}
-												required
-											/>
+											<TimePicker bind:value={editEvent.startTime} />
 											<span class="text-gray-400">–</span>
-											<input
-												type="time"
+											<TimePicker
 												bind:value={editEvent.endTime}
-												class="border border-gray-300 rounded px-2 py-1 text-sm"
-												onclick={e => e.stopPropagation()}
+												minTime={editEvent.startTime}
 												disabled={!editEvent.startTime}
 											/>
 										</div>
@@ -1285,10 +1271,10 @@
 									</span>
 								</td>
 								<td class="p-3">
-									{formatDate(event.dateTime)}
-									{#if event.endDateTime}
-										<span class="text-gray-400"> – {formatTimeOnly(event.endDateTime)}</span>
-									{/if}
+									<div>{formatDateOnly(event.dateTime)}</div>
+									<div class="text-gray-500 text-sm">
+										{formatTimeOnly(event.dateTime)}{#if event.endDateTime}&nbsp;–&nbsp;{formatTimeOnly(event.endDateTime)}{/if}
+									</div>
 								</td>
 								<td class="p-3">
 									{#if event.eventType}
@@ -1526,7 +1512,7 @@
 									id="seriesName"
 									bind:value={seriesName}
 									required
-									class="w-full border rounded px-3 py-2"
+									class="w-full border rounded px-3 py-2 {seriesName ? 'border-gray-300' : 'border-red-400'}"
 									placeholder="e.g. AI Workshop"
 								/>
 								<p class="text-xs text-gray-500 mt-1">Numbers appended if multiple dates</p>
@@ -1536,25 +1522,17 @@
 								<label for="seriesTime" class="block text-sm font-medium text-gray-700 mb-1">
 									Start Time <span class="text-red-500">*</span>
 								</label>
-								<input
-									type="time"
-									id="seriesTime"
-									bind:value={seriesTime}
-									required
-									class="w-full border rounded px-3 py-2"
-								/>
+								<TimePicker bind:value={seriesTime} />
 							</div>
 
 							<div>
 								<label for="seriesEndTime" class="block text-sm font-medium text-gray-700 mb-1">
 									End Time <span class="text-red-500">*</span>
 								</label>
-								<input
-									type="time"
-									id="seriesEndTime"
+								<TimePicker
 									bind:value={seriesEndTime}
-									required
-									class="w-full border rounded px-3 py-2"
+									minTime={seriesTime}
+									disabled={!seriesTime}
 								/>
 							</div>
 
