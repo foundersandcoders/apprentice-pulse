@@ -239,6 +239,10 @@
 	let rosterLoading = $state(false);
 	let selectedEventId = $state<string | null>(null);
 
+	// Mark for delete state
+	let markedForDelete = $state<Set<string>>(new Set());
+	let deleteInProgress = $state(false);
+
 	// Status editing state
 	let editingPersonId = $state<string | null>(null);
 	let editingStatus = $state<AttendanceStatus>('Present');
@@ -474,30 +478,59 @@
 		resetNewEventForm();
 	}
 
-	// Delete event
-	async function handleDeleteEvent(eventId: string, eventName: string) {
-		if (!confirm(`Delete "${eventName || 'Untitled'}"? This cannot be undone.`)) {
-			return;
+	// Toggle event marked for deletion
+	function toggleMarkForDelete(eventId: string) {
+		const newSet = new Set(markedForDelete);
+		if (newSet.has(eventId)) {
+			newSet.delete(eventId);
 		}
+		else {
+			newSet.add(eventId);
+		}
+		markedForDelete = newSet;
+	}
 
-		try {
-			const response = await fetch(`/api/events/${eventId}`, {
-				method: 'DELETE',
-			});
+	// Clear all marks
+	function clearMarkedForDelete() {
+		markedForDelete = new Set();
+	}
 
-			const result = await response.json();
+	// Delete all marked events
+	async function deleteMarkedEvents() {
+		const eventIds = Array.from(markedForDelete);
+		if (eventIds.length === 0) return;
 
-			if (!result.success) {
-				alert(result.error || 'Failed to delete event');
-				return;
+		deleteInProgress = true;
+		let successCount = 0;
+		const errors: string[] = [];
+
+		for (const eventId of eventIds) {
+			try {
+				const response = await fetch(`/api/events/${eventId}`, {
+					method: 'DELETE',
+				});
+				const result = await response.json();
+
+				if (result.success) {
+					successCount++;
+				}
+				else {
+					errors.push(result.error || 'Unknown error');
+				}
 			}
+			catch {
+				errors.push('Network error');
+			}
+		}
 
-			// Reload page to reflect deletion
-			window.location.reload();
+		deleteInProgress = false;
+
+		if (errors.length > 0) {
+			alert(`Deleted ${successCount} event(s). ${errors.length} failed.`);
 		}
-		catch {
-			alert('Failed to delete event');
-		}
+
+		// Reload to reflect changes
+		window.location.reload();
 	}
 
 	// Submit inline event
@@ -669,6 +702,31 @@
 				+ Add Event
 			</button>
 		</div>
+
+		{#if markedForDelete.size > 0}
+			<div class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+				<span class="text-red-700 text-sm">
+					{markedForDelete.size} event{markedForDelete.size !== 1 ? 's' : ''} selected
+				</span>
+				<button
+					onclick={deleteMarkedEvents}
+					disabled={deleteInProgress}
+					class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+				>
+					{#if deleteInProgress}
+						Deleting...
+					{:else}
+						Delete Event{markedForDelete.size !== 1 ? 's' : ''}
+					{/if}
+				</button>
+				<button
+					onclick={clearMarkedForDelete}
+					class="text-red-600 hover:text-red-800 text-sm underline"
+				>
+					Cancel
+				</button>
+			</div>
+		{/if}
 
 		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
@@ -977,10 +1035,10 @@
 										<button
 											onclick={(e) => {
 												e.stopPropagation();
-												handleDeleteEvent(event.id, event.name);
+												toggleMarkForDelete(event.id);
 											}}
-											class="text-gray-400 hover:text-red-600"
-											title="Delete event"
+											class={markedForDelete.has(event.id) ? 'text-red-600' : 'text-gray-400 hover:text-red-600'}
+											title={markedForDelete.has(event.id) ? 'Unmark for delete' : 'Mark for delete'}
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 												<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
