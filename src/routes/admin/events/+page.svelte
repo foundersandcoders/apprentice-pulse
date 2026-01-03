@@ -197,6 +197,11 @@
 		selectable: false, // We handle selection via dateClick
 	});
 
+	// Generate a random 4-digit check-in code
+	function generateCheckInCode(): number {
+		return Math.floor(1000 + Math.random() * 9000);
+	}
+
 	// Helper to get today's date in YYYY-MM-DD format
 	function getTodayDate(): string {
 		const today = new Date();
@@ -270,6 +275,15 @@
 		}
 	});
 
+	// Auto-generate check-in code when isPublic is checked
+	let prevNewEventIsPublic = $state(false);
+	$effect(() => {
+		if (newEvent.isPublic && !prevNewEventIsPublic) {
+			newEvent.checkInCode = generateCheckInCode();
+		}
+		prevNewEventIsPublic = newEvent.isPublic;
+	});
+
 	// Inline event editing state
 	let editingEventId = $state<string | null>(null);
 	let editEvent = $state({
@@ -302,6 +316,15 @@
 		}
 	});
 
+	// Auto-generate check-in code when isPublic is checked (only if no existing code)
+	let prevEditEventIsPublic = $state(false);
+	$effect(() => {
+		if (editEvent.isPublic && !prevEditEventIsPublic && !editEvent.checkInCode) {
+			editEvent.checkInCode = generateCheckInCode();
+		}
+		prevEditEventIsPublic = editEvent.isPublic;
+	});
+
 	// Series form state
 	let seriesName = $state('');
 	let seriesTime = $state('10:00');
@@ -309,11 +332,21 @@
 	let seriesCohortId = $state('');
 	let seriesEventType = $state<EventType>(EVENT_TYPES[0]);
 	let seriesIsPublic = $state(false);
+	let seriesCheckInCode = $state<string | number>('');
 	// svelte-ignore state_referenced_locally
 	let seriesSurveyUrl = $state(data.defaultSurveyUrl);
 	let seriesError = $state('');
 	let seriesSubmitting = $state(false);
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);
+
+	// Auto-generate check-in code for series when isPublic is checked
+	let prevSeriesIsPublic = $state(false);
+	$effect(() => {
+		if (seriesIsPublic && !prevSeriesIsPublic) {
+			seriesCheckInCode = generateCheckInCode();
+		}
+		prevSeriesIsPublic = seriesIsPublic;
+	});
 
 	// Expandable row state
 	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
@@ -563,6 +596,7 @@
 		seriesCohortId = '';
 		seriesEventType = EVENT_TYPES[0];
 		seriesIsPublic = false;
+		seriesCheckInCode = '';
 		seriesSurveyUrl = data.defaultSurveyUrl;
 		selectedDates = [];
 		seriesError = '';
@@ -812,6 +846,7 @@
 						cohortId: seriesCohortId || undefined,
 						eventType: seriesEventType,
 						isPublic: seriesIsPublic,
+						checkInCode: seriesIsPublic && seriesCheckInCode ? Number(seriesCheckInCode) : undefined,
 						surveyUrl: seriesSurveyUrl || undefined,
 					}),
 				});
@@ -1100,7 +1135,7 @@
 												type="number"
 												bind:value={newEvent.checkInCode}
 												placeholder="Code"
-												class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center"
+												class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
 												min="0"
 												max="999999"
 											/>
@@ -1245,7 +1280,7 @@
 													type="number"
 													bind:value={editEvent.checkInCode}
 													placeholder="Code"
-													class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center"
+													class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
 													min="0"
 													max="999999"
 													onclick={e => e.stopPropagation()}
@@ -1677,16 +1712,31 @@
 								/>
 							</div>
 
-							<div class="flex items-center pt-6">
-								<input
-									type="checkbox"
-									id="seriesIsPublic"
-									bind:checked={seriesIsPublic}
-									class="rounded"
-								/>
-								<label for="seriesIsPublic" class="ml-2 text-sm font-medium text-gray-700">
-									Public events
-								</label>
+							<div class="flex items-center gap-3 pt-6">
+								<div class="flex items-center">
+									<input
+										type="checkbox"
+										id="seriesIsPublic"
+										bind:checked={seriesIsPublic}
+										class="rounded"
+									/>
+									<label for="seriesIsPublic" class="ml-2 text-sm font-medium text-gray-700">
+										Public events
+									</label>
+								</div>
+								{#if seriesIsPublic}
+									<div class="flex items-center gap-2">
+										<label for="seriesCheckInCode" class="text-sm text-gray-600">Code:</label>
+										<input
+											type="number"
+											id="seriesCheckInCode"
+											bind:value={seriesCheckInCode}
+											class="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center no-spinner"
+											min="0"
+											max="999999"
+										/>
+									</div>
+								{/if}
 							</div>
 						</div>
 
@@ -1811,5 +1861,16 @@
 	:global(.event-group.selected) {
 		outline: 2px solid rgb(59, 130, 246);
 		outline-offset: -2px;
+	}
+
+	/* Hide spinner arrows on number inputs */
+	input[type='number'].no-spinner::-webkit-outer-spin-button,
+	input[type='number'].no-spinner::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	input[type='number'].no-spinner {
+		appearance: textfield;
+		-moz-appearance: textfield;
 	}
 </style>
