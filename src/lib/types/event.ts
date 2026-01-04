@@ -38,8 +38,8 @@ export interface Event {
 	name: string;
 	dateTime: string;
 	endDateTime?: string;
-	cohortId: string;
-	cohortName?: string;
+	cohortIds: string[];
+	cohortNames?: string[];
 	eventType: EventType;
 	surveyUrl?: string;
 	isPublic: boolean;
@@ -52,7 +52,7 @@ export interface CreateEventInput {
 	name: string;
 	dateTime: string;
 	endDateTime?: string;
-	cohortId?: string;
+	cohortIds?: string[];
 	eventType: EventType;
 	surveyUrl?: string;
 	isPublic?: boolean;
@@ -63,7 +63,7 @@ export interface UpdateEventInput {
 	name?: string;
 	dateTime?: string;
 	endDateTime?: string;
-	cohortId?: string;
+	cohortIds?: string[];
 	eventType?: EventType;
 	surveyUrl?: string;
 	isPublic?: boolean;
