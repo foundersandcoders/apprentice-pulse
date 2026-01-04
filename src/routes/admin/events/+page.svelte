@@ -1427,7 +1427,7 @@
 								</td>
 								<td class="p-3">
 									{#if event.isPublic}
-										<span class="text-green-600">Yes</span>
+										<span class="text-green-600">Yes{#if event.checkInCode} - {event.checkInCode}{/if}</span>
 									{:else}
 										<span class="text-gray-400">No</span>
 									{/if}
