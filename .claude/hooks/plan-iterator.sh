@@ -52,14 +52,28 @@ NEXT_TASK=$(grep -m1 '^\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/
 
 # Build the reason message for Claude
 read -r -d '' REASON << MSGEOF
-Plan has $REMAINING remaining tasks. Next task: $NEXT_TASK
+PLAN ITERATOR: Continue with the next task.
 
-After completing this task:
-1. Mark it done with [x] in docs/plan.md
-2. Consider if it's evidence for assessment criteria (docs/Assessment-criteria.md) - if yes, run /update-report
-3. Keep changes small, consistent with existing patterns, no AI attribution
+## Current Progress
+Completed: $COMPLETED | Remaining: $REMAINING
 
-To stop early: run /stop or delete .claude/loop
+## Next Task
+$NEXT_TASK
+
+## Post-Task Checklist (do after completing the task above)
+
+1. **Mark done**: Change \`- [ ]\` to \`- [x]\` for the completed task in docs/plan.md
+
+2. **Report evaluation**: Consider if what you just implemented could serve as evidence for any criteria in docs/Assessment-criteria.md (P1-P11, D1-D4). If yes, run /update-report. If not, move on.
+
+3. **Working preferences**:
+   - Keep changes small and focused
+   - Ensure code is consistent with existing patterns
+   - Use proven, well-established approaches
+   - Never add AI attribution
+
+## To Stop Early
+Run /stop or delete .claude/loop
 MSGEOF
 
 # Escape reason for JSON
