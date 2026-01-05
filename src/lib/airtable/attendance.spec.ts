@@ -35,20 +35,39 @@ describe('attendance', () => {
 
 	describe('hasUserCheckedIn', () => {
 		it('should return true when user has checked in', async () => {
-			const mockRecords = [{ id: 'recAttendance1' }];
+			const mockRecords = [
+				{
+					id: 'recAttendance1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recApprentice1'],
+						};
+						return data[field];
+					}),
+				},
+			];
 			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue(mockRecords) });
 
 			const result = await client.hasUserCheckedIn('recEvent1', 'recApprentice1');
 
 			expect(result).toBe(true);
-			expect(mockTable.select).toHaveBeenCalledWith({
-				filterByFormula: `AND({${ATTENDANCE_FIELDS.EVENT}} = "recEvent1", {${ATTENDANCE_FIELDS.APPRENTICE}} = "recApprentice1")`,
-				maxRecords: 1,
-			});
 		});
 
 		it('should return false when user has not checked in', async () => {
-			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+			const mockRecords = [
+				{
+					id: 'recAttendance1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.EVENT]: ['recOtherEvent'],
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recOtherApprentice'],
+						};
+						return data[field];
+					}),
+				},
+			];
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue(mockRecords) });
 
 			const result = await client.hasUserCheckedIn('recEvent1', 'recApprentice1');
 
@@ -121,8 +140,19 @@ describe('attendance', () => {
 			const mockEventRecord = {
 				get: vi.fn(() => false),
 			};
-			// Mock hasUserCheckedIn - duplicate exists
-			const mockExistingAttendance = [{ id: 'recExisting' }];
+			// Mock hasUserCheckedIn - duplicate exists (with proper get method for JS filtering)
+			const mockExistingAttendance = [
+				{
+					id: 'recExisting',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recApprentice1'],
+						};
+						return data[field];
+					}),
+				},
+			];
 
 			mockTable.select
 				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue([mockEventRecord]) })

@@ -64,14 +64,19 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 * Check if a registered user has already checked in to an event
 	 */
 	async function hasUserCheckedIn(eventId: string, apprenticeId: string): Promise<boolean> {
+		// Fetch all attendance for this event and filter in JavaScript
+		// (filterByFormula with linked fields matches display value, not record ID)
 		const records = await attendanceTable
 			.select({
-				filterByFormula: `AND({${ATTENDANCE_FIELDS.EVENT}} = "${eventId}", {${ATTENDANCE_FIELDS.APPRENTICE}} = "${apprenticeId}")`,
-				maxRecords: 1,
+				returnFieldsByFieldId: true,
 			})
 			.all();
 
-		return records.length > 0;
+		return records.some((record) => {
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return eventLink?.includes(eventId) && apprenticeLink?.includes(apprenticeId);
+		});
 	}
 
 	/**
