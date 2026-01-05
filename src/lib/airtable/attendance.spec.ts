@@ -280,4 +280,145 @@ describe('attendance', () => {
 			expect(attendance).toEqual([]);
 		});
 	});
+
+	describe('getAllAttendance', () => {
+		it('should return all attendance records', async () => {
+			const mockRecords = [
+				{
+					id: 'recAtt1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recApprentice1'],
+							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.CHECKIN_TIME]: '2025-01-06T10:00:00.000Z',
+							[ATTENDANCE_FIELDS.STATUS]: 'Present',
+						};
+						return data[field];
+					}),
+				},
+				{
+					id: 'recAtt2',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recApprentice2'],
+							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.CHECKIN_TIME]: '2025-01-06T10:05:00.000Z',
+							[ATTENDANCE_FIELDS.STATUS]: 'Late',
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue(mockRecords) });
+
+			const attendance = await client.getAllAttendance();
+
+			expect(attendance).toHaveLength(2);
+			expect(attendance[0].id).toBe('recAtt1');
+			expect(attendance[0].status).toBe('Present');
+			expect(attendance[1].id).toBe('recAtt2');
+			expect(attendance[1].status).toBe('Late');
+		});
+
+		it('should return empty array when no records', async () => {
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+
+			const attendance = await client.getAllAttendance();
+
+			expect(attendance).toEqual([]);
+		});
+	});
+
+	describe('getAllEvents', () => {
+		it('should return all events with cohort IDs', async () => {
+			const mockRecords = [
+				{
+					id: 'recEvent1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-06T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: ['recCohort1', 'recCohort2'],
+						};
+						return data[field];
+					}),
+				},
+				{
+					id: 'recEvent2',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-07T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: ['recCohort1'],
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue(mockRecords) });
+
+			const events = await client.getAllEvents();
+
+			expect(events).toHaveLength(2);
+			expect(events[0].id).toBe('recEvent1');
+			expect(events[0].cohortIds).toEqual(['recCohort1', 'recCohort2']);
+			expect(events[1].id).toBe('recEvent2');
+			expect(events[1].cohortIds).toEqual(['recCohort1']);
+		});
+
+		it('should handle events without cohorts', async () => {
+			const mockRecords = [
+				{
+					id: 'recEvent1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-06T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: undefined,
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue(mockRecords) });
+
+			const events = await client.getAllEvents();
+
+			expect(events[0].cohortIds).toEqual([]);
+		});
+	});
+
+	describe('getApprenticeAttendanceStats', () => {
+		it('should return null when apprentice not found', async () => {
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+
+			const stats = await client.getApprenticeAttendanceStats('nonexistent');
+
+			expect(stats).toBeNull();
+		});
+	});
+
+	describe('getCohortAttendanceStats', () => {
+		it('should return null when cohort not found', async () => {
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+
+			const stats = await client.getCohortAttendanceStats('nonexistent');
+
+			expect(stats).toBeNull();
+		});
+	});
+
+	describe('getAttendanceSummary', () => {
+		it('should return summary with zero values when no data', async () => {
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+
+			const summary = await client.getAttendanceSummary();
+
+			expect(summary.totalApprentices).toBe(0);
+			expect(summary.overall.totalEvents).toBe(0);
+			expect(summary.overall.attendanceRate).toBe(0);
+			expect(summary.lowAttendanceCount).toBe(0);
+			expect(summary.recentCheckIns).toBe(0);
+		});
+	});
 });
