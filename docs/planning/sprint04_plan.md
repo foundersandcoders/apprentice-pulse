@@ -20,8 +20,9 @@ Deliver an attendance dashboard that provides visibility into individual and coh
 | AP-25 | Individual apprentice attendance view | 3 | High |
 | AP-26 | Cohort attendance metrics view | 3 | High |
 | AP-27 | Attendance service - aggregate queries | 3 | High |
+| AP-28 | UI polish and improvements | - | Ongoing |
 
-**Total:** 4 tickets, ~11 story points
+**Total:** 5 tickets, ~11 story points + ongoing polish
 
 ---
 
@@ -83,6 +84,20 @@ Backend service functions for dashboard metrics.
 - Trend data (last 4 weeks vs previous period)
 
 **No dependencies** - start here
+
+---
+
+### AP-28: UI polish and improvements
+Ongoing improvements to pick up between main tasks.
+
+**Items:**
+- "Add events" button → "Cancel" when active, scroll up
+- Reduce table cell padding
+- Check-in page: show current user identity
+- Check-in page: clearer already-checked-in feedback
+- README: document permissions setup
+
+**No dependencies** - work on as time permits
 
 ---
 
