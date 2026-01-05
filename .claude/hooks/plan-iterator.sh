@@ -23,7 +23,8 @@ if [[ ! -f "$PLAN_FILE" ]]; then
 fi
 
 # Count remaining tasks (unchecked boxes)
-REMAINING=$(grep -c '^\s*- \[ \]' "$PLAN_FILE" 2>/dev/null || echo "0")
+REMAINING=$(grep -c '^\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
+REMAINING=${REMAINING:-0}
 
 # All tasks complete - cleanup and exit
 if [[ "$REMAINING" -eq 0 ]]; then
@@ -32,18 +33,19 @@ if [[ "$REMAINING" -eq 0 ]]; then
 fi
 
 # Count completed tasks
-COMPLETED=$(grep -c '^\s*- \[x\]' "$PLAN_FILE" 2>/dev/null || echo "0")
+COMPLETED=$(grep -c '^\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
+COMPLETED=${COMPLETED:-0}
 
-# Auto-commit if there are staged changes
+# Stage all changes FIRST
+git add -A 2>/dev/null || true
+
+# Then commit if there are staged changes
 if ! git diff --cached --quiet 2>/dev/null; then
   if [[ "$COMPLETED" -gt 0 ]]; then
     LAST_DONE=$(grep -E '^\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
     git commit -m "feat: $LAST_DONE" 2>/dev/null || true
   fi
 fi
-
-# Stage changes for next commit
-git add -A 2>/dev/null || true
 
 # Find next task
 NEXT_TASK=$(grep -m1 '^\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
@@ -58,14 +60,17 @@ Completed: $COMPLETED | Remaining: $REMAINING
 ## Next Task
 $NEXT_TASK
 
-## Post-Task Checklist (do this after completing the task above)
-1. Mark the task as done with [x] in docs/plan.md
-2. **Report evaluation**: If this task involved an interesting technical decision, run /update-report to document it. Only do this for meaningful changes - not every task needs documentation.
-3. Follow working preferences:
-   - Keep changes small and focused on just this task
+## Post-Task Checklist (do after completing the task above)
+
+1. **Mark done**: Change \`- [ ]\` to \`- [x]\` for the completed task in docs/plan.md
+
+2. **Report evaluation**: Consider if what you just implemented could serve as evidence for any criteria in docs/Assessment-criteria.md (P1-P11, D1-D4). If yes, run /update-report. If not, move on.
+
+3. **Working preferences**:
+   - Keep changes small and focused
    - Ensure code is consistent with existing patterns
    - Use proven, well-established approaches
-   - Never add AI attribution to commits or code
+   - Never add AI attribution
 
 ## To Stop Early
 Run /stop or delete .claude/loop
