@@ -729,7 +729,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 		// Build the history entries
 		const history: AttendanceHistoryEntry[] = allEvents
-			.filter((event) => relevantEventIds.has(event.id))
+			.filter(event => relevantEventIds.has(event.id))
 			.map((event) => {
 				const attendance = attendanceMap.get(event.id);
 				return {

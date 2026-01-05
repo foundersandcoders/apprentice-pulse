@@ -183,10 +183,21 @@
 </svelte:head>
 
 <main>
-	<h1>Check In</h1>
-
 	{#if data.authenticated}
 		<!-- Authenticated user view -->
+		<header class="page-header">
+			<div class="header-content">
+				<h1>Check In</h1>
+				<p class="welcome-text">Welcome back!</p>
+			</div>
+			<div class="user-info">
+				{#if data.user?.name}
+					<span class="user-name">{data.user.name}</span>
+				{/if}
+				<span class="user-email">{data.user?.email}</span>
+			</div>
+		</header>
+
 		{#if data.events.length === 0}
 			<div class="empty-state">
 				<p>No events available for check-in right now.</p>
@@ -232,6 +243,10 @@
 
 	{:else}
 		<!-- Guest check-in view -->
+		<header class="page-header guest">
+			<h1>Guest Check In</h1>
+			<p class="welcome-text">Check in to an event as a guest</p>
+		</header>
 		<div class="guest-checkin">
 			{#if guestStep === 'code'}
 				<p class="instructions">Enter the 4-digit event code displayed at the venue.</p>
@@ -329,12 +344,56 @@
 <style>
 	main {
 		max-width: 600px;
-		margin: 2rem auto;
+		margin: 0 auto;
 		padding: 1rem;
 	}
 
-	h1 {
+	/* Page header styles */
+	.page-header {
+		background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+		color: white;
+		padding: 1.5rem;
+		border-radius: 12px;
 		margin-bottom: 1.5rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+
+	.page-header.guest {
+		display: block;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 600;
+	}
+
+	.welcome-text {
+		margin: 0.25rem 0 0 0;
+		opacity: 0.9;
+		font-size: 0.9rem;
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		text-align: right;
+	}
+
+	.user-name {
+		font-weight: 600;
+		font-size: 1rem;
+	}
+
+	.user-email {
+		font-size: 0.85rem;
+		opacity: 0.85;
 	}
 
 	/* Event list styles */

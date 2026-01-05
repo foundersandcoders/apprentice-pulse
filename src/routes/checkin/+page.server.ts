@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			authenticated: false,
 			events: [] as CheckinEvent[],
 			checkInMethod: null,
+			user: null,
 		};
 	}
 
@@ -74,5 +75,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		authenticated: true,
 		events: eventsWithStatus,
 		checkInMethod: apprentice ? 'apprentice' : 'external',
+		user: {
+			name: apprentice?.name || null,
+			email: user.email,
+		},
 	};
 };
