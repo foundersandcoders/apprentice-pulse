@@ -67,6 +67,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}),
 	);
 
+	// Sort by date (most recent first)
+	eventsWithStatus.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+
 	return {
 		authenticated: true,
 		events: eventsWithStatus,
