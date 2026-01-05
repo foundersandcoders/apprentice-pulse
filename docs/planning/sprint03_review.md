@@ -201,8 +201,15 @@ The sprint delivered a production-ready event management and check-in system tha
 ## Next Steps
 
 With core functionality complete, next sprint can focus on:
+
+**Priority: Attendance Dashboard**
+- Add attendance tracking card to admin dashboard (alongside events card)
+- Individual attendance view: track each apprentice's attendance history and rate
+- Cohort attendance view: aggregate attendance metrics per cohort
+- Visual indicators for attendance trends (improving/declining)
+
+**Other Items:**
 - Email notifications (attendance chase, survey reminders)
 - EPA alerts and progress tracking
-- Admin dashboard with attendance metrics
 - UI polish items from scratchpad
 - LUMA integration exploration
