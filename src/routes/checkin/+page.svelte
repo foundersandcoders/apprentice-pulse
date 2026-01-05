@@ -448,6 +448,7 @@
 	.page-header.guest {
 		display: block;
 		text-align: center;
+		background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
 	}
 
 	.page-header h1 {
@@ -592,12 +593,35 @@
 
 	/* Guest check-in styles */
 	.guest-checkin {
+		width: 100%;
+	}
+
+	.guest-checkin form {
 		max-width: 400px;
+		margin: 0 auto;
+	}
+
+	.guest-checkin .event-preview {
+		max-width: 400px;
+		margin: 0 auto 1.5rem auto;
+	}
+
+	.guest-checkin .success {
+		max-width: 400px;
+		margin: 0 auto 1rem auto;
+	}
+
+	.guest-checkin > button:not(.link-button) {
+		display: block;
+		max-width: 400px;
+		width: 100%;
+		margin: 0 auto;
 	}
 
 	.instructions {
 		margin-bottom: 1.5rem;
 		color: #666;
+		text-align: center;
 	}
 
 	form {
@@ -656,6 +680,12 @@
 		margin-top: 1rem;
 	}
 
+	.guest-checkin > .link-button {
+		display: block;
+		text-align: center;
+		width: 100%;
+	}
+
 	.link-button:hover {
 		text-decoration: underline;
 	}
@@ -710,6 +740,7 @@
 		margin-top: 2rem;
 		color: #666;
 		font-size: 0.9rem;
+		text-align: center;
 	}
 
 	.login-prompt .link-button {
