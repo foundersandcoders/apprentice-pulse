@@ -94,6 +94,77 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	}
 
 	/**
+	 * Get a user's attendance record for a specific event (if exists)
+	 */
+	async function getUserAttendanceForEvent(eventId: string, apprenticeId: string): Promise<Attendance | null> {
+		const records = await attendanceTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		const record = records.find((r) => {
+			const eventLink = r.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const apprenticeLink = r.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return eventLink?.includes(eventId) && apprenticeLink?.includes(apprenticeId);
+		});
+
+		if (!record) {
+			return null;
+		}
+
+		return {
+			id: record.id,
+			eventId,
+			apprenticeId,
+			checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+			status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+		};
+	}
+
+	/**
+	 * Mark a user as "Not Coming" for an event
+	 * - Creates new attendance record if none exists
+	 * - Returns existing record if already marked "Not Coming"
+	 * - Throws error if user already checked in (Present/Late)
+	 */
+	async function markNotComing(input: CreateAttendanceInput): Promise<Attendance> {
+		// Validate event exists
+		const eventInfo = await getEventInfo(input.eventId);
+		if (!eventInfo.exists) {
+			throw new Error('Event not found');
+		}
+
+		// Check if user already has an attendance record
+		const existing = await getUserAttendanceForEvent(input.eventId, input.apprenticeId);
+		if (existing) {
+			if (existing.status === 'Not Coming') {
+				// Already marked as not coming - idempotent
+				return existing;
+			}
+			// Already checked in (Present/Late/Absent/Excused)
+			throw new Error('User already has an attendance record for this event');
+		}
+
+		// Create new attendance record with "Not Coming" status
+		const fields: Airtable.FieldSet = {
+			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
+			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
+			[ATTENDANCE_FIELDS.STATUS]: 'Not Coming',
+		};
+
+		const record = await attendanceTable.create(fields);
+
+		return {
+			id: record.id,
+			eventId: input.eventId,
+			apprenticeId: input.apprenticeId,
+			checkinTime: '', // No check-in time for "Not Coming"
+			status: 'Not Coming',
+		};
+	}
+
+	/**
 	 * Create attendance record for a registered user
 	 * @throws Error if event doesn't exist or user already checked in
 	 */
@@ -337,6 +408,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const late = attendanceRecords.filter(a => a.status === 'Late').length;
 		const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
 		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
+		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
 		const attended = present + late;
 
 		const attendanceRate = totalEvents > 0
@@ -350,6 +422,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			late,
 			absent,
 			excused,
+			notComing,
 			attendanceRate,
 		};
 	}
@@ -750,8 +823,10 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	return {
 		hasUserCheckedIn,
 		hasExternalCheckedIn,
+		getUserAttendanceForEvent,
 		createAttendance,
 		createExternalAttendance,
+		markNotComing,
 		updateAttendance,
 		getAttendanceForEvent,
 		getAttendanceByIds,

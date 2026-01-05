@@ -5,9 +5,23 @@ import {
 	getApprenticeByEmail,
 	createAttendance,
 	createExternalAttendance,
-	hasUserCheckedIn,
+	getUserAttendanceForEvent,
 	hasExternalCheckedIn,
+	updateAttendance,
+	getEvent,
 } from '$lib/airtable/sveltekit-wrapper';
+
+/**
+ * Determine attendance status based on check-in time vs event start time
+ */
+function determineStatus(eventDateTime: string | null): 'Present' | 'Late' {
+	if (!eventDateTime) {
+		return 'Present';
+	}
+	const eventTime = new Date(eventDateTime);
+	const now = new Date();
+	return now > eventTime ? 'Late' : 'Present';
+}
 
 export const POST: RequestHandler = async ({ cookies, request }) => {
 	const session = getSession(cookies);
@@ -36,8 +50,33 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 
 		if (apprentice) {
 			// Apprentice flow: check in using apprentice ID
-			const alreadyCheckedIn = await hasUserCheckedIn(eventId, apprentice.id);
-			if (alreadyCheckedIn) {
+			const existingAttendance = await getUserAttendanceForEvent(eventId, apprentice.id);
+
+			if (existingAttendance) {
+				// Handle "Not Coming" → "Check In" transition
+				if (existingAttendance.status === 'Not Coming') {
+					const event = await getEvent(eventId);
+					const status = determineStatus(event?.dateTime ?? null);
+
+					const updatedAttendance = await updateAttendance(existingAttendance.id, {
+						status,
+						checkinTime: new Date().toISOString(),
+					});
+
+					return json({
+						success: true,
+						checkInMethod: 'apprentice',
+						attendance: {
+							id: updatedAttendance.id,
+							eventId: updatedAttendance.eventId,
+							apprenticeId: updatedAttendance.apprenticeId,
+							checkinTime: updatedAttendance.checkinTime,
+							status: updatedAttendance.status,
+						},
+					});
+				}
+
+				// Already checked in with another status
 				return json({ success: false, error: 'Already checked in to this event' }, { status: 409 });
 			}
 

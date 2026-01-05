@@ -1,5 +1,7 @@
 import type { PageServerLoad } from './$types';
-import { getApprenticeByEmail, listEvents, listCohorts, hasUserCheckedIn, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, listEvents, listCohorts, getUserAttendanceForEvent, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+
+export type AttendanceStatusUI = 'none' | 'checked-in' | 'not-coming';
 
 export interface CheckinEvent {
 	id: string;
@@ -7,7 +9,7 @@ export interface CheckinEvent {
 	dateTime: string;
 	eventType: string;
 	isPublic: boolean;
-	alreadyCheckedIn: boolean;
+	attendanceStatus: AttendanceStatusUI;
 	attendanceCount: number;
 	expectedCount: number;
 }
@@ -54,13 +56,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Check attendance status for each event
 	const eventsWithStatus: CheckinEvent[] = await Promise.all(
 		availableEvents.map(async (event) => {
-			let alreadyCheckedIn = false;
+			let attendanceStatus: AttendanceStatusUI = 'none';
 
 			if (apprentice) {
-				alreadyCheckedIn = await hasUserCheckedIn(event.id, apprentice.id);
+				const attendance = await getUserAttendanceForEvent(event.id, apprentice.id);
+				if (attendance) {
+					attendanceStatus = attendance.status === 'Not Coming' ? 'not-coming' : 'checked-in';
+				}
 			}
 			else {
-				alreadyCheckedIn = await hasExternalCheckedIn(event.id, user.email);
+				const hasCheckedIn = await hasExternalCheckedIn(event.id, user.email);
+				if (hasCheckedIn) {
+					attendanceStatus = 'checked-in';
+				}
 			}
 
 			// Calculate expected count from cohorts
@@ -75,7 +83,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				dateTime: event.dateTime,
 				eventType: event.eventType,
 				isPublic: event.isPublic,
-				alreadyCheckedIn,
+				attendanceStatus,
 				attendanceCount: event.attendanceCount ?? 0,
 				expectedCount,
 			};

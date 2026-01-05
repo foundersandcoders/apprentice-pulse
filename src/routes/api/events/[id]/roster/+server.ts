@@ -101,8 +101,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			}
 		}
 
-		// Sort: Present first, then Late, Excused, Absent last; then alphabetically
-		const statusOrder: Record<AttendanceStatus, number> = { Present: 0, Late: 1, Excused: 2, Absent: 3 };
+		// Sort: Present first, then Late, Excused, Not Coming, Absent last; then alphabetically
+		const statusOrder: Record<AttendanceStatus, number> = { 'Present': 0, 'Late': 1, 'Excused': 2, 'Not Coming': 3, 'Absent': 4 };
 		roster.sort((a, b) => {
 			const statusDiff = statusOrder[a.status] - statusOrder[b.status];
 			if (statusDiff !== 0) return statusDiff;

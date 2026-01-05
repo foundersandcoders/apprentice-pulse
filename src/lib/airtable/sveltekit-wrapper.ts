@@ -52,8 +52,10 @@ export const deleteEvent = eventsClient.deleteEvent;
 // Attendance
 export const hasUserCheckedIn = attendanceClient.hasUserCheckedIn;
 export const hasExternalCheckedIn = attendanceClient.hasExternalCheckedIn;
+export const getUserAttendanceForEvent = attendanceClient.getUserAttendanceForEvent;
 export const createAttendance = attendanceClient.createAttendance;
 export const createExternalAttendance = attendanceClient.createExternalAttendance;
+export const markNotComing = attendanceClient.markNotComing;
 export const updateAttendance = attendanceClient.updateAttendance;
 export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
 export const getAttendanceByIds = attendanceClient.getAttendanceByIds;

@@ -15,6 +15,7 @@
 			case 'Late': return 'bg-yellow-100 text-yellow-800';
 			case 'Absent': return 'bg-red-100 text-red-800';
 			case 'Excused': return 'bg-blue-100 text-blue-800';
+			case 'Not Coming': return 'bg-orange-100 text-orange-800';
 			case 'Missed': return 'bg-gray-100 text-gray-600';
 			default: return 'bg-gray-100 text-gray-600';
 		}

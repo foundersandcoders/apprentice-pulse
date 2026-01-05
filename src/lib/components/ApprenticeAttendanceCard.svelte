@@ -66,7 +66,7 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-4 gap-2 text-center text-sm">
+	<div class="grid grid-cols-5 gap-2 text-center text-sm">
 		<div class="bg-gray-50 rounded p-2">
 			<div class="font-semibold">{apprentice.attended}</div>
 			<div class="text-gray-500 text-xs">Attended</div>
@@ -82,6 +82,10 @@
 		<div class="bg-red-50 rounded p-2">
 			<div class="font-semibold text-red-600">{apprentice.absent}</div>
 			<div class="text-gray-500 text-xs">Absent</div>
+		</div>
+		<div class="bg-orange-50 rounded p-2">
+			<div class="font-semibold text-orange-600">{apprentice.notComing}</div>
+			<div class="text-gray-500 text-xs">Not Coming</div>
 		</div>
 	</div>
 

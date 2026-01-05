@@ -1,5 +1,5 @@
 // Attendance status options
-export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused'] as const;
+export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused', 'Not Coming'] as const;
 export type AttendanceStatus = typeof ATTENDANCE_STATUSES[number];
 
 export interface Attendance {
@@ -43,6 +43,7 @@ export interface AttendanceStats {
 	late: number;
 	absent: number;
 	excused: number;
+	notComing: number;
 	attendanceRate: number; // 0-100 percentage
 }
 

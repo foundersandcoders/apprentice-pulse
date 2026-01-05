@@ -7,6 +7,7 @@
 
 	// Check-in state for authenticated users
 	let checkingIn = $state<string | null>(null);
+	let markingNotComing = $state<string | null>(null);
 	let checkInError = $state<string | null>(null);
 
 	// Guest check-in state
@@ -92,7 +93,7 @@
 			if (response.ok && result.success) {
 				// Update the event in the list to show as checked in
 				data.events = data.events.map(e =>
-					e.id === eventId ? { ...e, alreadyCheckedIn: true } : e,
+					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
 				);
 			}
 			else {
@@ -104,6 +105,45 @@
 		}
 		finally {
 			checkingIn = null;
+		}
+	}
+
+	// Authenticated user mark as not coming
+	async function handleNotComing(eventId: string) {
+		markingNotComing = eventId;
+		checkInError = null;
+
+		try {
+			const response = await fetch('/api/checkin/not-coming', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ eventId }),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// Update the event in the list to show as not coming
+				data.events = data.events.map(e =>
+					e.id === eventId ? { ...e, attendanceStatus: 'not-coming' as const } : e,
+				);
+			}
+			else if (result.error?.includes('already has an attendance record')) {
+				// User already has a record - update UI to show as checked in
+				data.events = data.events.map(e =>
+					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
+				);
+				checkInError = 'You already have an attendance record for this event.';
+			}
+			else {
+				checkInError = result.error || 'Failed to mark as not coming';
+			}
+		}
+		catch {
+			checkInError = 'Network error. Please try again.';
+		}
+		finally {
+			markingNotComing = null;
 		}
 	}
 
@@ -229,7 +269,7 @@
 			<div class="events-list">
 				{#each data.events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
-					<div class="event-card" class:checked-in={event.alreadyCheckedIn}>
+					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:not-coming={event.attendanceStatus === 'not-coming'}>
 						<div class="event-info">
 							<h2>{event.name}</h2>
 							<p class="event-time">{formatDate(event.dateTime)}</p>
@@ -245,7 +285,7 @@
 									</span>
 								{/if}
 							</div>
-							{#if !event.alreadyCheckedIn}
+							{#if event.attendanceStatus === 'none'}
 								<p
 									class="countdown"
 									class:late={timeStatus.isLate}
@@ -256,18 +296,32 @@
 							{/if}
 						</div>
 						<div class="event-action">
-							{#if event.alreadyCheckedIn}
+							{#if event.attendanceStatus === 'checked-in'}
 								<span class="checked-badge">Checked In</span>
-							{:else if checkingIn === event.id}
-								<button disabled>Checking in...</button>
+							{:else if event.attendanceStatus === 'not-coming'}
+								<span class="not-coming-badge">Not Coming</span>
+								{#if timeStatus.canCheckIn}
+									<button class="change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
+										{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
+									</button>
+								{/if}
+							{:else if checkingIn === event.id || markingNotComing === event.id}
+								<button disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking...'}</button>
 							{:else if !timeStatus.canCheckIn}
 								<button class="disabled-future" disabled title="Check-in opens on the day of the event">
 									Check In
 								</button>
 							{:else}
-								<button onclick={() => handleCheckIn(event.id)}>
-									Check In
-								</button>
+								<div class="action-buttons">
+									<button onclick={() => handleCheckIn(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+										Check In
+									</button>
+									{#if data.checkInMethod === 'apprentice'}
+										<button class="not-coming-btn" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+											Not Coming
+										</button>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -502,6 +556,11 @@
 		border-color: #34a853;
 	}
 
+	.event-card.not-coming {
+		background: #fff8f0;
+		border-color: #ff9800;
+	}
+
 	.event-info h2 {
 		margin: 0 0 0.25rem 0;
 		font-size: 1.1rem;
@@ -577,6 +636,11 @@
 		cursor: not-allowed;
 	}
 
+	.action-buttons button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
 	.event-action button.disabled-future {
 		background: #ccc;
 		color: #666;
@@ -589,6 +653,59 @@
 		color: white;
 		border-radius: 4px;
 		font-size: 0.9rem;
+	}
+
+	.not-coming-badge {
+		padding: 0.5rem 1rem;
+		background: #ff9800;
+		color: white;
+		border-radius: 4px;
+		font-size: 0.9rem;
+	}
+
+	.action-buttons {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.not-coming-btn {
+		padding: 0.5rem 1rem;
+		background: #dc3545;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		cursor: pointer;
+	}
+
+	.not-coming-btn:hover:not(:disabled) {
+		background: #c82333;
+	}
+
+	.not-coming-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.change-mind-btn {
+		margin-top: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: #0066cc;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		cursor: pointer;
+	}
+
+	.change-mind-btn:hover:not(:disabled) {
+		background: #0052a3;
+	}
+
+	.change-mind-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	/* Guest check-in styles */
