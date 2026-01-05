@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getEventByCode } from '$lib/airtable/sveltekit-wrapper';
+import { getEventsByCode } from '$lib/airtable/sveltekit-wrapper';
 
 export const POST: RequestHandler = async ({ request }) => {
 	let body: { code?: string };
@@ -24,20 +24,24 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		const event = await getEventByCode(codeNum);
+		const events = await getEventsByCode(codeNum);
 
-		if (!event) {
-			return json({ valid: false, error: 'Invalid code or event not found' }, { status: 404 });
+		if (events.length === 0) {
+			return json({ valid: false, error: 'Invalid code or no events found for today/tomorrow' }, { status: 404 });
 		}
+
+		// Sort by date (most recent first)
+		events.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 
 		return json({
 			valid: true,
-			event: {
+			events: events.map(event => ({
 				id: event.id,
 				name: event.name,
 				dateTime: event.dateTime,
 				eventType: event.eventType,
-			},
+				attendanceCount: event.attendanceCount ?? 0,
+			})),
 		});
 	}
 	catch (error) {

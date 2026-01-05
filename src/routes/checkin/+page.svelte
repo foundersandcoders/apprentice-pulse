@@ -10,11 +10,12 @@
 	let checkInError = $state<string | null>(null);
 
 	// Guest check-in state
-	let guestStep = $state<'code' | 'details' | 'success'>('code');
+	let guestStep = $state<'code' | 'events' | 'details' | 'success'>('code');
 	let guestCode = $state('');
 	let guestName = $state('');
 	let guestEmail = $state('');
-	let guestEvent = $state<{ id: string; name: string; dateTime: string } | null>(null);
+	let guestEvents = $state<{ id: string; name: string; dateTime: string; eventType: string; attendanceCount: number }[]>([]);
+	let guestSelectedEvent = $state<{ id: string; name: string; dateTime: string; eventType: string; attendanceCount: number } | null>(null);
 	let guestError = $state('');
 	let guestLoading = $state(false);
 
@@ -121,9 +122,9 @@
 
 			const result = await response.json();
 
-			if (result.valid && result.event) {
-				guestEvent = result.event;
-				guestStep = 'details';
+			if (result.valid && result.events) {
+				guestEvents = result.events;
+				guestStep = 'events';
 			}
 			else {
 				guestError = result.error || 'Invalid code';
@@ -137,6 +138,12 @@
 		}
 	}
 
+	// Guest: select event to check in to
+	function selectGuestEvent(event: typeof guestEvents[0]) {
+		guestSelectedEvent = event;
+		guestStep = 'details';
+	}
+
 	// Guest: submit check-in
 	async function handleGuestCheckIn(e: SubmitEvent) {
 		e.preventDefault();
@@ -148,7 +155,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					eventId: guestEvent?.id,
+					eventId: guestSelectedEvent?.id,
 					code: guestCode,
 					name: guestName,
 					email: guestEmail,
@@ -181,7 +188,15 @@
 		guestCode = '';
 		guestName = '';
 		guestEmail = '';
-		guestEvent = null;
+		guestEvents = [];
+		guestSelectedEvent = null;
+		guestError = '';
+	}
+
+	// Go back to event selection
+	function backToEventSelection() {
+		guestStep = 'events';
+		guestSelectedEvent = null;
 		guestError = '';
 	}
 </script>
@@ -303,11 +318,56 @@
 					for easier check-in.
 				</p>
 
+			{:else if guestStep === 'events'}
+				<p class="instructions">Select the event you want to check in to:</p>
+
+				<div class="events-list">
+					{#each guestEvents as event (event.id)}
+						{@const timeStatus = getTimeStatus(event.dateTime)}
+						<div class="event-card">
+							<div class="event-info">
+								<h2>{event.name}</h2>
+								<p class="event-time">{formatDate(event.dateTime)}</p>
+								<div class="event-meta">
+									<span class="event-type">{event.eventType}</span>
+									{#if event.attendanceCount > 0}
+										<span class="attendance-badge">
+											{event.attendanceCount} checked in
+										</span>
+									{/if}
+								</div>
+								<p
+									class="countdown"
+									class:late={timeStatus.isLate}
+									class:starting-soon={timeStatus.isStartingSoon}
+								>
+									{timeStatus.text}
+								</p>
+							</div>
+							<div class="event-action">
+								{#if !timeStatus.canCheckIn}
+									<button class="disabled-future" disabled title="Check-in opens on the day of the event">
+										Check In
+									</button>
+								{:else}
+									<button onclick={() => selectGuestEvent(event)}>
+										Check In
+									</button>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<button class="link-button" onclick={resetGuestForm}>
+					Use a different code
+				</button>
+
 			{:else if guestStep === 'details'}
-				{@const guestTimeStatus = guestEvent ? getTimeStatus(guestEvent.dateTime) : null}
+				{@const guestTimeStatus = guestSelectedEvent ? getTimeStatus(guestSelectedEvent.dateTime) : null}
 				<div class="event-preview">
-					<h2>{guestEvent?.name}</h2>
-					<p>{guestEvent ? formatDate(guestEvent.dateTime) : ''}</p>
+					<h2>{guestSelectedEvent?.name}</h2>
+					<p>{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
 					{#if guestTimeStatus}
 						<p
 							class="countdown"
@@ -349,14 +409,14 @@
 					<p class="error">{guestError}</p>
 				{/if}
 
-				<button class="link-button" onclick={resetGuestForm}>
-					Use a different code
+				<button class="link-button" onclick={backToEventSelection}>
+					Select a different event
 				</button>
 
 			{:else if guestStep === 'success'}
 				<div class="success">
 					<h2>You're checked in!</h2>
-					<p>Welcome to <strong>{guestEvent?.name}</strong></p>
+					<p>Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
 				</div>
 				<button onclick={resetGuestForm}>Check in to another event</button>
 			{/if}

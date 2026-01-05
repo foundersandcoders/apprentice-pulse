@@ -44,6 +44,7 @@ export const getApprenticesByIds = client.getApprenticesByIds;
 export const listEvents = eventsClient.listEvents;
 export const getEvent = eventsClient.getEvent;
 export const getEventByCode = eventsClient.getEventByCode;
+export const getEventsByCode = eventsClient.getEventsByCode;
 export const createEvent = eventsClient.createEvent;
 export const updateEvent = eventsClient.updateEvent;
 export const deleteEvent = eventsClient.deleteEvent;

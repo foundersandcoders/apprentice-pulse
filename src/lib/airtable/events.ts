@@ -193,10 +193,44 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		};
 	}
 
+	/**
+	 * Get all public events with a given check-in code for today and tomorrow
+	 */
+	async function getEventsByCode(code: number): Promise<Event[]> {
+		const now = new Date();
+		const today = now.toISOString().split('T')[0];
+		const dayAfterTomorrow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+		const records = await eventsTable
+			.select({
+				filterByFormula: `AND({Number} = ${code}, {Public} = TRUE(), IS_AFTER({Date Time}, "${today}"), IS_BEFORE({Date Time}, "${dayAfterTomorrow}"))`,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map((record) => {
+			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
+			return {
+				id: record.id,
+				name: record.get(EVENT_FIELDS.NAME) as string,
+				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
+				cohortIds: cohortLookup ?? [],
+				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
+				isPublic: true,
+				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
+				attendanceCount: attendanceLinks?.length ?? 0,
+			};
+		});
+	}
+
 	return {
 		listEvents,
 		getEvent,
 		getEventByCode,
+		getEventsByCode,
 		createEvent,
 		updateEvent,
 		deleteEvent,
