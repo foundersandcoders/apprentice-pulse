@@ -1,11 +1,16 @@
 import Airtable from 'airtable';
 
-import { TABLES, ATTENDANCE_FIELDS, EVENT_FIELDS } from './config.js';
+import { TABLES, ATTENDANCE_FIELDS, EVENT_FIELDS, COHORT_FIELDS, APPRENTICE_FIELDS } from './config.js';
 import type {
 	Attendance,
 	CreateAttendanceInput,
 	CreateExternalAttendanceInput,
 	UpdateAttendanceInput,
+	AttendanceStats,
+	AttendanceTrend,
+	ApprenticeAttendanceStats,
+	CohortAttendanceStats,
+	AttendanceSummary,
 } from '../types/attendance.js';
 
 export function createAttendanceClient(apiKey: string, baseId: string) {
@@ -245,6 +250,389 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		});
 	}
 
+	// ============================================
+	// Aggregate query helpers and functions
+	// ============================================
+
+	/** Event data needed for stats calculations */
+	interface EventForStats {
+		id: string;
+		dateTime: string;
+		cohortIds: string[];
+	}
+
+	/**
+	 * Fetch all attendance records
+	 */
+	async function getAllAttendance(): Promise<Attendance[]> {
+		const records = await attendanceTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map((record) => {
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			return {
+				id: record.id,
+				eventId: eventLink?.[0] ?? '',
+				apprenticeId: apprenticeLink?.[0],
+				externalName: record.get(ATTENDANCE_FIELDS.EXTERNAL_NAME) as string | undefined,
+				externalEmail: record.get(ATTENDANCE_FIELDS.EXTERNAL_EMAIL) as string | undefined,
+				checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+				status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+			};
+		});
+	}
+
+	/**
+	 * Fetch all events (minimal data for stats)
+	 */
+	async function getAllEvents(): Promise<EventForStats[]> {
+		const records = await eventsTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		return records.map((record) => {
+			const cohortIds = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			return {
+				id: record.id,
+				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
+				cohortIds: cohortIds ?? [],
+			};
+		});
+	}
+
+	/**
+	 * Calculate trend by comparing two periods
+	 */
+	function calculateTrend(currentRate: number, previousRate: number): AttendanceTrend {
+		const change = currentRate - previousRate;
+		let direction: AttendanceTrend['direction'] = 'stable';
+		if (change > 2) direction = 'up';
+		else if (change < -2) direction = 'down';
+
+		return {
+			direction,
+			change: Math.round(change * 10) / 10,
+			currentRate,
+			previousRate,
+		};
+	}
+
+	/**
+	 * Calculate base attendance stats from attendance records
+	 */
+	function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
+		const present = attendanceRecords.filter(a => a.status === 'Present').length;
+		const late = attendanceRecords.filter(a => a.status === 'Late').length;
+		const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
+		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
+		const attended = present + late;
+
+		const attendanceRate = totalEvents > 0
+			? Math.round((attended / totalEvents) * 1000) / 10
+			: 0;
+
+		return {
+			totalEvents,
+			attended,
+			present,
+			late,
+			absent,
+			excused,
+			attendanceRate,
+		};
+	}
+
+	/**
+	 * Get attendance statistics for a specific apprentice
+	 */
+	async function getApprenticeAttendanceStats(apprenticeId: string): Promise<ApprenticeAttendanceStats | null> {
+		const apprenticesTable = base(TABLES.APPRENTICES);
+		const cohortsTable = base(TABLES.COHORTS);
+
+		// Get apprentice info
+		const apprenticeRecords = await apprenticesTable
+			.select({
+				filterByFormula: `RECORD_ID() = "${apprenticeId}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (apprenticeRecords.length === 0) {
+			return null;
+		}
+
+		const apprentice = apprenticeRecords[0];
+		const apprenticeName = apprentice.get(APPRENTICE_FIELDS.NAME) as string;
+		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
+		const cohortId = cohortLink?.[0] ?? null;
+
+		// Get cohort name if available
+		let cohortName: string | null = null;
+		if (cohortId) {
+			const cohortRecords = await cohortsTable
+				.select({
+					filterByFormula: `RECORD_ID() = "${cohortId}"`,
+					maxRecords: 1,
+					returnFieldsByFieldId: true,
+				})
+				.all();
+			if (cohortRecords.length > 0) {
+				cohortName = cohortRecords[0].get(COHORT_FIELDS.NUMBER) as string;
+			}
+		}
+
+		// Get all events for this apprentice's cohort
+		const allEvents = await getAllEvents();
+		const relevantEvents = cohortId
+			? allEvents.filter(e => e.cohortIds.includes(cohortId))
+			: allEvents;
+
+		// Get attendance records for this apprentice
+		const allAttendance = await getAllAttendance();
+		const apprenticeAttendance = allAttendance.filter(a => a.apprenticeId === apprenticeId);
+
+		// Calculate stats
+		const stats = calculateStats(apprenticeAttendance, relevantEvents.length);
+
+		// Calculate trend (last 4 weeks vs previous 4 weeks)
+		const now = new Date();
+		const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+		const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+
+		const recentEvents = relevantEvents.filter(e => new Date(e.dateTime) >= fourWeeksAgo);
+		const previousEvents = relevantEvents.filter((e) => {
+			const d = new Date(e.dateTime);
+			return d >= eightWeeksAgo && d < fourWeeksAgo;
+		});
+
+		const recentEventIds = new Set(recentEvents.map(e => e.id));
+		const previousEventIds = new Set(previousEvents.map(e => e.id));
+
+		const recentAttendance = apprenticeAttendance.filter(a => recentEventIds.has(a.eventId));
+		const previousAttendance = apprenticeAttendance.filter(a => previousEventIds.has(a.eventId));
+
+		const recentRate = recentEvents.length > 0
+			? (recentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / recentEvents.length) * 100
+			: 0;
+		const previousRate = previousEvents.length > 0
+			? (previousAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / previousEvents.length) * 100
+			: 0;
+
+		return {
+			...stats,
+			apprenticeId,
+			apprenticeName,
+			cohortId,
+			cohortName,
+			trend: calculateTrend(recentRate, previousRate),
+		};
+	}
+
+	/**
+	 * Get attendance statistics for a specific cohort
+	 */
+	async function getCohortAttendanceStats(cohortId: string): Promise<CohortAttendanceStats | null> {
+		const cohortsTable = base(TABLES.COHORTS);
+
+		// Get cohort info
+		const cohortRecords = await cohortsTable
+			.select({
+				filterByFormula: `RECORD_ID() = "${cohortId}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (cohortRecords.length === 0) {
+			return null;
+		}
+
+		const cohort = cohortRecords[0];
+		const cohortName = cohort.get(COHORT_FIELDS.NUMBER) as string;
+		const apprenticeIds = cohort.get(COHORT_FIELDS.APPRENTICES) as string[] | undefined;
+		const apprenticeCount = apprenticeIds?.length ?? 0;
+
+		// Get events for this cohort
+		const allEvents = await getAllEvents();
+		const cohortEvents = allEvents.filter(e => e.cohortIds.includes(cohortId));
+
+		// Get attendance for apprentices in this cohort
+		const allAttendance = await getAllAttendance();
+		const cohortAttendance = apprenticeIds
+			? allAttendance.filter(a => a.apprenticeId && apprenticeIds.includes(a.apprenticeId))
+			: [];
+
+		// Total expected attendance = events * apprentices
+		const totalExpected = cohortEvents.length * apprenticeCount;
+		const stats = calculateStats(cohortAttendance, totalExpected);
+
+		// Recalculate attendance rate for cohort (attended / expected)
+		const attended = cohortAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+		stats.attendanceRate = totalExpected > 0
+			? Math.round((attended / totalExpected) * 1000) / 10
+			: 0;
+
+		// Calculate trend
+		const now = new Date();
+		const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+		const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+
+		const recentEvents = cohortEvents.filter(e => new Date(e.dateTime) >= fourWeeksAgo);
+		const previousEvents = cohortEvents.filter((e) => {
+			const d = new Date(e.dateTime);
+			return d >= eightWeeksAgo && d < fourWeeksAgo;
+		});
+
+		const recentEventIds = new Set(recentEvents.map(e => e.id));
+		const previousEventIds = new Set(previousEvents.map(e => e.id));
+
+		const recentAttendance = cohortAttendance.filter(a => recentEventIds.has(a.eventId));
+		const previousAttendance = cohortAttendance.filter(a => previousEventIds.has(a.eventId));
+
+		const recentExpected = recentEvents.length * apprenticeCount;
+		const previousExpected = previousEvents.length * apprenticeCount;
+
+		const recentRate = recentExpected > 0
+			? (recentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / recentExpected) * 100
+			: 0;
+		const previousRate = previousExpected > 0
+			? (previousAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / previousExpected) * 100
+			: 0;
+
+		return {
+			...stats,
+			cohortId,
+			cohortName,
+			apprenticeCount,
+			trend: calculateTrend(recentRate, previousRate),
+		};
+	}
+
+	/**
+	 * Get overall attendance summary for dashboard
+	 */
+	async function getAttendanceSummary(): Promise<AttendanceSummary> {
+		const cohortsTable = base(TABLES.COHORTS);
+
+		// Get all data
+		const [allAttendance, allEvents, cohortRecords] = await Promise.all([
+			getAllAttendance(),
+			getAllEvents(),
+			cohortsTable.select({ returnFieldsByFieldId: true }).all(),
+		]);
+
+		// Count total apprentices
+		let totalApprentices = 0;
+		const allApprenticeIds = new Set<string>();
+		for (const cohort of cohortRecords) {
+			const apprenticeIds = cohort.get(COHORT_FIELDS.APPRENTICES) as string[] | undefined;
+			if (apprenticeIds) {
+				apprenticeIds.forEach(id => allApprenticeIds.add(id));
+			}
+		}
+		totalApprentices = allApprenticeIds.size;
+
+		// Calculate overall stats (registered users only)
+		const registeredAttendance = allAttendance.filter(a => a.apprenticeId);
+		const stats = calculateStats(registeredAttendance, allEvents.length * totalApprentices);
+
+		// Recalculate rate
+		const attended = registeredAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+		const totalExpected = allEvents.length * totalApprentices;
+		stats.attendanceRate = totalExpected > 0
+			? Math.round((attended / totalExpected) * 1000) / 10
+			: 0;
+
+		// Calculate trend
+		const now = new Date();
+		const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+		const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+		const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+		const recentEvents = allEvents.filter(e => new Date(e.dateTime) >= fourWeeksAgo);
+		const previousEvents = allEvents.filter((e) => {
+			const d = new Date(e.dateTime);
+			return d >= eightWeeksAgo && d < fourWeeksAgo;
+		});
+
+		const recentEventIds = new Set(recentEvents.map(e => e.id));
+		const previousEventIds = new Set(previousEvents.map(e => e.id));
+
+		const recentAttendance = registeredAttendance.filter(a => recentEventIds.has(a.eventId));
+		const previousAttendance = registeredAttendance.filter(a => previousEventIds.has(a.eventId));
+
+		const recentExpected = recentEvents.length * totalApprentices;
+		const previousExpected = previousEvents.length * totalApprentices;
+
+		const recentRate = recentExpected > 0
+			? (recentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / recentExpected) * 100
+			: 0;
+		const previousRate = previousExpected > 0
+			? (previousAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / previousExpected) * 100
+			: 0;
+
+		// Count low attendance apprentices (< 80%)
+		const apprenticeAttendanceCounts = new Map<string, { attended: number; total: number }>();
+		for (const id of allApprenticeIds) {
+			apprenticeAttendanceCounts.set(id, { attended: 0, total: 0 });
+		}
+
+		// Count events per apprentice based on their cohort
+		for (const cohort of cohortRecords) {
+			const apprenticeIds = cohort.get(COHORT_FIELDS.APPRENTICES) as string[] | undefined;
+			const cohortId = cohort.id;
+			if (!apprenticeIds) continue;
+
+			const cohortEventCount = allEvents.filter(e => e.cohortIds.includes(cohortId)).length;
+			for (const id of apprenticeIds) {
+				const current = apprenticeAttendanceCounts.get(id)!;
+				current.total += cohortEventCount;
+			}
+		}
+
+		// Count attended per apprentice
+		for (const attendance of registeredAttendance) {
+			if (!attendance.apprenticeId) continue;
+			if (attendance.status === 'Present' || attendance.status === 'Late') {
+				const current = apprenticeAttendanceCounts.get(attendance.apprenticeId);
+				if (current) {
+					current.attended++;
+				}
+			}
+		}
+
+		let lowAttendanceCount = 0;
+		for (const [, counts] of apprenticeAttendanceCounts) {
+			if (counts.total > 0) {
+				const rate = (counts.attended / counts.total) * 100;
+				if (rate < 80) {
+					lowAttendanceCount++;
+				}
+			}
+		}
+
+		// Recent check-ins (last 7 days)
+		const recentCheckIns = allAttendance.filter((a) => {
+			if (!a.checkinTime) return false;
+			return new Date(a.checkinTime) >= sevenDaysAgo;
+		}).length;
+
+		return {
+			overall: stats,
+			trend: calculateTrend(recentRate, previousRate),
+			totalApprentices,
+			lowAttendanceCount,
+			recentCheckIns,
+		};
+	}
+
 	return {
 		hasUserCheckedIn,
 		hasExternalCheckedIn,
@@ -253,5 +641,11 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		updateAttendance,
 		getAttendanceForEvent,
 		getAttendanceByIds,
+		// Aggregate functions
+		getAllAttendance,
+		getAllEvents,
+		getApprenticeAttendanceStats,
+		getCohortAttendanceStats,
+		getAttendanceSummary,
 	};
 }
