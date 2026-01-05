@@ -79,3 +79,12 @@ export interface AttendanceSummary {
 	lowAttendanceCount: number; // Apprentices below 80%
 	recentCheckIns: number; // Check-ins in last 7 days
 }
+
+/** Attendance history entry for a single event */
+export interface AttendanceHistoryEntry {
+	eventId: string;
+	eventName: string;
+	eventDateTime: string;
+	status: AttendanceStatus | 'Missed'; // Missed = no attendance record
+	checkinTime: string | null;
+}

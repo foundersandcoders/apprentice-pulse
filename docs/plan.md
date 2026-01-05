@@ -5,14 +5,14 @@
 ## Tasks
 
 - [x] Create route and page structure for `/admin/attendance/apprentices`
-- [ ] Add server load function to fetch all apprentices with their attendance stats
-- [ ] Create ApprenticeAttendanceCard component to display individual metrics
-- [ ] Implement attendance history list showing events attended/missed per apprentice
-- [ ] Add cohort filter dropdown
-- [ ] Add sort functionality (by name, by attendance rate)
-- [ ] Add visual indicator for low attendance (below 80%)
-- [ ] Add click-through to detailed apprentice view
-- [ ] Write tests for the attendance apprentices page
+- [x] Add server load function to fetch all apprentices with their attendance stats
+- [x] Create ApprenticeAttendanceCard component to display individual metrics
+- [x] Implement attendance history list showing events attended/missed per apprentice
+- [x] Add cohort filter dropdown
+- [x] Add sort functionality (by name, by attendance rate)
+- [x] Add visual indicator for low attendance (below 80%)
+- [x] Add click-through to detailed apprentice view
+- [x] Write tests for the attendance apprentices page
 
 ## Notes
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAttendanceClient } from './attendance';
-import { EVENT_FIELDS, ATTENDANCE_FIELDS } from './config';
+import { EVENT_FIELDS, ATTENDANCE_FIELDS, APPRENTICE_FIELDS } from './config';
 
 // Mock Airtable
 vi.mock('airtable', () => {
@@ -419,6 +419,126 @@ describe('attendance', () => {
 			expect(summary.overall.attendanceRate).toBe(0);
 			expect(summary.lowAttendanceCount).toBe(0);
 			expect(summary.recentCheckIns).toBe(0);
+		});
+	});
+
+	describe('getApprenticeAttendanceHistory', () => {
+		it('should return empty array when apprentice not found', async () => {
+			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
+
+			const history = await client.getApprenticeAttendanceHistory('nonexistent');
+
+			expect(history).toEqual([]);
+		});
+
+		it('should return history entries with attendance status', async () => {
+			// Mock apprentice
+			const mockApprentice = {
+				id: 'recApprentice1',
+				get: vi.fn((field: string) => {
+					const data: Record<string, unknown> = {
+						[APPRENTICE_FIELDS.NAME]: 'Test Apprentice',
+						[APPRENTICE_FIELDS.COHORT]: ['recCohort1'],
+					};
+					return data[field];
+				}),
+			};
+
+			// Mock events for cohort
+			const mockEvents = [
+				{
+					id: 'recEvent1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.NAME]: 'Monday Class',
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-06T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: ['recCohort1'],
+						};
+						return data[field];
+					}),
+				},
+				{
+					id: 'recEvent2',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.NAME]: 'Tuesday Class',
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-07T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: ['recCohort1'],
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			// Mock attendance (only for first event)
+			const mockAttendance = [
+				{
+					id: 'recAtt1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.CHECKIN_TIME]: '2025-01-06T09:05:00.000Z',
+							[ATTENDANCE_FIELDS.STATUS]: 'Present',
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			mockTable.select
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue([mockApprentice]) }) // get apprentice
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue(mockEvents) }) // get events
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue(mockAttendance) }); // get attendance
+
+			const history = await client.getApprenticeAttendanceHistory('recApprentice1');
+
+			expect(history).toHaveLength(2);
+			// History is sorted by date descending (most recent first)
+			expect(history[0].eventName).toBe('Tuesday Class');
+			expect(history[0].status).toBe('Missed'); // No attendance record
+			expect(history[1].eventName).toBe('Monday Class');
+			expect(history[1].status).toBe('Present');
+			expect(history[1].checkinTime).toBe('2025-01-06T09:05:00.000Z');
+		});
+
+		it('should mark events without attendance as Missed', async () => {
+			// Mock apprentice without cohort
+			const mockApprentice = {
+				id: 'recApprentice1',
+				get: vi.fn((field: string) => {
+					const data: Record<string, unknown> = {
+						[APPRENTICE_FIELDS.NAME]: 'Test Apprentice',
+						[APPRENTICE_FIELDS.COHORT]: undefined,
+					};
+					return data[field];
+				}),
+			};
+
+			// Mock events (all events since no cohort)
+			const mockEvents = [
+				{
+					id: 'recEvent1',
+					get: vi.fn((field: string) => {
+						const data: Record<string, unknown> = {
+							[EVENT_FIELDS.NAME]: 'Event 1',
+							[EVENT_FIELDS.DATE_TIME]: '2025-01-06T09:00:00.000Z',
+							[EVENT_FIELDS.COHORT]: [],
+						};
+						return data[field];
+					}),
+				},
+			];
+
+			mockTable.select
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue([mockApprentice]) })
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue(mockEvents) })
+				.mockReturnValueOnce({ all: vi.fn().mockResolvedValue([]) }); // No attendance
+
+			const history = await client.getApprenticeAttendanceHistory('recApprentice1');
+
+			expect(history).toHaveLength(1);
+			expect(history[0].status).toBe('Missed');
+			expect(history[0].checkinTime).toBeNull();
 		});
 	});
 });

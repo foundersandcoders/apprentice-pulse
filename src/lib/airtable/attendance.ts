@@ -11,6 +11,7 @@ import type {
 	ApprenticeAttendanceStats,
 	CohortAttendanceStats,
 	AttendanceSummary,
+	AttendanceHistoryEntry,
 } from '../types/attendance.js';
 
 export function createAttendanceClient(apiKey: string, baseId: string) {
@@ -633,6 +634,86 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		};
 	}
 
+	/**
+	 * Get attendance history for a specific apprentice
+	 * Returns a list of events with their attendance status
+	 */
+	async function getApprenticeAttendanceHistory(apprenticeId: string): Promise<AttendanceHistoryEntry[]> {
+		const apprenticesTable = base(TABLES.APPRENTICES);
+
+		// Get apprentice info to find their cohort
+		const apprenticeRecords = await apprenticesTable
+			.select({
+				filterByFormula: `RECORD_ID() = "${apprenticeId}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (apprenticeRecords.length === 0) {
+			return [];
+		}
+
+		const apprentice = apprenticeRecords[0];
+		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
+		const cohortId = cohortLink?.[0] ?? null;
+
+		// Get all events for this apprentice's cohort
+		const allEvents = await eventsTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		const relevantEvents = cohortId
+			? allEvents.filter((e) => {
+					const cohortIds = e.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+					return cohortIds?.includes(cohortId);
+				})
+			: allEvents;
+
+		// Get all attendance records for this apprentice
+		const attendanceRecords = await attendanceTable
+			.select({
+				filterByFormula: `{${ATTENDANCE_FIELDS.APPRENTICE}} = "${apprenticeId}"`,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		// Create a map of eventId -> attendance record
+		const attendanceMap = new Map<string, Attendance>();
+		for (const record of attendanceRecords) {
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const eventId = eventLink?.[0];
+			if (eventId) {
+				attendanceMap.set(eventId, {
+					id: record.id,
+					eventId,
+					apprenticeId,
+					checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+					status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+				});
+			}
+		}
+
+		// Build the history entries
+		const history: AttendanceHistoryEntry[] = relevantEvents.map((event) => {
+			const attendance = attendanceMap.get(event.id);
+			return {
+				eventId: event.id,
+				eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
+				eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
+				status: attendance ? attendance.status : 'Missed',
+				checkinTime: attendance?.checkinTime ?? null,
+			};
+		});
+
+		// Sort by date (most recent first)
+		history.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
+
+		return history;
+	}
+
 	return {
 		hasUserCheckedIn,
 		hasExternalCheckedIn,
@@ -647,5 +728,6 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		getApprenticeAttendanceStats,
 		getCohortAttendanceStats,
 		getAttendanceSummary,
+		getApprenticeAttendanceHistory,
 	};
 }
