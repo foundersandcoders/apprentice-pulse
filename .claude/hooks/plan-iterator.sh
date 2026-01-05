@@ -37,13 +37,13 @@ COMPLETED=$(grep -c '^\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0"
 COMPLETED=${COMPLETED:-0}
 
 # Stage all changes FIRST
-git add -A 2>/dev/null || true
+git add -A >/dev/null 2>&1 || true
 
 # Then commit if there are staged changes
 if ! git diff --cached --quiet 2>/dev/null; then
   if [[ "$COMPLETED" -gt 0 ]]; then
     LAST_DONE=$(grep -E '^\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
-    git commit -m "feat: $LAST_DONE" 2>/dev/null || true
+    git commit -m "feat: $LAST_DONE" >/dev/null 2>&1 || true
   fi
 fi
 
