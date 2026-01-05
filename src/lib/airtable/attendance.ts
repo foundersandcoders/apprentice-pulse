@@ -665,13 +665,19 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		// Get all attendance records for this apprentice
-		const attendanceRecords = await attendanceTable
+		// Get all attendance records and filter by apprentice ID in JavaScript
+		// (filterByFormula with linked fields matches display value, not record ID)
+		const allAttendanceRecords = await attendanceTable
 			.select({
-				filterByFormula: `{${ATTENDANCE_FIELDS.APPRENTICE}} = "${apprenticeId}"`,
 				returnFieldsByFieldId: true,
 			})
 			.all();
+
+		// Filter to only records for this apprentice
+		const attendanceRecords = allAttendanceRecords.filter((record) => {
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return apprenticeLink?.includes(apprenticeId);
+		});
 
 		// Create a map of eventId -> attendance record
 		const attendanceMap = new Map<string, Attendance>();

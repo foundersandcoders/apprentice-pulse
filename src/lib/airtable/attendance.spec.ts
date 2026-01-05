@@ -477,6 +477,7 @@ describe('attendance', () => {
 					get: vi.fn((field: string) => {
 						const data: Record<string, unknown> = {
 							[ATTENDANCE_FIELDS.EVENT]: ['recEvent1'],
+							[ATTENDANCE_FIELDS.APPRENTICE]: ['recApprentice1'],
 							[ATTENDANCE_FIELDS.CHECKIN_TIME]: '2025-01-06T09:05:00.000Z',
 							[ATTENDANCE_FIELDS.STATUS]: 'Present',
 						};
