@@ -17,6 +17,6 @@ Integration with LUMA
 
 security for not checkin if not close to date.
 
-Multiple cohorts for event?
+
 
 On readme how give permissions
