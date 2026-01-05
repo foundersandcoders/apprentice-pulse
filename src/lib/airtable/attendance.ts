@@ -665,13 +665,6 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		const relevantEvents = cohortId
-			? allEvents.filter((e) => {
-					const cohortIds = e.get(EVENT_FIELDS.COHORT) as string[] | undefined;
-					return cohortIds?.includes(cohortId);
-				})
-			: allEvents;
-
 		// Get all attendance records for this apprentice
 		const attendanceRecords = await attendanceTable
 			.select({
@@ -696,17 +689,46 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			}
 		}
 
+		// Include events that are either:
+		// 1. For the apprentice's cohort (expected events - show as Missed if no attendance)
+		// 2. Have an attendance record (apprentice checked in, even if not their cohort)
+		// 3. All events if apprentice has no cohort
+		const relevantEventIds = new Set<string>();
+
+		if (cohortId) {
+			// Add cohort events
+			for (const event of allEvents) {
+				const cohortIds = event.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+				if (cohortIds?.includes(cohortId)) {
+					relevantEventIds.add(event.id);
+				}
+			}
+		}
+		else {
+			// No cohort - include all events
+			for (const event of allEvents) {
+				relevantEventIds.add(event.id);
+			}
+		}
+
+		// Add any events the apprentice has attendance for (regardless of cohort)
+		for (const eventId of attendanceMap.keys()) {
+			relevantEventIds.add(eventId);
+		}
+
 		// Build the history entries
-		const history: AttendanceHistoryEntry[] = relevantEvents.map((event) => {
-			const attendance = attendanceMap.get(event.id);
-			return {
-				eventId: event.id,
-				eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
-				eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
-				status: attendance ? attendance.status : 'Missed',
-				checkinTime: attendance?.checkinTime ?? null,
-			};
-		});
+		const history: AttendanceHistoryEntry[] = allEvents
+			.filter((event) => relevantEventIds.has(event.id))
+			.map((event) => {
+				const attendance = attendanceMap.get(event.id);
+				return {
+					eventId: event.id,
+					eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
+					eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
+					status: attendance ? attendance.status : 'Missed',
+					checkinTime: attendance?.checkinTime ?? null,
+				};
+			});
 
 		// Sort by date (most recent first)
 		history.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
