@@ -210,7 +210,14 @@
 						<div class="event-info">
 							<h2>{event.name}</h2>
 							<p class="event-time">{formatDate(event.dateTime)}</p>
-							<p class="event-type">{event.eventType}</p>
+							<div class="event-meta">
+								<span class="event-type">{event.eventType}</span>
+								{#if event.expectedCount > 0}
+									<span class="attendance-badge">
+										{event.attendanceCount}/{event.expectedCount}
+									</span>
+								{/if}
+							</div>
 							{#if !event.alreadyCheckedIn}
 								<p
 									class="countdown"
@@ -429,10 +436,27 @@
 		font-size: 0.9rem;
 	}
 
+	.event-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.25rem;
+	}
+
 	.event-type {
-		margin: 0.25rem 0 0 0;
 		color: #888;
 		font-size: 0.8rem;
+	}
+
+	.attendance-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.15rem 0.5rem;
+		background: #f0f0f0;
+		color: #555;
+		font-size: 0.75rem;
+		font-weight: 500;
+		border-radius: 12px;
 	}
 
 	.countdown {

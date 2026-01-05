@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { getApprenticeByEmail, listEvents, hasUserCheckedIn, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, listEvents, listCohorts, hasUserCheckedIn, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
 
 export interface CheckinEvent {
 	id: string;
@@ -8,6 +8,8 @@ export interface CheckinEvent {
 	eventType: string;
 	isPublic: boolean;
 	alreadyCheckedIn: boolean;
+	attendanceCount: number;
+	expectedCount: number;
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -26,11 +28,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Authenticated - fetch events based on apprentice record
 	const apprentice = await getApprenticeByEmail(user.email);
 
-	// Get events - filter by cohort if apprentice has one
+	// Get events and cohorts
 	const now = new Date();
-	const allEvents = await listEvents({
-		startDate: now.toISOString().split('T')[0],
-	});
+	const [allEvents, cohorts] = await Promise.all([
+		listEvents({ startDate: now.toISOString().split('T')[0] }),
+		listCohorts(),
+	]);
+
+	// Build cohort lookup for expected counts
+	const cohortApprenticeCount = new Map(cohorts.map(c => [c.id, c.apprenticeCount]));
 
 	// Filter events based on user type
 	let availableEvents;
@@ -57,6 +63,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 				alreadyCheckedIn = await hasExternalCheckedIn(event.id, user.email);
 			}
 
+			// Calculate expected count from cohorts
+			const expectedCount = event.cohortIds.reduce(
+				(sum, cohortId) => sum + (cohortApprenticeCount.get(cohortId) || 0),
+				0,
+			);
+
 			return {
 				id: event.id,
 				name: event.name,
@@ -64,6 +76,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				eventType: event.eventType,
 				isPublic: event.isPublic,
 				alreadyCheckedIn,
+				attendanceCount: event.attendanceCount ?? 0,
+				expectedCount,
 			};
 		}),
 	);
