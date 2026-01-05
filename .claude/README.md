@@ -12,20 +12,26 @@ Custom automation for working with Jira tasks.
 
 ## Complete Workflow
 
-### 1. Start a Task
+### 1. Create the Plan
 
 ```
 /plan AP-23
 ```
 
 This will:
-- Fetch AP-23 from Jira
+- Fetch AP-23 from Jira (if connection fails, you'll be asked to run `/mcp` → `atlassian` → `4. Reconnect`)
 - Move it to "In Progress"
 - Create branch: `feature/ap-23-{slugified-summary}`
 - Write `docs/plan.md` with checkbox tasks
 - Create `.claude/loop` (activates the iterator)
 
-### 2. Automatic Loop
+**Claude stops here.** Review the plan if you want.
+
+### 2. Start Implementation
+
+Say `start` (or any prompt to begin working). This triggers the first task.
+
+### 3. Automatic Loop
 
 The hook (`.claude/hooks/plan-iterator.sh`) runs after each Claude response:
 
@@ -45,13 +51,13 @@ For each task, Claude:
 4. Evaluates if `/update-report` is needed
 5. Hook triggers → continues to next task
 
-### 3. Loop Ends
+### 4. Loop Ends
 
 **Automatic:** When all tasks are `[x]`, `.claude/loop` is deleted and loop stops. Claude does NOT auto-start the next Jira ticket.
 
 **Manual:** Run `/stop` or `rm .claude/loop`
 
-### 4. Finish (manual steps)
+### 5. Finish (manual steps)
 
 When the loop ends, you decide what to do next:
 - Create PR
