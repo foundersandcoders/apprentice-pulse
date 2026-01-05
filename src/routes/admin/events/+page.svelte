@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
@@ -254,6 +255,7 @@
 
 	// Inline event creation state
 	let isAddingEvent = $state(false);
+	let tableContainer: HTMLDivElement;
 	// svelte-ignore state_referenced_locally
 	let newEvent = $state({
 		name: '',
@@ -942,9 +944,11 @@
 				</label>
 			</div>
 			<button
-				onclick={() => {
+				onclick={async () => {
 					newEvent.date = getTodayDate();
 					isAddingEvent = true;
+					await tick();
+					tableContainer?.scrollTo({ top: 0, behavior: 'smooth' });
 				}}
 				class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
 				disabled={isAddingEvent}
@@ -981,7 +985,7 @@
 		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
 		{:else}
-			<div class="overflow-auto max-h-140 border border-gray-200 rounded-lg">
+			<div bind:this={tableContainer} class="overflow-auto max-h-140 border border-gray-200 rounded-lg">
 				<table class="w-full border-collapse">
 					<thead class="sticky top-0 z-10">
 						<tr class="bg-gray-100 text-left">
