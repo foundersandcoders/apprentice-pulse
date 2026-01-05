@@ -62,7 +62,7 @@ Attendance tracking using a junction table pattern (one record per apprentice pe
 | Apprentice | `fldOyo3hlj9Ht0rfZ` | multipleRecordLinks | Links to Apprentices |
 | Event | `fldiHd75LYtopwyN9` | multipleRecordLinks | Links to Events |
 | Checkin Time | `fldvXHPmoLlEA8EuN` | dateTime | When student checked in |
-| Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status |
+| Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status (Present, Absent, Late, Excused) |
 | Date Time (from Event) | `fldokfSk68MhJGlm6` | multipleLookupValues | Event date/time lookup |
 | FAC Cohort (from Event) | `fldkc9zLJe7NZVAz1` | multipleLookupValues | Cohort lookup from Event |
 | External Name | `fldIhZnMxfjh9ps78` | singleLineText | Name for non-registered attendees |

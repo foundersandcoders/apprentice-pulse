@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		if (apprentice) {
 			// User has apprentice record: show cohort + public events
 			const relevantEvents = allEvents.filter(
-				event => event.isPublic || event.cohortId === apprentice.cohortId,
+				event => event.isPublic || (apprentice.cohortId && event.cohortIds.includes(apprentice.cohortId)),
 			);
 
 			// Check attendance status for each event

@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { listEvents, listCohorts } from '$lib/airtable/sveltekit-wrapper';
+import { DEFAULTS } from '$lib/airtable/config';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const cohortId = url.searchParams.get('cohort') ?? undefined;
@@ -16,5 +17,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		events,
 		cohorts,
 		selectedCohortId: cohortId,
+		defaultSurveyUrl: DEFAULTS.SURVEY_URL,
 	};
 };

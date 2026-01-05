@@ -29,16 +29,20 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Event type is required' }, { status: 400 });
 		}
 
-		// Validate event type
-		if (!EVENT_TYPES.includes(body.eventType)) {
+		// Case-insensitive event type matching - normalize to Airtable's exact value
+		const normalizedEventType = EVENT_TYPES.find(
+			t => t.toLowerCase() === body.eventType.toLowerCase(),
+		);
+		if (!normalizedEventType) {
 			return json({ success: false, error: 'Invalid event type' }, { status: 400 });
 		}
 
 		const event = await createEvent({
 			name: body.name.trim(),
 			dateTime: body.dateTime,
-			cohortId: body.cohortId || undefined,
-			eventType: body.eventType,
+			endDateTime: body.endDateTime || undefined,
+			cohortIds: body.cohortIds || undefined,
+			eventType: normalizedEventType,
 			surveyUrl: body.surveyUrl || undefined,
 			isPublic: body.isPublic ?? false,
 			checkInCode: body.checkInCode || undefined,

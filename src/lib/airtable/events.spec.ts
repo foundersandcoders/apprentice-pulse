@@ -54,6 +54,7 @@ describe('events', () => {
 							fldcXDEDkeHvWTnxE: ['recCohort1'],
 							fldo7fwAsFhkA1icC: 'Regular class',
 							fld9XBHnCWBtZiZah: 'https://survey.example.com',
+							fldcPf53fVfStFZsa: ['recAttend1', 'recAttend2'], // ATTENDANCE field
 						};
 						return data[field];
 					}),
@@ -69,11 +70,12 @@ describe('events', () => {
 				id: 'rec123',
 				name: 'Week 1 Monday',
 				dateTime: '2025-01-06T10:00:00.000Z',
-				cohortId: 'recCohort1',
+				cohortIds: ['recCohort1'],
 				eventType: 'Regular class',
 				surveyUrl: 'https://survey.example.com',
 				isPublic: false,
 				checkInCode: undefined,
+				attendanceCount: 2,
 			});
 		});
 	});
@@ -89,6 +91,7 @@ describe('events', () => {
 						fldcXDEDkeHvWTnxE: ['recCohort2'],
 						fldo7fwAsFhkA1icC: 'Workshop',
 						fld9XBHnCWBtZiZah: undefined,
+						fldcPf53fVfStFZsa: ['recAttend1', 'recAttend2'], // ATTENDANCE field
 					};
 					return data[field];
 				}),
@@ -103,11 +106,12 @@ describe('events', () => {
 				id: 'rec123',
 				name: 'Workshop',
 				dateTime: '2025-01-07T14:00:00.000Z',
-				cohortId: 'recCohort2',
+				cohortIds: ['recCohort2'],
 				eventType: 'Workshop',
 				surveyUrl: undefined,
 				isPublic: false,
 				checkInCode: undefined,
+				attendanceIds: ['recAttend1', 'recAttend2'],
 			});
 		});
 
@@ -129,7 +133,7 @@ describe('events', () => {
 			const input = {
 				name: 'New Event',
 				dateTime: '2025-01-08T09:00:00.000Z',
-				cohortId: 'recCohort1',
+				cohortIds: ['recCohort1'],
 				eventType: 'Workshop' as const,
 				surveyUrl: 'https://survey.example.com',
 			};

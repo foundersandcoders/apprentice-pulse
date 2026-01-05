@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (apprentice?.cohortId) {
 		// User with apprentice record: show cohort events + public events
 		availableEvents = allEvents.filter(
-			event => event.cohortId === apprentice.cohortId || event.isPublic,
+			event => event.cohortIds.includes(apprentice.cohortId!) || event.isPublic,
 		);
 	}
 	else {

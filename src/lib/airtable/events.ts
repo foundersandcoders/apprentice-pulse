@@ -37,15 +37,18 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 		return records.map((record) => {
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
-				cohortId: cohortLookup?.[0] ?? '',
+				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
+				cohortIds: cohortLookup ?? [],
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
+				attendanceCount: attendanceLinks?.length ?? 0,
 			};
 		});
 	}
@@ -70,15 +73,18 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 			const record = records[0];
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
-				cohortId: cohortLookup?.[0] ?? '',
+				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
+				cohortIds: cohortLookup ?? [],
 				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
+				attendanceIds: attendanceLinks ?? [],
 			};
 		}
 		catch {
@@ -96,7 +102,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			[EVENT_FIELDS.EVENT_TYPE]: data.eventType,
 		};
 
-		if (data.cohortId) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
+		if (data.endDateTime) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
+		if (data.cohortIds?.length) fields[EVENT_FIELDS.COHORT] = data.cohortIds;
 		if (data.surveyUrl) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
 		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
 		if (data.checkInCode !== undefined) fields[EVENT_FIELDS.CHECK_IN_CODE] = data.checkInCode;
@@ -107,7 +114,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: data.name,
 			dateTime: data.dateTime,
-			cohortId: data.cohortId ?? '',
+			endDateTime: data.endDateTime,
+			cohortIds: data.cohortIds ?? [],
 			eventType: data.eventType,
 			surveyUrl: data.surveyUrl,
 			isPublic: data.isPublic ?? false,
@@ -123,7 +131,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 		if (data.name !== undefined) fields[EVENT_FIELDS.NAME] = data.name;
 		if (data.dateTime !== undefined) fields[EVENT_FIELDS.DATE_TIME] = data.dateTime;
-		if (data.cohortId !== undefined) fields[EVENT_FIELDS.COHORT] = [data.cohortId];
+		if (data.endDateTime !== undefined) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
+		if (data.cohortIds !== undefined) fields[EVENT_FIELDS.COHORT] = data.cohortIds;
 		if (data.eventType !== undefined) fields[EVENT_FIELDS.EVENT_TYPE] = data.eventType;
 		if (data.surveyUrl !== undefined) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
 		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
@@ -136,7 +145,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: record.get(EVENT_FIELDS.NAME) as string,
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
-			cohortId: cohortLookup?.[0] ?? '',
+			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
+			cohortIds: cohortLookup ?? [],
 			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 			isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
@@ -174,7 +184,8 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			id: record.id,
 			name: record.get(EVENT_FIELDS.NAME) as string,
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
-			cohortId: cohortLookup?.[0] ?? '',
+			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
+			cohortIds: cohortLookup ?? [],
 			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 			isPublic: true,
