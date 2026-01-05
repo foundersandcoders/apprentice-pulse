@@ -981,7 +981,7 @@
 		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
 		{:else}
-			<div class="overflow-auto max-h-[560px] border border-gray-200 rounded-lg">
+			<div class="overflow-auto max-h-140 border border-gray-200 rounded-lg">
 				<table class="w-full border-collapse">
 					<thead class="sticky top-0 z-10">
 						<tr class="bg-gray-100 text-left">
