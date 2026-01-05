@@ -1,23 +1,23 @@
-Events duration
+add events button cahgnes to cancel and scroll up
 
-rows with no attendance not expandable
+td elements reduce padding
 
-delete event
+green tick deactivated until requested fields
 
-editable status by staff
 
-Schedule-x for creation
+Checkin page show who I am
+When checked in disable button or show that I already logged in. Now allows multiple
 
-Show time counter negative and positive
+
 
 Show mii plaza
 
 Integration with LUMA
 
-Workshops for external people (emails not on airtable)
+
 
 security for not checkin if not close to date.
 
-Administrator can edit checkin info
-
 Multiple cohorts for event?
+
+On readme how give permissions
