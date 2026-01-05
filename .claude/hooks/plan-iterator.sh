@@ -50,34 +50,20 @@ fi
 # Find next task
 NEXT_TASK=$(grep -m1 '^\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
 
-# Build the system message
-read -r -d '' MESSAGE << MSGEOF
-PLAN ITERATOR: Continue with the next task.
+# Build the reason message for Claude
+read -r -d '' REASON << MSGEOF
+Plan has $REMAINING remaining tasks. Next task: $NEXT_TASK
 
-## Current Progress
-Completed: $COMPLETED | Remaining: $REMAINING
+After completing this task:
+1. Mark it done with [x] in docs/plan.md
+2. Consider if it's evidence for assessment criteria (docs/Assessment-criteria.md) - if yes, run /update-report
+3. Keep changes small, consistent with existing patterns, no AI attribution
 
-## Next Task
-$NEXT_TASK
-
-## Post-Task Checklist (do after completing the task above)
-
-1. **Mark done**: Change \`- [ ]\` to \`- [x]\` for the completed task in docs/plan.md
-
-2. **Report evaluation**: Consider if what you just implemented could serve as evidence for any criteria in docs/Assessment-criteria.md (P1-P11, D1-D4). If yes, run /update-report. If not, move on.
-
-3. **Working preferences**:
-   - Keep changes small and focused
-   - Ensure code is consistent with existing patterns
-   - Use proven, well-established approaches
-   - Never add AI attribution
-
-## To Stop Early
-Run /stop or delete .claude/loop
+To stop early: run /stop or delete .claude/loop
 MSGEOF
 
-# Escape message for JSON
-ESCAPED_MSG=$(echo "$MESSAGE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
+# Escape reason for JSON
+ESCAPED_REASON=$(echo "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
 
-# Return JSON to continue
-echo "{\"continue\": true, \"systemMessage\": \"$ESCAPED_MSG\"}"
+# Return JSON with decision: block to prevent Claude from stopping
+echo "{\"decision\": \"block\", \"reason\": \"$ESCAPED_REASON\"}"
