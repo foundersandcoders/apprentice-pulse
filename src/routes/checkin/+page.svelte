@@ -216,6 +216,10 @@
 									<span class="attendance-badge">
 										{event.attendanceCount}/{event.expectedCount}
 									</span>
+								{:else if event.attendanceCount > 0}
+									<span class="attendance-badge">
+										{event.attendanceCount} checked in
+									</span>
 								{/if}
 							</div>
 							{#if !event.alreadyCheckedIn}
