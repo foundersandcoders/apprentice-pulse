@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { slide } from 'svelte/transition';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
@@ -20,6 +21,7 @@
 
 	// Local reactive copy of events for updating attendance counts
 	// Syncs with server data on navigation/invalidation, allows local optimistic updates
+	// eslint-disable-next-line svelte/prefer-writable-derived -- need mutable state for optimistic updates
 	let events = $state<AppEvent[]>([]);
 	$effect(() => {
 		events = data.events;
@@ -46,8 +48,8 @@
 					comparison = (a.eventType || '').localeCompare(b.eventType || '');
 					break;
 				case 'cohort': {
-					const cohortA = getCohortName(a.cohortId) || '';
-					const cohortB = getCohortName(b.cohortId) || '';
+					const cohortA = getCohortName(a.cohortIds[0]) || '';
+					const cohortB = getCohortName(b.cohortIds[0]) || '';
 					comparison = cohortA.localeCompare(cohortB);
 					break;
 				}
@@ -135,8 +137,8 @@
 		if (!event) return;
 
 		// Check if this event has roster (can be expanded)
-		const expectedAttendance = getCohortApprenticeCount(event.cohortId);
-		const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null;
+		const expectedAttendance = getTotalApprenticeCount(event.cohortIds);
+		const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance > 0;
 
 		// If it has roster and isn't already expanded, expand it after scroll
 		if (hasRoster && expandedEventId !== eventId) {
@@ -258,7 +260,7 @@
 		date: '',
 		startTime: '10:00',
 		endTime: '14:00',
-		cohortId: '',
+		cohortIds: [] as string[],
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
 		checkInCode: '' as string | number,
@@ -295,7 +297,7 @@
 		date: '',
 		startTime: '',
 		endTime: '',
-		cohortId: '',
+		cohortIds: [] as string[],
 		eventType: EVENT_TYPES[0] as EventType,
 		isPublic: false,
 		checkInCode: '' as string | number,
@@ -307,6 +309,11 @@
 	// Survey URL dropdown state
 	let showNewEventSurvey = $state(false);
 	let showEditEventSurvey = $state(false);
+
+	// Cohort dropdown state
+	let newEventCohortDropdownOpen = $state(false);
+	let editEventCohortDropdownOpen = $state(false);
+	let seriesCohortDropdownOpen = $state(false);
 
 	// Auto-default end time to start + 4 hours for edit events
 	let prevEditEventStartTime = $state('');
@@ -333,7 +340,7 @@
 	let seriesName = $state('');
 	let seriesTime = $state('10:00');
 	let seriesEndTime = $state('11:00');
-	let seriesCohortId = $state('');
+	let seriesCohortIds = $state<string[]>([]);
 	let seriesEventType = $state<EventType>(EVENT_TYPES[0]);
 	let seriesIsPublic = $state(false);
 	let seriesCheckInCode = $state<string | number>('');
@@ -377,7 +384,7 @@
 	let selectedEventId = $state<string | null>(null);
 
 	// Mark for delete state
-	let markedForDelete = $state<Set<string>>(new Set());
+	let markedForDelete = new SvelteSet<string>();
 	let deleteInProgress = $state(false);
 
 	// Status editing state
@@ -407,10 +414,23 @@
 		return cohort?.name ?? null;
 	}
 
+	function getCohortNames(cohortIds: string[]): string[] {
+		return cohortIds
+			.map(id => getCohortName(id))
+			.filter((name): name is string => name !== null);
+	}
+
 	function getCohortApprenticeCount(cohortId: string | undefined): number | null {
 		if (!cohortId) return null;
 		const cohort = data.cohorts.find(c => c.id === cohortId);
 		return cohort?.apprenticeCount ?? null;
+	}
+
+	function getTotalApprenticeCount(cohortIds: string[]): number {
+		return cohortIds.reduce((sum, id) => {
+			const count = getCohortApprenticeCount(id);
+			return sum + (count ?? 0);
+		}, 0);
 	}
 
 	async function toggleEventRow(eventId: string, eventDateTime: string) {
@@ -584,20 +604,21 @@
 			date: '',
 			startTime: '10:00',
 			endTime: '14:00',
-			cohortId: '',
+			cohortIds: [],
 			eventType: EVENT_TYPES[0],
 			isPublic: false,
 			checkInCode: '' as string | number,
 			surveyUrl: data.defaultSurveyUrl,
 		};
 		addEventError = '';
+		newEventCohortDropdownOpen = false;
 	}
 
 	function resetSeriesForm() {
 		seriesName = '';
 		seriesTime = '10:00';
 		seriesEndTime = '11:00';
-		seriesCohortId = '';
+		seriesCohortIds = [];
 		seriesEventType = EVENT_TYPES[0];
 		seriesIsPublic = false;
 		seriesCheckInCode = '';
@@ -605,6 +626,7 @@
 		selectedDates = [];
 		seriesError = '';
 		seriesProgress = null;
+		seriesCohortDropdownOpen = false;
 	}
 
 	function cancelSeriesForm() {
@@ -620,19 +642,17 @@
 
 	// Toggle event marked for deletion
 	function toggleMarkForDelete(eventId: string) {
-		const newSet = new Set(markedForDelete);
-		if (newSet.has(eventId)) {
-			newSet.delete(eventId);
+		if (markedForDelete.has(eventId)) {
+			markedForDelete.delete(eventId);
 		}
 		else {
-			newSet.add(eventId);
+			markedForDelete.add(eventId);
 		}
-		markedForDelete = newSet;
 	}
 
 	// Clear all marks
 	function clearMarkedForDelete() {
-		markedForDelete = new Set();
+		markedForDelete.clear();
 	}
 
 	// Delete all marked events
@@ -686,7 +706,7 @@
 					name: newEvent.name,
 					dateTime: combineDateTime(newEvent.date, newEvent.startTime),
 					endDateTime: newEvent.endTime ? combineDateTime(newEvent.date, newEvent.endTime) : undefined,
-					cohortId: newEvent.cohortId || undefined,
+					cohortIds: newEvent.cohortIds.length > 0 ? newEvent.cohortIds : undefined,
 					eventType: newEvent.eventType,
 					isPublic: newEvent.isPublic,
 					checkInCode: newEvent.isPublic && newEvent.checkInCode ? Number(newEvent.checkInCode) : undefined,
@@ -720,7 +740,7 @@
 			date: extractDate(event.dateTime),
 			startTime: extractTime(event.dateTime),
 			endTime: event.endDateTime ? extractTime(event.endDateTime) : calculateDefaultEndTime(extractTime(event.dateTime)),
-			cohortId: event.cohortId || '',
+			cohortIds: [...event.cohortIds],
 			eventType: event.eventType,
 			isPublic: event.isPublic,
 			checkInCode: event.checkInCode ?? '',
@@ -735,6 +755,7 @@
 		editingEventId = null;
 		showEditEventSurvey = false;
 		editEventError = '';
+		editEventCohortDropdownOpen = false;
 	}
 
 	// Submit edited event
@@ -752,7 +773,7 @@
 					name: editEvent.name,
 					dateTime: combineDateTime(editEvent.date, editEvent.startTime),
 					endDateTime: editEvent.endTime ? combineDateTime(editEvent.date, editEvent.endTime) : undefined,
-					cohortId: editEvent.cohortId || undefined,
+					cohortIds: editEvent.cohortIds,
 					eventType: editEvent.eventType,
 					isPublic: editEvent.isPublic,
 					checkInCode: editEvent.isPublic && editEvent.checkInCode ? Number(editEvent.checkInCode) : null,
@@ -775,7 +796,7 @@
 							name: editEvent.name,
 							dateTime: combineDateTime(editEvent.date, editEvent.startTime),
 							endDateTime: editEvent.endTime ? combineDateTime(editEvent.date, editEvent.endTime) : undefined,
-							cohortId: editEvent.cohortId || e.cohortId,
+							cohortIds: editEvent.cohortIds,
 							eventType: editEvent.eventType,
 							isPublic: editEvent.isPublic,
 							checkInCode: editEvent.isPublic && editEvent.checkInCode ? Number(editEvent.checkInCode) : undefined,
@@ -847,7 +868,7 @@
 						name: eventName,
 						dateTime: combineDateAndTime(date, seriesTime),
 						endDateTime: combineDateAndTime(date, seriesEndTime),
-						cohortId: seriesCohortId || undefined,
+						cohortIds: seriesCohortIds.length > 0 ? seriesCohortIds : undefined,
 						eventType: seriesEventType,
 						isPublic: seriesIsPublic,
 						checkInCode: seriesIsPublic && seriesCheckInCode ? Number(seriesCheckInCode) : undefined,
@@ -1027,12 +1048,12 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">
+							<th class="p-3 border-b font-semibold w-32">
 								<button
 									onclick={() => toggleSort('cohort')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
 								>
-									Cohort
+									Audience
 									{#if sortColumn === 'cohort'}
 										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
 											{#if sortDirection === 'asc'}
@@ -1069,7 +1090,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">Public</th>
+							<th class="p-3 border-b font-semibold">Code</th>
 							<th class="p-3 border-b font-semibold">Survey</th>
 							<th class="p-3 border-b font-semibold w-16"></th>
 						</tr>
@@ -1115,36 +1136,75 @@
 										{/each}
 									</select>
 								</td>
-								<td class="p-2">
-									<select
-										bind:value={newEvent.cohortId}
-										class="w-full border rounded px-2 py-1 text-sm"
-									>
-										<option value="">Open</option>
-										{#each data.cohorts as cohort (cohort.id)}
-											<option value={cohort.id}>{cohort.name}</option>
-										{/each}
-									</select>
+								<td class="p-2 w-32">
+									<div class="relative">
+										<button
+											type="button"
+											onclick={() => newEventCohortDropdownOpen = !newEventCohortDropdownOpen}
+											class="w-full text-left border rounded px-2 py-1 text-sm bg-white hover:border-blue-300 flex justify-between items-center"
+										>
+											<span class="truncate">
+												{#if !newEvent.isPublic && newEvent.cohortIds.length === 0}
+													<span class="text-gray-400">Select audience...</span>
+												{:else}
+													{@const count = (newEvent.isPublic ? 1 : 0) + newEvent.cohortIds.length}
+													{#if count === 1}
+														{#if newEvent.isPublic}Open{:else}{getCohortName(newEvent.cohortIds[0])}{/if}
+													{:else}
+														{count} selected
+													{/if}
+												{/if}
+											</span>
+											<span class="text-gray-400 ml-1">{newEventCohortDropdownOpen ? '▲' : '▼'}</span>
+										</button>
+										{#if newEventCohortDropdownOpen}
+											<div class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-48 overflow-y-auto">
+												<label class="flex items-center px-2 py-1.5 hover:bg-green-50 cursor-pointer text-sm border-b">
+													<input
+														type="checkbox"
+														checked={newEvent.isPublic}
+														onchange={() => newEvent.isPublic = !newEvent.isPublic}
+														class="mr-2"
+													/>
+													<span class="text-green-700 font-medium">Open</span>
+													<span class="text-gray-400 text-xs ml-1">(external check-in)</span>
+												</label>
+												{#each data.cohorts as cohort (cohort.id)}
+													<label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer text-sm">
+														<input
+															type="checkbox"
+															checked={newEvent.cohortIds.includes(cohort.id)}
+															onchange={() => {
+																if (newEvent.cohortIds.includes(cohort.id)) {
+																	newEvent.cohortIds = newEvent.cohortIds.filter(id => id !== cohort.id);
+																}
+																else {
+																	newEvent.cohortIds = [...newEvent.cohortIds, cohort.id];
+																}
+															}}
+															class="mr-2"
+														/>
+														{cohort.name}
+													</label>
+												{/each}
+											</div>
+										{/if}
+									</div>
 								</td>
 								<td class="p-2 text-center text-gray-400">—</td>
 								<td class="p-2 text-center">
-									<div class="flex flex-col items-center gap-1">
+									{#if newEvent.isPublic}
 										<input
-											type="checkbox"
-											bind:checked={newEvent.isPublic}
-											class="rounded"
+											type="number"
+											bind:value={newEvent.checkInCode}
+											placeholder="Code"
+											class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
+											min="0"
+											max="999999"
 										/>
-										{#if newEvent.isPublic}
-											<input
-												type="number"
-												bind:value={newEvent.checkInCode}
-												placeholder="Code"
-												class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
-												min="0"
-												max="999999"
-											/>
-										{/if}
-									</div>
+									{:else}
+										<span class="text-gray-400">—</span>
+									{/if}
 								</td>
 								<td class="p-2">
 									<div class="relative">
@@ -1183,8 +1243,8 @@
 										<button
 											onclick={handleAddEventSubmit}
 											disabled={addEventSubmitting || !newEvent.name || !newEvent.date || !newEvent.startTime}
-											class="text-green-600 hover:text-green-800 disabled:opacity-50"
-											title="Save"
+											class="text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+											title={!newEvent.name || !newEvent.date || !newEvent.startTime ? 'Fill in all required fields (name, date, time)' : 'Save'}
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -1210,7 +1270,7 @@
 						{/if}
 					</tbody>
 					{#each sortedEvents as event (event.id)}
-							{@const expectedAttendance = getCohortApprenticeCount(event.cohortId)}
+							{@const expectedAttendance = event.cohortIds.length > 0 ? getTotalApprenticeCount(event.cohortIds) : null}
 							{@const isExpanded = expandedEventId === event.id}
 							{@const hasRoster = (event.attendanceCount ?? 0) > 0 || expectedAttendance !== null}
 							{@const isPast = isPastEvent(event.dateTime)}
@@ -1258,39 +1318,84 @@
 											{/each}
 										</select>
 									</td>
-									<td class="p-2">
-										<select
-											bind:value={editEvent.cohortId}
-											class="w-full border rounded px-2 py-1 text-sm"
-											onclick={e => e.stopPropagation()}
-										>
-											<option value="">Open</option>
-											{#each data.cohorts as cohort (cohort.id)}
-												<option value={cohort.id}>{cohort.name}</option>
-											{/each}
-										</select>
+									<td class="p-2 w-32">
+										<div class="relative">
+											<button
+												type="button"
+												onclick={(e) => {
+													e.stopPropagation();
+													editEventCohortDropdownOpen = !editEventCohortDropdownOpen;
+												}}
+												class="w-full text-left border rounded px-2 py-1 text-sm bg-white hover:border-blue-300 flex justify-between items-center"
+											>
+												<span class="truncate">
+													{#if !editEvent.isPublic && editEvent.cohortIds.length === 0}
+														<span class="text-gray-400">Select audience...</span>
+													{:else}
+														{@const count = (editEvent.isPublic ? 1 : 0) + editEvent.cohortIds.length}
+														{#if count === 1}
+															{#if editEvent.isPublic}Open{:else}{getCohortName(editEvent.cohortIds[0])}{/if}
+														{:else}
+															{count} selected
+														{/if}
+													{/if}
+												</span>
+												<span class="text-gray-400 ml-1">{editEventCohortDropdownOpen ? '▲' : '▼'}</span>
+											</button>
+											{#if editEventCohortDropdownOpen}
+												<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+												<div
+													class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-48 overflow-y-auto"
+													role="group"
+													onmousedown={e => e.stopPropagation()}
+												>
+													<label class="flex items-center px-2 py-1.5 hover:bg-green-50 cursor-pointer text-sm border-b">
+														<input
+															type="checkbox"
+															checked={editEvent.isPublic}
+															onchange={() => editEvent.isPublic = !editEvent.isPublic}
+															class="mr-2"
+														/>
+														<span class="text-green-700 font-medium">Open</span>
+														<span class="text-gray-400 text-xs ml-1">(external check-in)</span>
+													</label>
+													{#each data.cohorts as cohort (cohort.id)}
+														<label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer text-sm">
+															<input
+																type="checkbox"
+																checked={editEvent.cohortIds.includes(cohort.id)}
+																onchange={() => {
+																	if (editEvent.cohortIds.includes(cohort.id)) {
+																		editEvent.cohortIds = editEvent.cohortIds.filter(id => id !== cohort.id);
+																	}
+																	else {
+																		editEvent.cohortIds = [...editEvent.cohortIds, cohort.id];
+																	}
+																}}
+																class="mr-2"
+															/>
+															{cohort.name}
+														</label>
+													{/each}
+												</div>
+											{/if}
+										</div>
 									</td>
 									<td class="p-2 text-center text-gray-400">—</td>
 									<td class="p-2 text-center">
-										<div class="flex flex-col items-center gap-1">
+										{#if editEvent.isPublic}
 											<input
-												type="checkbox"
-												bind:checked={editEvent.isPublic}
-												class="rounded"
+												type="number"
+												bind:value={editEvent.checkInCode}
+												placeholder="Code"
+												class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
+												min="0"
+												max="999999"
 												onclick={e => e.stopPropagation()}
 											/>
-											{#if editEvent.isPublic}
-												<input
-													type="number"
-													bind:value={editEvent.checkInCode}
-													placeholder="Code"
-													class="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs text-center no-spinner"
-													min="0"
-													max="999999"
-													onclick={e => e.stopPropagation()}
-												/>
-											{/if}
-										</div>
+										{:else}
+											<span class="text-gray-400">—</span>
+										{/if}
 									</td>
 									<td class="p-2">
 									<div class="relative">
@@ -1415,11 +1520,15 @@
 										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
-								<td class="p-3">
-									{#if event.cohortId}
-										<span class="text-sm">{getCohortName(event.cohortId) || event.cohortId}</span>
+								<td class="p-3 w-32">
+									{#if event.isPublic || event.cohortIds.length > 0}
+										{@const cohortNames = getCohortNames(event.cohortIds).join(', ')}
+										{@const displayText = event.isPublic ? (cohortNames ? `Open, ${cohortNames}` : 'Open') : cohortNames}
+										<span class="text-sm block truncate" title={displayText}>
+											{#if event.isPublic}<span class="text-green-700 font-medium">Open</span>{#if event.cohortIds.length > 0}, {/if}{/if}{cohortNames}
+										</span>
 									{:else}
-										<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Open</span>
+										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
 								<td class="p-3">
@@ -1430,10 +1539,10 @@
 									{/if}
 								</td>
 								<td class="p-3">
-									{#if event.isPublic}
-										<span class="text-green-600">Yes{#if event.checkInCode} - {event.checkInCode}{/if}</span>
+									{#if event.checkInCode}
+										<span class="font-mono text-sm">{event.checkInCode}</span>
 									{:else}
-										<span class="text-gray-400">No</span>
+										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
 								<td class="p-3">
@@ -1688,19 +1797,62 @@
 							</div>
 
 							<div>
-								<label for="seriesCohort" class="block text-sm font-medium text-gray-700 mb-1">
-									Cohort
-								</label>
-								<select
-									id="seriesCohort"
-									bind:value={seriesCohortId}
-									class="w-full border rounded px-3 py-2"
-								>
-									<option value="">No cohort (open event)</option>
-									{#each data.cohorts as cohort (cohort.id)}
-										<option value={cohort.id}>{cohort.name}</option>
-									{/each}
-								</select>
+								<span class="block text-sm font-medium text-gray-700 mb-1">
+									Audience
+								</span>
+								<div class="relative">
+									<button
+										type="button"
+										onclick={() => seriesCohortDropdownOpen = !seriesCohortDropdownOpen}
+										class="w-full text-left border rounded px-3 py-2 bg-white hover:border-blue-300 flex justify-between items-center"
+									>
+										<span class="truncate">
+											{#if !seriesIsPublic && seriesCohortIds.length === 0}
+												<span class="text-gray-400">Select audience (optional)...</span>
+											{:else}
+												{@const count = (seriesIsPublic ? 1 : 0) + seriesCohortIds.length}
+												{#if count === 1}
+													{#if seriesIsPublic}Open{:else}{getCohortName(seriesCohortIds[0])}{/if}
+												{:else}
+													{count} selected
+												{/if}
+											{/if}
+										</span>
+										<span class="text-gray-400 ml-1">{seriesCohortDropdownOpen ? '▲' : '▼'}</span>
+									</button>
+									{#if seriesCohortDropdownOpen}
+										<div class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-64 overflow-y-auto">
+											<label class="flex items-center px-3 py-2 hover:bg-green-50 cursor-pointer border-b">
+												<input
+													type="checkbox"
+													checked={seriesIsPublic}
+													onchange={() => seriesIsPublic = !seriesIsPublic}
+													class="mr-2"
+												/>
+												<span class="text-green-700 font-medium">Open</span>
+												<span class="text-gray-400 text-xs ml-1">(external check-in)</span>
+											</label>
+											{#each data.cohorts as cohort (cohort.id)}
+												<label class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer">
+													<input
+														type="checkbox"
+														checked={seriesCohortIds.includes(cohort.id)}
+														onchange={() => {
+															if (seriesCohortIds.includes(cohort.id)) {
+																seriesCohortIds = seriesCohortIds.filter(id => id !== cohort.id);
+															}
+															else {
+																seriesCohortIds = [...seriesCohortIds, cohort.id];
+															}
+														}}
+														class="mr-2"
+													/>
+													{cohort.name}
+												</label>
+											{/each}
+										</div>
+									{/if}
+								</div>
 							</div>
 
 							<div>
@@ -1716,32 +1868,19 @@
 								/>
 							</div>
 
-							<div class="flex items-center gap-3 pt-6">
-								<div class="flex items-center">
+							{#if seriesIsPublic}
+								<div class="flex items-center gap-2 pt-2">
+									<label for="seriesCheckInCode" class="text-sm font-medium text-gray-700">Check-in code:</label>
 									<input
-										type="checkbox"
-										id="seriesIsPublic"
-										bind:checked={seriesIsPublic}
-										class="rounded"
+										type="number"
+										id="seriesCheckInCode"
+										bind:value={seriesCheckInCode}
+										class="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center no-spinner"
+										min="0"
+										max="999999"
 									/>
-									<label for="seriesIsPublic" class="ml-2 text-sm font-medium text-gray-700">
-										Public events
-									</label>
 								</div>
-								{#if seriesIsPublic}
-									<div class="flex items-center gap-2">
-										<label for="seriesCheckInCode" class="text-sm text-gray-600">Code:</label>
-										<input
-											type="number"
-											id="seriesCheckInCode"
-											bind:value={seriesCheckInCode}
-											class="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-center no-spinner"
-											min="0"
-											max="999999"
-										/>
-									</div>
-								{/if}
-							</div>
+							{/if}
 						</div>
 
 						<!-- Instruction to select dates -->
