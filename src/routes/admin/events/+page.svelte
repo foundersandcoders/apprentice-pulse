@@ -255,7 +255,7 @@
 
 	// Inline event creation state
 	let isAddingEvent = $state(false);
-	let tableContainer: HTMLDivElement;
+	let tableContainer = $state<HTMLDivElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let newEvent = $state({
 		name: '',
@@ -283,11 +283,14 @@
 		}
 	});
 
-	// Auto-generate check-in code when isPublic is checked
+	// Auto-generate check-in code when isPublic is checked, clear when unchecked
 	let prevNewEventIsPublic = $state(false);
 	$effect(() => {
 		if (newEvent.isPublic && !prevNewEventIsPublic) {
 			newEvent.checkInCode = generateCheckInCode();
+		}
+		else if (!newEvent.isPublic && prevNewEventIsPublic) {
+			newEvent.checkInCode = '';
 		}
 		prevNewEventIsPublic = newEvent.isPublic;
 	});
@@ -329,11 +332,14 @@
 		}
 	});
 
-	// Auto-generate check-in code when isPublic is checked (only if no existing code)
+	// Auto-generate check-in code when isPublic is checked (only if no existing code), clear when unchecked
 	let prevEditEventIsPublic = $state(false);
 	$effect(() => {
 		if (editEvent.isPublic && !prevEditEventIsPublic && !editEvent.checkInCode) {
 			editEvent.checkInCode = generateCheckInCode();
+		}
+		else if (!editEvent.isPublic && prevEditEventIsPublic) {
+			editEvent.checkInCode = '';
 		}
 		prevEditEventIsPublic = editEvent.isPublic;
 	});
@@ -436,8 +442,10 @@
 	}
 
 	async function toggleEventRow(eventId: string, eventDateTime: string) {
-		// If same row clicked, do nothing (don't collapse)
+		// If same row clicked, collapse it
 		if (expandedEventId === eventId) {
+			expandedEventId = null;
+			rosterData = [];
 			return;
 		}
 
@@ -943,18 +951,26 @@
 					Hide past events
 				</label>
 			</div>
-			<button
-				onclick={async () => {
-					newEvent.date = getTodayDate();
-					isAddingEvent = true;
-					await tick();
-					tableContainer?.scrollTo({ top: 0, behavior: 'smooth' });
-				}}
-				class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-				disabled={isAddingEvent}
-			>
-				+ Add Event
-			</button>
+			{#if isAddingEvent}
+				<button
+					onclick={cancelAddEvent}
+					class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+				>
+					Cancel
+				</button>
+			{:else}
+				<button
+					onclick={async () => {
+						newEvent.date = getTodayDate();
+						isAddingEvent = true;
+						await tick();
+						tableContainer?.scrollTo({ top: 0, behavior: 'smooth' });
+					}}
+					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+				>
+					+ Add Event
+				</button>
+			{/if}
 		</div>
 
 		{#if markedForDelete.size > 0}
@@ -989,7 +1005,7 @@
 				<table class="w-full border-collapse">
 					<thead class="sticky top-0 z-10">
 						<tr class="bg-gray-100 text-left">
-							<th class="p-3 border-b font-semibold">
+							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('name')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
@@ -1010,7 +1026,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">
+							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('dateTime')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
@@ -1031,7 +1047,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">
+							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('eventType')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
@@ -1052,7 +1068,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold w-32">
+							<th class="p-2 border-b font-semibold w-32">
 								<button
 									onclick={() => toggleSort('cohort')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
@@ -1073,7 +1089,7 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">
+							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('attendance')}
 									class="inline-flex items-center gap-1 hover:text-blue-600"
@@ -1094,9 +1110,9 @@
 									{/if}
 								</button>
 							</th>
-							<th class="p-3 border-b font-semibold">Code</th>
-							<th class="p-3 border-b font-semibold">Survey</th>
-							<th class="p-3 border-b font-semibold w-16"></th>
+							<th class="p-2 border-b font-semibold">Code</th>
+							<th class="p-2 border-b font-semibold">Survey</th>
+							<th class="p-2 border-b font-semibold w-16"></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1252,15 +1268,6 @@
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 												<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-											</svg>
-										</button>
-										<button
-											onclick={cancelAddEvent}
-											class="text-red-600 hover:text-red-800"
-											title="Cancel"
-										>
-											<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-												<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
 											</svg>
 										</button>
 									</div>
@@ -1491,7 +1498,7 @@
 										if (hasRoster) toggleEventRow(event.id, event.dateTime);
 									}}
 								>
-								<td class="p-3">
+								<td class="p-2">
 									<span class="inline-flex items-center gap-2">
 										{#if hasRoster}
 											<svg
@@ -1509,13 +1516,13 @@
 										{event.name || '(Untitled)'}
 									</span>
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									<div>{formatDateOnly(event.dateTime)}</div>
 									<div class="text-gray-500 text-sm">
 										{formatTimeOnly(event.dateTime)}{#if event.endDateTime}&nbsp;–&nbsp;{formatTimeOnly(event.endDateTime)}{/if}
 									</div>
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									{#if event.eventType}
 										<span class="{EVENT_TYPE_COLORS[event.eventType].tailwind} font-medium">
 											{event.eventType}
@@ -1524,7 +1531,7 @@
 										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
-								<td class="p-3 w-32">
+								<td class="p-2 w-32">
 									{#if event.isPublic || event.cohortIds.length > 0}
 										{@const cohortNames = getCohortNames(event.cohortIds).join(', ')}
 										{@const displayText = event.isPublic ? (cohortNames ? `Open, ${cohortNames}` : 'Open') : cohortNames}
@@ -1535,21 +1542,21 @@
 										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									{#if expectedAttendance !== null}
 										<span class="font-mono text-sm">{event.attendanceCount ?? 0}/{expectedAttendance}</span>
 									{:else}
 										<span class="text-gray-400">{event.attendanceCount ?? 0}</span>
 									{/if}
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									{#if event.checkInCode}
 										<span class="font-mono text-sm">{event.checkInCode}</span>
 									{:else}
 										<span class="text-gray-400">—</span>
 									{/if}
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									{#if event.surveyUrl}
 										<a
 											href={event.surveyUrl /* eslint-disable-line svelte/no-navigation-without-resolve -- external URL */}
@@ -1573,7 +1580,7 @@
 										</span>
 									{/if}
 								</td>
-								<td class="p-3">
+								<td class="p-2">
 									<div class="flex gap-1">
 										<button
 											onclick={(e) => {
