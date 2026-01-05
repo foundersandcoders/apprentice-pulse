@@ -7,7 +7,8 @@ Create a new plan from a Jira task: fetch details, transition to In Progress, cr
 ## Instructions
 
 1. **Fetch the Jira task**:
-   - Use `mcp__atlassian__getJiraIssue` with the provided ticket ID: `$ARGUMENTS`
+   - Use `mcp__atlassian__getJiraIssue` with ticket ID: `$ARGUMENTS`
+   - If it fails or times out, tell the user: "Jira connection failed. Please run `/mcp`, select `atlassian`, and choose `4. Reconnect`, then run `/plan $ARGUMENTS` again."
    - Extract: summary, description, issue type
 
 2. **Transition to In Progress**:
