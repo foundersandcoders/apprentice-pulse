@@ -25,11 +25,19 @@
 	}, 1000);
 	onDestroy(() => clearInterval(timerInterval));
 
+	// Check if event is today
+	function isToday(dateTime: string): boolean {
+		const eventDate = new Date(dateTime);
+		const today = new Date(now);
+		return eventDate.toDateString() === today.toDateString();
+	}
+
 	// Calculate countdown/late status for an event
-	function getTimeStatus(dateTime: string): { text: string; isLate: boolean; isStartingSoon: boolean } {
+	function getTimeStatus(dateTime: string): { text: string; isLate: boolean; isStartingSoon: boolean; canCheckIn: boolean } {
 		const eventTime = new Date(dateTime).getTime();
 		const diff = eventTime - now;
 		const absDiff = Math.abs(diff);
+		const eventIsToday = isToday(dateTime);
 
 		const hours = Math.floor(absDiff / (1000 * 60 * 60));
 		const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -41,7 +49,7 @@
 			if (hours > 0) text += `${hours}h `;
 			if (hours > 0 || minutes > 0) text += `${minutes}m `;
 			text += `${seconds}s`;
-			return { text, isLate: false, isStartingSoon: diff < 10 * 60 * 1000 }; // < 10 min
+			return { text, isLate: false, isStartingSoon: diff < 10 * 60 * 1000, canCheckIn: eventIsToday };
 		}
 		else {
 			// Event has started - user is late
@@ -50,7 +58,7 @@
 			if (hours > 0 || minutes > 0) text += `${minutes}m `;
 			if (hours === 0) text += `${seconds}s `;
 			text += 'late';
-			return { text, isLate: true, isStartingSoon: false };
+			return { text, isLate: true, isStartingSoon: false, canCheckIn: true };
 		}
 	}
 
@@ -237,6 +245,10 @@
 								<span class="checked-badge">Checked In</span>
 							{:else if checkingIn === event.id}
 								<button disabled>Checking in...</button>
+							{:else if !timeStatus.canCheckIn}
+								<button class="disabled-future" disabled title="Check-in opens on the day of the event">
+									Check In
+								</button>
 							{:else}
 								<button onclick={() => handleCheckIn(event.id)}>
 									Check In
@@ -502,6 +514,12 @@
 	.event-action button:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+
+	.event-action button.disabled-future {
+		background: #ccc;
+		color: #666;
+		opacity: 1;
 	}
 
 	.checked-badge {
