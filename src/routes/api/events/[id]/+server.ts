@@ -24,7 +24,7 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 			name: body.name?.trim() || undefined,
 			dateTime: body.dateTime || undefined,
 			endDateTime: body.endDateTime,
-			cohortId: body.cohortId,
+			cohortIds: body.cohortIds,
 			eventType: body.eventType || undefined,
 			surveyUrl: body.surveyUrl,
 			isPublic: body.isPublic,

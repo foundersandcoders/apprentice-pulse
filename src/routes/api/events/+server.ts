@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			name: body.name.trim(),
 			dateTime: body.dateTime,
 			endDateTime: body.endDateTime || undefined,
-			cohortId: body.cohortId || undefined,
+			cohortIds: body.cohortIds || undefined,
 			eventType: normalizedEventType,
 			surveyUrl: body.surveyUrl || undefined,
 			isPublic: body.isPublic ?? false,

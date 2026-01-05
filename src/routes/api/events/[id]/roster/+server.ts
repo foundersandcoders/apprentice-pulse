@@ -22,10 +22,13 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		// Fetch attendance and cohort apprentices in parallel
-		const [attendance, cohortApprentices] = await Promise.all([
+		const [attendance, ...cohortApprenticeArrays] = await Promise.all([
 			getAttendanceByIds(event.attendanceIds ?? []),
-			event.cohortId ? getApprenticesByCohortId(event.cohortId) : Promise.resolve([]),
+			...event.cohortIds.map(id => getApprenticesByCohortId(id)),
 		]);
+
+		// Deduplicate apprentices (in case someone is in multiple cohorts)
+		const cohortApprentices = [...new Map(cohortApprenticeArrays.flat().map(a => [a.id, a])).values()];
 
 		// Build a map of apprentice IDs to their attendance info (including attendance record ID)
 		const attendanceByApprentice = new Map<string, { attendanceId: string; status: AttendanceStatus; checkinTime: string }>();

@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { slide } from 'svelte/transition';
-	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType } from '$lib/types/event';
+	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
@@ -19,7 +19,11 @@
 	let hidePastEvents = $state(false);
 
 	// Local reactive copy of events for updating attendance counts
-	let events = $state(data.events);
+	// Syncs with server data on navigation/invalidation, allows local optimistic updates
+	let events = $state<AppEvent[]>([]);
+	$effect(() => {
+		events = data.events;
+	});
 
 	// Filtered and sorted events
 	let sortedEvents = $derived.by(() => {
