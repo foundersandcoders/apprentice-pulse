@@ -2,7 +2,6 @@ add events button cahgnes to cancel and scroll up
 
 td elements reduce padding
 
-green tick deactivated until requested fields
 
 
 Checkin page show who I am
