@@ -137,6 +137,55 @@
 		if (!dateStr) return '';
 		return new Date(dateStr).toLocaleDateString();
 	}
+
+	// Export functions
+	function exportToCSV() {
+		const headers = [
+			'Cohort Name',
+			'Apprentice Count',
+			'Total Events',
+			'Attendance Rate (%)',
+			'Present',
+			'Late',
+			'Absent',
+			'Excused',
+			'Trend Direction',
+			'Trend Change (%)',
+		];
+
+		const rows = sortedCohortStats.map(cohort => [
+			cohort.cohortName,
+			cohort.apprenticeCount.toString(),
+			cohort.totalEvents.toString(),
+			cohort.attendanceRate.toString(),
+			cohort.present.toString(),
+			cohort.late.toString(),
+			cohort.absent.toString(),
+			cohort.excused.toString(),
+			cohort.trend.direction,
+			cohort.trend.change.toString(),
+		]);
+
+		const csvContent = [
+			headers.join(','),
+			...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+		].join('\n');
+
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+
+		const url = URL.createObjectURL(blob);
+		link.setAttribute('href', url);
+
+		const dateStr = new Date().toISOString().split('T')[0];
+		const filename = `cohort-attendance-metrics-${dateStr}.csv`;
+		link.setAttribute('download', filename);
+
+		link.style.visibility = 'hidden';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
@@ -147,17 +196,28 @@
 				<h1 class="text-2xl font-bold">Cohort Attendance Metrics</h1>
 				<p class="text-gray-600 mt-1">Aggregate attendance statistics and trends per cohort</p>
 			</div>
-			<button
-				onclick={toggleDateFilter}
-				class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-			>
-				📅 Date Filter
-				{#if dateRange.start || dateRange.end}
-					<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-						Active
-					</span>
+			<div class="flex items-center gap-2">
+				<button
+					onclick={toggleDateFilter}
+					class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+				>
+					📅 Date Filter
+					{#if dateRange.start || dateRange.end}
+						<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+							Active
+						</span>
+					{/if}
+				</button>
+				{#if cohortStats.length > 0}
+					<button
+						onclick={exportToCSV}
+						class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+						title="Export data to CSV"
+					>
+						📊 Export CSV
+					</button>
 				{/if}
-			</button>
+			</div>
 		</div>
 	</header>
 
