@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
-	import type { Cohort } from '$lib/airtable/sveltekit-wrapper';
+	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 
 	let { data } = $props();
 
 	// Type the data
 	const apprentices = $derived(data.apprentices as ApprenticeAttendanceStats[]);
 	const cohorts = $derived(data.cohorts as Cohort[]);
+	const terms = $derived(data.terms as Term[]);
 	const selectedCohortIds = $derived(data.selectedCohortIds as string[]);
+	const serverSelectedTermIds = $derived(data.selectedTermIds as string[]);
 	const needsSelection = $derived(data.needsSelection as boolean);
 	const showAll = $derived(data.showAll as boolean);
 
@@ -73,6 +75,9 @@
 	let localSelectedCohorts = $state(new SvelteSet());
 	let showAllWarning = $state(false);
 
+	// Term filter state - initialize from server data
+	let selectedTermIds = $state<string[]>([]);
+
 	// Sorting state
 	type SortColumn = 'name' | 'attendanceRate' | 'cohort';
 	type SortDirection = 'asc' | 'desc';
@@ -85,6 +90,7 @@
 	// Reset local selection when data changes
 	$effect(() => {
 		localSelectedCohorts = new SvelteSet(selectedCohortIds);
+		selectedTermIds = [...serverSelectedTermIds];
 	});
 
 	// Sorted apprentices
@@ -161,8 +167,13 @@
 		if (localSelectedCohorts.size === 0) return;
 		const cohortIds = [...localSelectedCohorts].join(',');
 		const basePath = resolve('/admin/attendance/apprentices');
+		const params = new URLSearchParams();
+		params.set('cohorts', cohortIds);
+		if (selectedTermIds.length > 0) {
+			params.set('terms', selectedTermIds.join(','));
+		}
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved, adding query params
-		goto(`${basePath}?cohorts=${cohortIds}`);
+		goto(`${basePath}?${params.toString()}`);
 	}
 
 	function confirmShowAll() {
@@ -172,13 +183,22 @@
 	function loadAll() {
 		showAllWarning = false;
 		const basePath = resolve('/admin/attendance/apprentices');
+		const params = new URLSearchParams();
+		params.set('all', 'true');
+		if (selectedTermIds.length > 0) {
+			params.set('terms', selectedTermIds.join(','));
+		}
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved, adding query params
-		goto(`${basePath}?all=true`);
+		goto(`${basePath}?${params.toString()}`);
 	}
 
 	function clearSelection() {
 		const basePath = resolve('/admin/attendance/apprentices');
-		goto(basePath);
+		const params = new URLSearchParams();
+		if (selectedTermIds.length > 0) {
+			params.set('terms', selectedTermIds.join(','));
+		}
+		goto(params.toString() ? `${basePath}?${params.toString()}` : basePath);
 	}
 
 	function isLowAttendance(rate: number): boolean {
@@ -206,6 +226,41 @@
 			case 'stable': return 'text-gray-500';
 		}
 	}
+
+	// Handle term selection change
+	function onTermChange() {
+		const basePath = resolve('/admin/attendance/apprentices');
+		const currentParams = new URLSearchParams(page.url.search);
+		if (selectedTermIds.length === 0) {
+			currentParams.delete('terms');
+		} else {
+			currentParams.set('terms', selectedTermIds.join(','));
+		}
+		const newUrl = currentParams.toString() ? `${basePath}?${currentParams.toString()}` : basePath;
+		goto(newUrl);
+	}
+
+	// Toggle term selection
+	function toggleTermSelection(termId: string) {
+		const index = selectedTermIds.indexOf(termId);
+		if (index === -1) {
+			selectedTermIds.push(termId);
+		} else {
+			selectedTermIds.splice(index, 1);
+		}
+		onTermChange();
+	}
+
+	// Format date for display (DD/MM/YYYY)
+	function formatDateShort(dateString: string): string {
+		const date = new Date(dateString);
+		return date.toLocaleDateString('en-GB', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric'
+		});
+	}
+
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
@@ -316,6 +371,40 @@
 			{/if}
 		</div>
 	{:else}
+		<!-- Term Filter -->
+		{#if terms.length > 0}
+			<div class="mb-4 p-4 bg-gray-50 border rounded-lg">
+				<h3 class="text-sm font-medium text-gray-900 mb-3">Filter by Term</h3>
+				<div class="space-y-2 max-h-40 overflow-y-auto">
+					{#each terms as term (term.id)}
+						{@const startDate = formatDateShort(term.startingDate)}
+						{@const endDate = formatDateShort(term.endDate)}
+						<label class="flex items-center space-x-2 cursor-pointer">
+							<input
+								type="checkbox"
+								checked={selectedTermIds.includes(term.id)}
+								onchange={() => toggleTermSelection(term.id)}
+								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							/>
+							<span class="text-sm text-gray-700">
+								{term.name} ({startDate} - {endDate})
+							</span>
+						</label>
+					{/each}
+				</div>
+				{#if selectedTermIds.length > 0}
+					<div class="mt-3 pt-3 border-t border-gray-200">
+						<button
+							onclick={() => { selectedTermIds = []; onTermChange(); }}
+							class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+						>
+							Clear all term filters
+						</button>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
 		<!-- Filters & Controls -->
 		<div class="mb-6 flex flex-wrap gap-4 items-center">
 			<div class="flex flex-wrap gap-2 items-center">

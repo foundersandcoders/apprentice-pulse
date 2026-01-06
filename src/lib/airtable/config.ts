@@ -10,6 +10,7 @@ export const TABLES = {
 	STAFF: 'tblJjn62ExE1LVjmx',
 	EVENTS: 'tblkbskw4fuTq0E9p',
 	ATTENDANCE: 'tblkDbhJcuT9TTwFc',
+	TERMS: 'tbl4gkcG92Bc8gFU7',
 } as const;
 
 // Fields - Cohorts
@@ -54,6 +55,13 @@ export const ATTENDANCE_FIELDS = {
 	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Absent/Late)
 	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
 	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
+} as const;
+
+// Fields - Terms
+export const TERM_FIELDS = {
+	NAME: 'fldrnRBnBuHbscSy7', // singleLineText
+	STARTING_DATE: 'fldlzwlqYo7rMMSDp', // date
+	END_DATE: 'fldJKhrzNZNCD6SYY', // date
 } as const;
 
 // Defaults

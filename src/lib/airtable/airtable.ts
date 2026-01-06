@@ -1,6 +1,6 @@
 import Airtable from 'airtable';
 
-import { TABLES, COHORT_FIELDS, APPRENTICE_FIELDS, STAFF_FIELDS } from './config.ts';
+import { TABLES, COHORT_FIELDS, APPRENTICE_FIELDS, STAFF_FIELDS, TERM_FIELDS } from './config.ts';
 
 export interface Apprentice {
 	id: string;
@@ -21,6 +21,13 @@ export interface Cohort {
 	id: string;
 	name: string;
 	apprenticeCount: number;
+}
+
+export interface Term {
+	id: string;
+	name: string;
+	startingDate: string;
+	endDate: string;
 }
 
 export type UserType = 'staff' | 'student';
@@ -197,6 +204,29 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	}
 
 	/**
+	 * List all terms
+	 */
+	async function listTerms(): Promise<Term[]> {
+		const termsTable = base(TABLES.TERMS);
+
+		const records = await termsTable
+			.select({
+				returnFieldsByFieldId: true,
+				sort: [{ field: TERM_FIELDS.STARTING_DATE, direction: 'desc' }],
+			})
+			.all();
+
+		return records.map((record) => {
+			return {
+				id: record.id,
+				name: (record.get(TERM_FIELDS.NAME) as string) || record.id,
+				startingDate: (record.get(TERM_FIELDS.STARTING_DATE) as string) || '',
+				endDate: (record.get(TERM_FIELDS.END_DATE) as string) || '',
+			};
+		});
+	}
+
+	/**
 	 * Get apprentices by cohort record ID
 	 */
 	async function getApprenticesByCohortId(cohortId: string): Promise<ApprenticeRecord[]> {
@@ -279,6 +309,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		findApprenticeByEmail,
 		getApprenticeByEmail,
 		listCohorts,
+		listTerms,
 		getApprenticesByCohortId,
 		getApprenticesByIds,
 	};

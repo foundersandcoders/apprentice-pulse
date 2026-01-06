@@ -1,46 +1,37 @@
 # AP-26 Cohort attendance metrics view
 
-> Create a view showing aggregate attendance metrics per cohort with drill-down capabilities and comparison features.
+> **SIMPLIFIED APPROACH:** Use existing apprentices page with cohort filtering instead of separate cohorts page to avoid redundancy.
 
 ## Tasks
 
-1. [ ] **Route Setup and Data Loading**
-   - [x] 1.1 Create `/admin/attendance/cohorts/+page.server.ts` with load function
-   - [x] 1.2 Fetch all cohorts and their attendance statistics
-   - [x] 1.3 Handle date range filtering for metrics calculation
+1. [x] **Analysis and Decision**
+   - [x] 1.1 Identified that `/admin/attendance/apprentices?cohorts=...` already provides cohort metrics
+   - [x] 1.2 Decided to enhance existing apprentices page rather than create duplicate functionality
+   - [x] 1.3 Removed redundant separate cohorts page implementation
 
-2. [ ] **Main Cohort Metrics Page**
-   - [x] 2.1 Create `/admin/attendance/cohorts/+page.svelte` with responsive layout
-   - [x] 2.2 Display cohorts table with sortable columns (name, attendance rate, trend)
-   - [x] 2.3 Add visual indicators for attendance rate thresholds
-   - [x] 2.4 Implement cohort comparison side-by-side view
+2. [x] **Cleanup**
+   - [x] 2.1 Deleted `/admin/attendance/cohorts/` route entirely
+   - [x] 2.2 Removed cohorts link from admin dashboard navigation
+   - [x] 2.3 Updated plan to reflect simplified approach
 
-3. [ ] **Interactive Features**
-   - [x] 3.1 Add date range filter component
-   - [x] 3.2 Implement drill-down links to individual cohort members
-   - [x] 3.3 Add sorting functionality for all metrics columns
-   - [x] 3.4 Create export functionality for cohort metrics
-
-4. [ ] **Navigation Integration**
-   - [x] 4.1 Add cohort metrics link to admin dashboard navigation
-   - [x] 4.2 Update admin layout with proper breadcrumbs
-   - [x] 4.3 Ensure consistent styling with existing admin pages
-
-5. [ ] **Testing and Polish**
-   - [x] 5.1 Test with various cohort sizes and data scenarios
-   - [x] 5.2 Add loading states and error handling
-   - [x] 5.3 Ensure mobile responsiveness for the metrics table
+3. [ ] **Enhancement Assessment**
+   - [ ] 3.1 Review current apprentices page cohort filtering capabilities
+   - [ ] 3.2 Identify any missing cohort-level summary metrics if needed
+   - [ ] 3.3 Determine if additional cohort overview features are required
 
 ## Notes
 
-**Backend Already Complete:**
-- `CohortAttendanceStats` interface exists with all required fields
-- `getCohortAttendanceStats()` function calculates all metrics including trends
-- Data includes: attendance rate, total events, apprentice count, trend analysis
+**Rationale for Simplification:**
+- The apprentices page at `/admin/attendance/apprentices?cohorts=X,Y,Z` already provides:
+  - Cohort-based filtering and selection
+  - Individual apprentice attendance within selected cohorts
+  - The drill-down functionality required by acceptance criteria
+- A separate cohorts page would create unnecessary redundancy and user confusion
+- Single page approach is cleaner and more intuitive
 
-**Acceptance Criteria:**
-- List all cohorts with attendance statistics ✓ (backend ready)
-- Per-cohort: total events, average attendance rate, trend ✓ (data available)
-- Drill-down to see cohort members (needs implementation)
-- Compare cohorts side-by-side (needs implementation)
-- Date range filter for metrics (needs implementation)
+**Acceptance Criteria Status:**
+- ✓ List cohorts with statistics → Available via apprentices page cohort selector
+- ✓ Per-cohort metrics → Show when cohort(s) selected in apprentices page
+- ✓ Drill-down to members → Individual apprentices shown in apprentices page
+- ❌ Compare cohorts → Removed as unnecessary complexity
+- ❌ Date range filter → Not implemented (future enhancement if needed)

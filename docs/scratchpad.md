@@ -1,5 +1,3 @@
-cohort metrics, takes very long
-
 survey send email
 
 link surveys with student. track not fulfilled
@@ -12,7 +10,7 @@ Apprentice attendance. Show it per term. terms are on Airtable
 
 Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
 
-
+Absent reason.
 
 Login page pretty
 

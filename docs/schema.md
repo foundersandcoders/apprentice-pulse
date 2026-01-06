@@ -268,6 +268,20 @@ Extended learner record with ILR and Skills Bootcamp data. Use Apprentices table
 
 ---
 
+## Terms - Apprentice Pulse
+
+**Table ID:** `tbl4gkcG92Bc8gFU7`
+
+Term intervals for filtering and organizing data by academic periods.
+
+| Field | ID | Type | Purpose |
+|-------|-----|------|---------|
+| Name | `fldrnRBnBuHbscSy7` | singleLineText | Term name (e.g. "Term 1 2024", "Summer 2024") |
+| Starting Date | `fldlzwlqYo7rMMSDp` | date | Term start date |
+| End Date | `fldJKhrzNZNCD6SYY` | date | Term end date |
+
+---
+
 ## Alert Triggers
 
 Fields that trigger early intervention alerts:

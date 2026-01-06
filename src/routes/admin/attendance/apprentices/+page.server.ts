@@ -1,8 +1,10 @@
 import type { PageServerLoad } from './$types';
 import {
 	listCohorts,
+	listTerms,
 	getApprenticesByCohortId,
 	getApprenticeAttendanceStats,
+	getApprenticeAttendanceStatsWithDateFilter,
 } from '$lib/airtable/sveltekit-wrapper';
 import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
 
@@ -11,17 +13,24 @@ export const load: PageServerLoad = async ({ url }) => {
 	const cohortParam = url.searchParams.get('cohorts');
 	const selectedCohortIds = cohortParam ? cohortParam.split(',').filter(Boolean) : [];
 	const showAll = url.searchParams.get('all') === 'true';
+	const termsParam = url.searchParams.get('terms');
+	const selectedTermIds = termsParam ? termsParam.split(',').filter(Boolean) : [];
 
 	try {
-		// Always fetch cohorts for the selection UI
-		const cohorts = await listCohorts();
+		// Always fetch cohorts and terms for the selection UI
+		const [cohorts, terms] = await Promise.all([
+			listCohorts(),
+			listTerms(),
+		]);
 
-		// If no cohort selected and not showing all, return early with just cohorts
+		// If no cohort selected and not showing all, return early with just cohorts and terms
 		if (selectedCohortIds.length === 0 && !showAll) {
 			return {
 				apprentices: [],
 				cohorts,
+				terms,
 				selectedCohortIds,
+				selectedTermIds,
 				showAll: false,
 				needsSelection: true,
 			};
@@ -48,11 +57,27 @@ export const load: PageServerLoad = async ({ url }) => {
 		// Deduplicate in case an apprentice is in multiple cohorts
 		apprenticeIds = [...new Set(apprenticeIds)];
 
+		// Determine date range for filtering if terms are selected
+		let termStartDate: Date | null = null;
+		let termEndDate: Date | null = null;
+
+		if (selectedTermIds.length > 0) {
+			const selectedTerms = terms.filter(t => selectedTermIds.includes(t.id));
+			if (selectedTerms.length > 0) {
+				// Find earliest start date and latest end date across all selected terms
+				const startDates = selectedTerms.map(t => new Date(t.startingDate));
+				const endDates = selectedTerms.map(t => new Date(t.endDate));
+
+				termStartDate = new Date(Math.min(...startDates.map(d => d.getTime())));
+				termEndDate = new Date(Math.max(...endDates.map(d => d.getTime())));
+			}
+		}
+
 		// Fetch attendance stats for each apprentice
 		const apprenticeStats: ApprenticeAttendanceStats[] = [];
 		for (const apprenticeId of apprenticeIds) {
 			try {
-				const stats = await getApprenticeAttendanceStats(apprenticeId);
+				const stats = await getApprenticeAttendanceStatsWithDateFilter(apprenticeId, termStartDate, termEndDate);
 				if (stats) {
 					apprenticeStats.push(stats);
 				}
@@ -65,7 +90,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		return {
 			apprentices: apprenticeStats,
 			cohorts,
+			terms,
 			selectedCohortIds,
+			selectedTermIds,
 			showAll,
 			needsSelection: false,
 		};
@@ -75,7 +102,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		return {
 			apprentices: [],
 			cohorts: [],
+			terms: [],
 			selectedCohortIds,
+			selectedTermIds,
 			showAll: false,
 			needsSelection: true,
 		};
