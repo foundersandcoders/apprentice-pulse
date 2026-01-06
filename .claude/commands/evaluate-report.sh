@@ -7,15 +7,21 @@
 TASK="${1:-recent work}"
 
 # Get recent changes for context
-RECENT_FILES=$(git diff HEAD~1 --name-only 2>/dev/null | head -10 | tr '\n' ' ')
-LAST_COMMIT=$(git log -1 --oneline 2>/dev/null)
+BASE_REF="HEAD~1"
+if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+  BASE_REF="HEAD"
+fi
+
+CHANGED_FILES=$(git diff --name-only "$BASE_REF" 2>/dev/null || true)
+RECENT_FILES=$(printf '%s\n' "$CHANGED_FILES" | head -10 | tr '\n' ' ')
+LAST_COMMIT=$(git log -1 --oneline 2>/dev/null || echo "No commits found")
 
 # Check for indicators that suggest report update needed
 INDICATORS=""
-if git diff HEAD~1 --name-only 2>/dev/null | grep -qE '(routes|lib|server).*\.ts$'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -qE '(routes|lib|server).*\.ts$'; then
   INDICATORS="${INDICATORS}[New/modified TypeScript files] "
 fi
-if git diff HEAD~1 --name-only 2>/dev/null | grep -q '\.spec\.ts$'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -q '\.spec\.ts$'; then
   INDICATORS="${INDICATORS}[Test files] "
 fi
 if git log -1 --oneline 2>/dev/null | grep -qiE '(refactor|optimize|performance|security|auth|error|pattern|architecture)'; then
@@ -28,6 +34,7 @@ I need to evaluate if the recent work should be documented in report.md.
 ## Task Context
 Task: $TASK
 Last commit: $LAST_COMMIT
+Base ref: $BASE_REF
 Modified files: $RECENT_FILES
 Auto-detected indicators: $INDICATORS
 
@@ -52,7 +59,7 @@ cat << EOF
 Following the guidelines above:
 
 1. **Analyze Recent Changes**:
-   - Run: git diff HEAD~1 --stat
+   - Run: git diff "$BASE_REF" --stat
    - Run: git log -3 --oneline
    - Review the actual code changes in modified files
 

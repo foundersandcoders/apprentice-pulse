@@ -1,81 +1,103 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Plan Iterator Analysis
-# Improved version addressing the grep pattern and efficiency issues
+# Mirrors the AWK parsing logic used by the plan-iterator hook
 
 PLAN_FILE="docs/plan.md"
 
-echo "=== CURRENT ISSUES ANALYSIS ==="
+if [[ ! -f "$PLAN_FILE" ]]; then
+  echo "Missing $PLAN_FILE"
+  exit 1
+fi
 
-echo "1. Testing current grep pattern:"
-echo "Pattern: '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]'"
-
-echo "Should match subtasks like:"
-echo "   - [ ] 1.1 Something"
-grep -n '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" | head -3
-
+echo "=== PLAN ITERATOR ANALYSIS (AWK PARSER) ==="
+echo "Plan file: $PLAN_FILE"
 echo ""
-echo "Should NOT match main tasks like:"
-echo "1. [ ] Main task"
-grep -n '^[0-9]\+\. \[ \]' "$PLAN_FILE" | head -3
-
+echo "Expected formats:"
+echo "  Main tasks: 1. [ ] Task"
+echo "  Subtasks:   - [ ] 1.1 Task"
 echo ""
-echo "2. Current counting approach:"
-SUBTASKS_ONLY=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" 2>/dev/null || echo "0")
-MAIN_TASKS_ONLY=$(grep -c '^[0-9]\+\. \[ \]' "$PLAN_FILE" 2>/dev/null || echo "0")
-echo "Subtasks remaining: $SUBTASKS_ONLY"
-echo "Main tasks remaining: $MAIN_TASKS_ONLY"
-echo "Total remaining (should be): $((SUBTASKS_ONLY + MAIN_TASKS_ONLY))"
 
-echo ""
-echo "=== PROPOSED SOLUTION ==="
+IFS=$'\t' read -r REMAINING COMPLETED NEXT_TASK LAST_DONE TO_COMPLETE < <(
+  awk '
+  function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+  function after_checkbox(s) {
+    gsub(/^[[:space:]]*[0-9]+\.[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+    gsub(/^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+    return trim(s)
+  }
 
-echo "Fixed pattern to match BOTH:"
-echo "Main tasks: '^[0-9]\+\. \[ \]'"
-echo "Subtasks: '^\s\+- \[ \] [0-9]\+\.'"
+  BEGIN {
+    remaining = 0
+    completed = 0
+    next_task = ""
+    last_done = ""
+  }
 
-echo ""
-echo "Efficient single-pass approach:"
-cat << 'EOF'
-# Read file once, process in memory
-declare -A main_task_status
-declare -A main_task_subtasks
+  match($0, /^([0-9]+)\.[[:space:]]*\[ \][[:space:]]*(.*)$/, m) {
+    n = m[1]
+    main_state[n] = "incomplete"
+    main_text[n] = trim(m[2])
+    next
+  }
 
-while IFS= read -r line; do
-    # Main task
-    if [[ $line =~ ^([0-9]+)\.[[:space:]]*\[[[:space:]]*\][[:space:]]*(.*)$ ]]; then
-        num="${BASH_REMATCH[1]}"
-        main_task_status[$num]="incomplete"
+  match($0, /^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$/, m) {
+    n = m[1]
+    main_state[n] = "complete"
+    main_text[n] = trim(m[2])
+    next
+  }
 
-    # Completed main task
-    elif [[ $line =~ ^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$ ]]; then
-        num="${BASH_REMATCH[1]}"
-        main_task_status[$num]="complete"
+  match($0, /^[[:space:]]*-[[:space:]]*\[([ x])\][[:space:]]*([0-9]+)\.[0-9]+[[:space:]]*(.*)$/, m) {
+    status = m[1]
+    n = m[2]
+    sub_any[n] = 1
 
-    # Subtask
-    elif [[ $line =~ ^[[:space:]]+-[[:space:]]*\[([[:space:]x])\][[:space:]]*([0-9]+)\.(.*)$ ]]; then
-        status="${BASH_REMATCH[1]}"
-        num="${BASH_REMATCH[2]}"
-        if [[ -z "${main_task_subtasks[$num]}" ]]; then
-            main_task_subtasks[$num]="0:0" # incomplete:complete
-        fi
-        if [[ "$status" == "x" ]]; then
-            # Increment complete count
-            IFS=':' read -r inc comp <<< "${main_task_subtasks[$num]}"
-            main_task_subtasks[$num]="$inc:$((comp + 1))"
-        else
-            # Increment incomplete count
-            IFS=':' read -r inc comp <<< "${main_task_subtasks[$num]}"
-            main_task_subtasks[$num]="$((inc + 1)):$comp"
-        fi
-    fi
-done < "$PLAN_FILE"
+    if (status == "x") {
+      sub_complete[n]++
+      completed++
+      last_done = after_checkbox($0)
+    } else {
+      sub_incomplete[n]++
+      remaining++
+      if (next_task == "") next_task = after_checkbox($0)
+    }
 
-# Now check which main tasks should auto-complete
-for main_num in "${!main_task_subtasks[@]}"; do
-    IFS=':' read -r incomplete complete <<< "${main_task_subtasks[$main_num]}"
-    if [[ $incomplete -eq 0 && $complete -gt 0 ]]; then
-        echo "Should mark main task $main_num as complete"
-    fi
-done
-EOF
+    next
+  }
+
+  END {
+    for (n in main_state) {
+      if (!sub_any[n]) {
+        if (main_state[n] == "complete") {
+          completed++
+          last_done = main_text[n]
+        } else if (main_state[n] == "incomplete") {
+          remaining++
+          if (next_task == "") next_task = main_text[n]
+        }
+      }
+    }
+
+    to_complete = ""
+    for (n in sub_any) {
+      if (main_state[n] == "incomplete" && sub_incomplete[n] == 0 && sub_complete[n] > 0) {
+        to_complete = to_complete (to_complete ? " " : "") n
+      }
+    }
+
+    printf "%d\t%d\t%s\t%s\t%s\n", remaining, completed, next_task, last_done, to_complete
+  }
+  ' "$PLAN_FILE"
+)
+
+echo "Leaf tasks remaining: ${REMAINING:-0}"
+echo "Leaf tasks completed: ${COMPLETED:-0}"
+echo "Next task: ${NEXT_TASK:-<none>}"
+echo "Last done: ${LAST_DONE:-<none>}"
+if [[ -n "${TO_COMPLETE:-}" ]]; then
+  echo "Main tasks eligible for auto-complete: $TO_COMPLETE"
+else
+  echo "Main tasks eligible for auto-complete: <none>"
+fi

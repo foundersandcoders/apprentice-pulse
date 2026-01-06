@@ -1,9 +1,17 @@
 cohort metrics, takes very long
 
+survey send email
 
-when subtasks done mark task done
-At the end of each subtask consider if create test
-Same for report?
+link surveys with student. track not fulfilled
+
+status naming:
+  Absent -> Not Check-in
+  Not Coming -> Absent
+
+Apprentice attendance. Show it per term. terms are on Airtable
+
+Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
+
 
 
 Login page pretty

@@ -7,21 +7,27 @@
 TASK="${1:-recent work}"
 
 # Get recent changes for context
-RECENT_FILES=$(git diff HEAD~1 --name-only 2>/dev/null | head -10 | tr '\n' ' ')
-LAST_COMMIT=$(git log -1 --oneline 2>/dev/null)
+BASE_REF="HEAD~1"
+if ! git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+  BASE_REF="HEAD"
+fi
+
+CHANGED_FILES=$(git diff --name-only "$BASE_REF" 2>/dev/null || true)
+RECENT_FILES=$(printf '%s\n' "$CHANGED_FILES" | head -10 | tr '\n' ' ')
+LAST_COMMIT=$(git log -1 --oneline 2>/dev/null || echo "No commits found")
 
 # Check for indicators that suggest specific test types needed
 INDICATORS=""
-if git diff HEAD~1 --name-only 2>/dev/null | grep -qE 'src/routes/api.*\.ts$'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -qE 'src/routes/api.*\.ts$'; then
   INDICATORS="${INDICATORS}[New/modified API routes - Postman tests needed] "
 fi
-if git diff HEAD~1 --name-only 2>/dev/null | grep -qE 'src/lib/(server|airtable).*\.ts$'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -qE 'src/lib/(server|airtable).*\.ts$'; then
   INDICATORS="${INDICATORS}[Service/business logic - Unit tests needed] "
 fi
-if git diff HEAD~1 --name-only 2>/dev/null | grep -qE '\.svelte$'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -qE '\.svelte$'; then
   INDICATORS="${INDICATORS}[Svelte components - Consider component tests] "
 fi
-if git diff HEAD~1 --name-only 2>/dev/null | grep -qE 'auth|session|security'; then
+if printf '%s\n' "$CHANGED_FILES" | grep -qE 'auth|session|security'; then
   INDICATORS="${INDICATORS}[Auth/security changes - Critical testing needed] "
 fi
 if git log -1 --oneline 2>/dev/null | grep -qiE '(fix|bug|error|issue)'; then
@@ -29,7 +35,11 @@ if git log -1 --oneline 2>/dev/null | grep -qiE '(fix|bug|error|issue)'; then
 fi
 
 # Count existing test files
-EXISTING_TESTS=$(find src -name "*.spec.ts" 2>/dev/null | wc -l | tr -d ' ')
+if command -v rg >/dev/null 2>&1; then
+  EXISTING_TESTS=$(rg --files -g '*.spec.ts' src 2>/dev/null | wc -l | tr -d ' ')
+else
+  EXISTING_TESTS=$(find src -name "*.spec.ts" 2>/dev/null | wc -l | tr -d ' ')
+fi
 
 cat << EOF
 I need to evaluate what testing is needed for the recent work.
@@ -37,6 +47,7 @@ I need to evaluate what testing is needed for the recent work.
 ## Task Context
 Task: $TASK
 Last commit: $LAST_COMMIT
+Base ref: $BASE_REF
 Modified files: $RECENT_FILES
 Test indicators: $INDICATORS
 Existing test files: $EXISTING_TESTS
@@ -62,7 +73,7 @@ cat << EOF
 Following the guidelines above:
 
 1. **Analyze Recent Changes**:
-   - Run: git diff HEAD~1 --stat
+   - Run: git diff "$BASE_REF" --stat
    - Review modified files and understand what changed
    - Identify the type of changes (API, business logic, UI, bug fix)
 
