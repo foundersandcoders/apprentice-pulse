@@ -13,6 +13,10 @@
 	let sortColumn = $state<SortColumn>('attendanceRate');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
 
+	// Comparison state
+	let selectedForComparison = $state<Set<string>>(new Set());
+	let showComparison = $state(false);
+
 	// Sorted cohort statistics
 	const sortedCohortStats = $derived.by(() => {
 		return [...cohortStats].sort((a, b) => {
@@ -76,6 +80,30 @@
 	function isLowAttendance(rate: number): boolean {
 		return rate < 80;
 	}
+
+	// Comparison functions
+	function toggleCohortForComparison(cohortId: string) {
+		if (selectedForComparison.has(cohortId)) {
+			selectedForComparison.delete(cohortId);
+		} else {
+			selectedForComparison.add(cohortId);
+		}
+		selectedForComparison = new Set(selectedForComparison);
+	}
+
+	function clearComparison() {
+		selectedForComparison = new Set();
+		showComparison = false;
+	}
+
+	function toggleComparisonView() {
+		showComparison = !showComparison;
+	}
+
+	// Get cohorts selected for comparison
+	const comparisonCohorts = $derived(
+		cohortStats.filter(cohort => selectedForComparison.has(cohort.cohortId))
+	);
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
@@ -107,6 +135,113 @@
 		</div>
 	{/if}
 
+	<!-- Comparison Controls -->
+	{#if cohortStats.length > 1}
+		<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div class="flex items-center gap-4">
+					<h3 class="font-medium text-blue-900">Compare Cohorts</h3>
+					<span class="text-sm text-blue-700">
+						{selectedForComparison.size} selected
+					</span>
+				</div>
+				<div class="flex items-center gap-2">
+					{#if selectedForComparison.size >= 2}
+						<button
+							onclick={toggleComparisonView}
+							class="px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+						>
+							{showComparison ? 'Hide' : 'Show'} Comparison
+						</button>
+					{/if}
+					{#if selectedForComparison.size > 0}
+						<button
+							onclick={clearComparison}
+							class="px-3 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700 transition-colors"
+						>
+							Clear Selection
+						</button>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Comparison View -->
+	{#if showComparison && comparisonCohorts.length >= 2}
+		<div class="mb-6 bg-white border rounded-lg overflow-hidden">
+			<div class="px-4 py-3 border-b bg-gray-50">
+				<h2 class="text-lg font-medium">Cohort Comparison</h2>
+				<p class="text-sm text-gray-600 mt-1">
+					Comparing {comparisonCohorts.length} cohorts side-by-side
+				</p>
+			</div>
+
+			<div class="p-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{#each comparisonCohorts as cohort (cohort.cohortId)}
+						<div class="border rounded-lg p-4 {isLowAttendance(cohort.attendanceRate) ? 'border-red-200 bg-red-50' : 'border-gray-200'}">
+							<div class="flex items-center justify-between mb-3">
+								<h4 class="font-medium text-gray-900">{cohort.cohortName}</h4>
+								<button
+									onclick={() => toggleCohortForComparison(cohort.cohortId)}
+									class="text-gray-400 hover:text-gray-600"
+									title="Remove from comparison"
+								>
+									×
+								</button>
+							</div>
+
+							<div class="space-y-3">
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-gray-600">Attendance Rate</span>
+									<span class="text-lg font-bold {getAttendanceColor(cohort.attendanceRate)}">
+										{cohort.attendanceRate}%
+									</span>
+								</div>
+
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-gray-600">Apprentices</span>
+									<span class="font-medium">{cohort.apprenticeCount}</span>
+								</div>
+
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-gray-600">Total Events</span>
+									<span class="font-medium">{cohort.totalEvents}</span>
+								</div>
+
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-gray-600">Trend</span>
+									<div class="flex items-center gap-1">
+										<span class="{getTrendColor(cohort.trend.direction)}">
+											{getTrendIcon(cohort.trend.direction)}
+										</span>
+										<span class="text-sm font-medium">
+											{cohort.trend.change > 0 ? '+' : ''}{cohort.trend.change}%
+										</span>
+									</div>
+								</div>
+
+								<div class="pt-2 border-t">
+									<div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+										<div>
+											<span class="block">Present: {cohort.present}</span>
+											<span class="block">Late: {cohort.late}</span>
+										</div>
+										<div>
+											<span class="block">Absent: {cohort.absent}</span>
+											<span class="block">Excused: {cohort.excused}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Cohort Metrics Table -->
 	{#if cohortStats.length === 0}
 		<div class="text-center py-12">
@@ -128,6 +263,9 @@
 				<table class="w-full">
 					<thead class="bg-gray-50 border-b">
 						<tr>
+							<th class="px-4 py-3 w-12">
+								<span class="text-xs text-gray-500">Compare</span>
+							</th>
 							<th class="px-4 py-3 text-left">
 								<button
 									onclick={() => toggleSort('name')}
@@ -168,6 +306,14 @@
 					<tbody class="divide-y divide-gray-200">
 						{#each sortedCohortStats as cohort (cohort.cohortId)}
 							<tr class="hover:bg-gray-50">
+								<td class="px-4 py-3">
+									<input
+										type="checkbox"
+										checked={selectedForComparison.has(cohort.cohortId)}
+										onchange={() => toggleCohortForComparison(cohort.cohortId)}
+										class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									/>
+								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
 										<span class="font-medium">{cohort.cohortName}</span>
@@ -210,13 +356,21 @@
 				{#each sortedCohortStats as cohort (cohort.cohortId)}
 					<div class="border rounded-lg p-4 {isLowAttendance(cohort.attendanceRate) ? 'border-red-200 bg-red-50' : 'border-gray-200'}">
 						<div class="flex items-start justify-between mb-3">
-							<div>
-								<h3 class="font-medium text-gray-900">{cohort.cohortName}</h3>
-								{#if isLowAttendance(cohort.attendanceRate)}
-									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
-										Low Attendance
-									</span>
-								{/if}
+							<div class="flex items-start gap-3">
+								<input
+									type="checkbox"
+									checked={selectedForComparison.has(cohort.cohortId)}
+									onchange={() => toggleCohortForComparison(cohort.cohortId)}
+									class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								/>
+								<div>
+									<h3 class="font-medium text-gray-900">{cohort.cohortName}</h3>
+									{#if isLowAttendance(cohort.attendanceRate)}
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
+											Low Attendance
+										</span>
+									{/if}
+								</div>
 							</div>
 							<span class="text-lg font-bold {getAttendanceColor(cohort.attendanceRate)}">
 								{cohort.attendanceRate}%
