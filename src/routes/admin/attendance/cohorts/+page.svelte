@@ -1,5 +1,7 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { resolve } from '$app/paths';
+	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { CohortAttendanceStats } from '$lib/types/attendance';
 
 	let { data } = $props();
@@ -14,13 +16,20 @@
 	let sortDirection = $state<'asc' | 'desc'>('desc');
 
 	// Comparison state
-	let selectedForComparison = $state<Set<string>>(new Set());
+	// eslint-disable-next-line svelte/no-unnecessary-state-wrap
+	let selectedForComparison = $state(new SvelteSet<string>());
 	let showComparison = $state(false);
 
 	// Date filter state
 	let showDateFilter = $state(false);
-	let startDate = $state(dateRange.start || '');
-	let endDate = $state(dateRange.end || '');
+	let startDate = $state('');
+	let endDate = $state('');
+
+	// Initialize date filter values from URL
+	$effect(() => {
+		startDate = dateRange.start || '';
+		endDate = dateRange.end || '';
+	});
 
 	// Today's date for input max
 	const today = new Date().toISOString().split('T')[0];
@@ -52,7 +61,8 @@
 	function toggleSort(column: SortColumn) {
 		if (sortColumn === column) {
 			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
+		}
+		else {
 			sortColumn = column;
 			sortDirection = column === 'attendanceRate' ? 'desc' : 'asc';
 		}
@@ -93,14 +103,15 @@
 	function toggleCohortForComparison(cohortId: string) {
 		if (selectedForComparison.has(cohortId)) {
 			selectedForComparison.delete(cohortId);
-		} else {
+		}
+		else {
 			selectedForComparison.add(cohortId);
 		}
-		selectedForComparison = new Set(selectedForComparison);
+		selectedForComparison = new SvelteSet(selectedForComparison);
 	}
 
 	function clearComparison() {
-		selectedForComparison = new Set();
+		selectedForComparison = new SvelteSet();
 		showComparison = false;
 	}
 
@@ -110,7 +121,7 @@
 
 	// Get cohorts selected for comparison
 	const comparisonCohorts = $derived(
-		cohortStats.filter(cohort => selectedForComparison.has(cohort.cohortId))
+		cohortStats.filter(cohort => selectedForComparison.has(cohort.cohortId)),
 	);
 
 	// Date filter functions
@@ -119,7 +130,7 @@
 	}
 
 	function applyDateFilter() {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (startDate) params.set('start', startDate);
 		if (endDate) params.set('end', endDate);
 
@@ -168,7 +179,7 @@
 
 		const csvContent = [
 			headers.join(','),
-			...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+			...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')),
 		].join('\n');
 
 		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -284,7 +295,10 @@
 						Apply Filter
 					</button>
 					<button
-						onclick={() => { startDate = ''; endDate = ''; }}
+						onclick={() => {
+							startDate = '';
+							endDate = '';
+						}}
 						class="px-4 py-2 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors"
 					>
 						Reset
@@ -368,7 +382,7 @@
 						<div class="border rounded-lg p-4 {isLowAttendance(cohort.attendanceRate) ? 'border-red-200 bg-red-50' : 'border-gray-200'}">
 							<div class="flex items-center justify-between mb-3">
 								<a
-									href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+																		href={`${resolve('/admin/attendance/apprentices')}?cohorts=${cohort.cohortId}`}
 									class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
 								>
 									{cohort.cohortName}
@@ -506,8 +520,8 @@
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
-										<a
-											href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+																				<a
+											href={`${resolve('/admin/attendance/apprentices')}?cohorts=${cohort.cohortId}`}
 											class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
 										>
 											{cohort.cohortName}
@@ -559,8 +573,8 @@
 									class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 								<div>
-									<a
-										href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+																		<a
+										href={`${resolve('/admin/attendance/apprentices')}?cohorts=${cohort.cohortId}`}
 										class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
 									>
 										{cohort.cohortName}

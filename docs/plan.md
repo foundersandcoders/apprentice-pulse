@@ -27,7 +27,7 @@
    - [x] 4.3 Ensure consistent styling with existing admin pages
 
 5. [ ] **Testing and Polish**
-   - [ ] 5.1 Test with various cohort sizes and data scenarios
+   - [x] 5.1 Test with various cohort sizes and data scenarios
    - [ ] 5.2 Add loading states and error handling
    - [ ] 5.3 Ensure mobile responsiveness for the metrics table
 

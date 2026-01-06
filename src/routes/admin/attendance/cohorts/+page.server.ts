@@ -39,7 +39,8 @@ export const load: PageServerLoad = async ({ url }) => {
 				if (stats) {
 					cohortStats.push(stats);
 				}
-			} catch (err) {
+			}
+			catch (err) {
 				console.error(`[attendance/cohorts] Error fetching stats for cohort ${cohort.id}:`, err);
 				// Continue with other cohorts even if one fails
 			}
@@ -54,7 +55,8 @@ export const load: PageServerLoad = async ({ url }) => {
 				parsedEnd: parsedEndDate,
 			},
 		};
-	} catch (err) {
+	}
+	catch (err) {
 		console.error('[attendance/cohorts] Error loading data:', err);
 		return {
 			cohortStats: [],
