@@ -22,7 +22,7 @@
    - [x] 3.4 Create export functionality for cohort metrics
 
 4. [ ] **Navigation Integration**
-   - [ ] 4.1 Add cohort metrics link to admin dashboard navigation
+   - [x] 4.1 Add cohort metrics link to admin dashboard navigation
    - [ ] 4.2 Update admin layout with proper breadcrumbs
    - [ ] 4.3 Ensure consistent styling with existing admin pages
 

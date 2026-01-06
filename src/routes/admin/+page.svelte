@@ -25,5 +25,12 @@
 			<h2 class="text-lg font-semibold mb-2">Apprentice Attendance</h2>
 			<p class="text-gray-600 text-sm">Track individual apprentice attendance rates and history</p>
 		</a>
+		<a
+			href={resolve('/admin/attendance/cohorts')}
+			class="block p-6 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+		>
+			<h2 class="text-lg font-semibold mb-2">Cohort Metrics</h2>
+			<p class="text-gray-600 text-sm">View aggregate attendance statistics and compare cohort performance</p>
+		</a>
 	</div>
 </div>
