@@ -233,15 +233,15 @@
 	}
 </script>
 
-<div class="p-6 max-w-6xl mx-auto">
+<div class="p-4 sm:p-6 max-w-6xl mx-auto">
 	<header class="mb-6">
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 		<div class="flex flex-wrap items-center justify-between gap-4 mt-2">
 			<div>
-				<h1 class="text-2xl font-bold">Cohort Attendance Metrics</h1>
+				<h1 class="text-xl sm:text-2xl font-bold">Cohort Attendance Metrics</h1>
 				<p class="text-gray-600 mt-1">Aggregate attendance statistics and trends per cohort</p>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex flex-wrap items-center gap-2">
 				<button
 					onclick={toggleDateFilter}
 					class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"

@@ -371,3 +371,82 @@ Both `createAttendance()` and `createExternalAttendance()` now call `determineSt
 ## Design Decision: Service Layer Logic
 
 The late detection happens in the attendance service, not the API endpoint. This ensures consistency regardless of how attendance is created (user check-in, admin manual entry, future bulk import). [P3 - 40%] [P5 - 50%] [D4 - 30%]
+
+# AP-26: Cohort Attendance Metrics Dashboard
+
+Created a comprehensive cohort metrics dashboard that provides aggregate attendance statistics with drill-down capabilities and comparison features.
+
+## Architecture Decisions
+
+### 1. Server-Side Data Aggregation
+All attendance statistics are calculated server-side in `getCohortAttendanceStats()` rather than client-side. This provides:
+- Consistent metrics across all views
+- Reduced client-side computation
+- Easier caching opportunities in the future
+- Single source of truth for business logic
+
+### 2. Reactive State Management with Svelte 5 Runes
+Used Svelte 5's new runes (`$state`, `$derived`, `$effect`) for reactive state management:
+
+```typescript
+// Sorting and filtering computed reactively
+const sortedCohortStats = $derived(() => {
+    const sorted = [...data.cohortStats];
+    // Complex sorting logic
+    return sorted;
+});
+
+// Export data always reflects current view
+const exportData = $derived(() =>
+    sortedCohortStats.map(cohort => ({
+        Cohort: cohort.cohortName,
+        'Attendance Rate': `${Math.round(cohort.attendanceRate)}%`,
+        // ... other fields
+    }))
+);
+```
+
+This ensures UI updates automatically when filters or sort orders change. [P8 - 70%] [D2 - 60%]
+
+### 3. Responsive Design Pattern
+Implemented responsive table/card switching using Tailwind's responsive utilities:
+- Desktop: Full data table with all columns
+- Mobile: Card-based layout with key metrics
+- No JavaScript media queries needed - pure CSS solution
+
+### 4. Comparison Feature with SvelteSet
+Used `SvelteSet` for managing selected cohorts for comparison, wrapped in `$state` for reactivity:
+
+```typescript
+let selectedForComparison = $state(new SvelteSet<string>());
+```
+
+This provides O(1) lookups while maintaining reactivity. The comparison view uses CSS Grid for responsive side-by-side layout. [P5 - 60%]
+
+### 5. CSV Export with Error Boundaries
+Implemented client-side CSV generation with comprehensive error handling:
+- Validation of data availability before export
+- Try-catch blocks around CSV generation
+- User-friendly error messages
+- Automatic filename generation with timestamp
+
+This follows the principle of graceful degradation - if export fails, the dashboard remains functional. [P7 - 40%] [D4 - 40%]
+
+## Technical Implementation Details
+
+### Date Range Filtering
+While the UI supports date range parameters, the backend `getCohortAttendanceStats()` doesn't yet filter by date. This was intentionally left as a TODO to avoid scope creep in the MVP. The architecture supports it - just needs the filter logic added to the Airtable query.
+
+### Performance Optimizations
+- Sequential API calls for cohort stats (could be parallelized in future)
+- No unnecessary re-renders thanks to `$derived` computations
+- Lightweight CSV generation without external dependencies
+
+### Loading States and Error Handling
+Implemented consistent loading/error patterns across all admin views:
+- Loading overlay during navigation
+- Error state with retry capability
+- Empty state messaging
+- Form validation feedback
+
+This creates a predictable user experience across the admin dashboard. [P11 - 40%]

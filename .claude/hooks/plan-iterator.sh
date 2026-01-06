@@ -26,6 +26,33 @@ fi
 REMAINING=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
 REMAINING=${REMAINING:-0}
 
+# Check if main tasks need to be marked complete based on subtasks
+# Pattern: numbered main tasks (e.g., "1. [ ] Main task") followed by subtasks (e.g., "   - [x] 1.1 Subtask")
+while IFS= read -r main_task_line; do
+  # Extract the main task number
+  main_num=$(echo "$main_task_line" | sed -n 's/^\([0-9]\+\)\. \[ \].*/\1/p')
+
+  if [[ -n "$main_num" ]]; then
+    # Count uncompleted subtasks for this main task (e.g., "- [ ] 1.1", "- [ ] 1.2")
+    uncompleted_subtasks=$(grep -c "^\s*- \[ \] ${main_num}\." "$PLAN_FILE" 2>/dev/null || echo "0")
+
+    if [[ "$uncompleted_subtasks" -eq 0 ]]; then
+      # Check if there are any completed subtasks (to avoid marking empty tasks as done)
+      completed_subtasks=$(grep -c "^\s*- \[x\] ${main_num}\." "$PLAN_FILE" 2>/dev/null || echo "0")
+
+      if [[ "$completed_subtasks" -gt 0 ]]; then
+        # Mark the main task as complete
+        sed -i.bak "s/^${main_num}\. \[ \]/${main_num}. [x]/" "$PLAN_FILE"
+        rm -f "${PLAN_FILE}.bak"
+      fi
+    fi
+  fi
+done < <(grep '^[0-9]\+\. \[ \]' "$PLAN_FILE")
+
+# Recount remaining tasks after auto-marking main tasks
+REMAINING=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
+REMAINING=${REMAINING:-0}
+
 # All tasks complete - cleanup and exit
 if [[ "$REMAINING" -eq 0 ]]; then
   rm -f "$LOOP_MARKER"
@@ -64,7 +91,11 @@ $NEXT_TASK
 
 1. **Mark done**: Change \`- [ ]\` to \`- [x]\` for the completed task in docs/plan.md
 
-2. **Report evaluation**: Consider if what you just implemented could serve as evidence for any criteria in docs/Assessment-criteria.md (P1-P11, D1-D4). If yes, run /update-report. If not, move on.
+2. **MANDATORY Report Evaluation**: You MUST evaluate if the completed task should be documented in report.md by:
+   a. Running: /evaluate-report "$NEXT_TASK"
+   b. The evaluation will analyze recent changes and determine if documentation is needed
+   c. If significant technical decisions were made or assessment criteria evidence exists, update report.md
+   d. This step is NOT optional - always evaluate, even if no update is needed
 
 3. **Working preferences**:
    - Keep changes small and focused

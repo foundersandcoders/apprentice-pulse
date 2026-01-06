@@ -1,4 +1,4 @@
-Attendance is not showing names? (check Airtable)
+cohort metrics, takes very long
 
 
 when subtasks done mark task done
