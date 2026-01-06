@@ -12,6 +12,7 @@
 	const apprentices = $derived(data.apprentices as ApprenticeAttendanceStats[]);
 	const cohorts = $derived(data.cohorts as Cohort[]);
 	const terms = $derived(data.terms as Term[]);
+
 	const selectedCohortIds = $derived(data.selectedCohortIds as string[]);
 	const serverSelectedTermIds = $derived(data.selectedTermIds as string[]);
 	const needsSelection = $derived(data.needsSelection as boolean);
@@ -76,7 +77,38 @@
 	let showAllWarning = $state(false);
 
 	// Term filter state - initialize from server data
-	let selectedTermIds = $state<string[]>([]);
+	let selectedTermIds = $state<string[]>([]); // Applied/committed term selection
+	let stagedTermIds = $state<string[]>([]); // Staged/temporary selection for dropdown
+	let termDropdownOpen = $state(false);
+
+	// Derived state for tracking changes
+	const hasTermChanges = $derived(() => {
+		if (stagedTermIds.length !== selectedTermIds.length) return true;
+		return !stagedTermIds.every(id => selectedTermIds.includes(id));
+	});
+
+
+	// Close dropdown when clicking outside
+	$effect(() => {
+		if (!termDropdownOpen) return;
+
+		const handleClickOutside = (event: MouseEvent) => {
+			const target = event.target as Element;
+			if (!target.closest('[data-dropdown="terms"]')) {
+				termDropdownOpen = false;
+			}
+		};
+
+		// Use a small delay to avoid interfering with the button click
+		const timeoutId = setTimeout(() => {
+			document.addEventListener('click', handleClickOutside);
+		}, 10);
+
+		return () => {
+			clearTimeout(timeoutId);
+			document.removeEventListener('click', handleClickOutside);
+		};
+	});
 
 	// Sorting state
 	type SortColumn = 'name' | 'attendanceRate' | 'cohort';
@@ -91,7 +123,9 @@
 	$effect(() => {
 		localSelectedCohorts = new SvelteSet(selectedCohortIds);
 		selectedTermIds = [...serverSelectedTermIds];
+		stagedTermIds = [...serverSelectedTermIds]; // Initialize staged state with server data
 	});
+
 
 	// Sorted apprentices
 	let sortedApprentices = $derived.by(() => {
@@ -240,15 +274,26 @@
 		goto(newUrl);
 	}
 
-	// Toggle term selection
-	function toggleTermSelection(termId: string) {
-		const index = selectedTermIds.indexOf(termId);
+	// Toggle staged term selection (doesn't apply immediately)
+	function toggleStagedTermSelection(termId: string) {
+		const index = stagedTermIds.indexOf(termId);
 		if (index === -1) {
-			selectedTermIds.push(termId);
+			stagedTermIds.push(termId);
 		} else {
-			selectedTermIds.splice(index, 1);
+			stagedTermIds.splice(index, 1);
 		}
+	}
+
+	// Apply staged term selection (triggers fetch)
+	function applyTermSelection() {
+		selectedTermIds = [...stagedTermIds];
 		onTermChange();
+		termDropdownOpen = false;
+	}
+
+	// Select all terms
+	function selectAllTerms() {
+		stagedTermIds = terms.map(t => t.id);
 	}
 
 	// Format date for display (DD/MM/YYYY)
@@ -373,35 +418,76 @@
 	{:else}
 		<!-- Term Filter -->
 		{#if terms.length > 0}
-			<div class="mb-4 p-4 bg-gray-50 border rounded-lg">
-				<h3 class="text-sm font-medium text-gray-900 mb-3">Filter by Term</h3>
-				<div class="space-y-2 max-h-40 overflow-y-auto">
-					{#each terms as term (term.id)}
-						{@const startDate = formatDateShort(term.startingDate)}
-						{@const endDate = formatDateShort(term.endDate)}
-						<label class="flex items-center space-x-2 cursor-pointer">
-							<input
-								type="checkbox"
-								checked={selectedTermIds.includes(term.id)}
-								onchange={() => toggleTermSelection(term.id)}
-								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-							/>
-							<span class="text-sm text-gray-700">
-								{term.name} ({startDate} - {endDate})
-							</span>
-						</label>
-					{/each}
-				</div>
-				{#if selectedTermIds.length > 0}
-					<div class="mt-3 pt-3 border-t border-gray-200">
-						<button
-							onclick={() => { selectedTermIds = []; onTermChange(); }}
-							class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+			<div class="mb-4">
+				<div class="relative" data-dropdown="terms">
+					<button
+						type="button"
+						onclick={(e) => { e.stopPropagation(); termDropdownOpen = !termDropdownOpen; }}
+						class="w-full text-left border rounded px-3 py-2 text-sm bg-white hover:border-blue-300 flex justify-between items-center"
+					>
+						<span class="truncate">
+							{#if selectedTermIds.length === 0}
+								<span class="text-gray-400">Filter by terms...</span>
+							{:else}
+								{@const selectedTermNames = terms
+									.filter(t => selectedTermIds.includes(t.id))
+									.map(t => t.name)
+									.join(', ')}
+								{selectedTermNames}
+							{/if}
+						</span>
+						<span class="text-gray-400 ml-1">{termDropdownOpen ? '▲' : '▼'}</span>
+					</button>
+					{#if termDropdownOpen}
+						<div
+							class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-48 overflow-y-auto"
+							onmousedown={e => e.stopPropagation()}
+							role="listbox"
+							tabindex="-1"
 						>
-							Clear all term filters
-						</button>
-					</div>
-				{/if}
+							<div class="border-b border-gray-200 px-2 py-1.5">
+								<button
+									onclick={selectAllTerms}
+									class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+									disabled={stagedTermIds.length === terms.length}
+								>
+									Select All
+								</button>
+							</div>
+							{#each terms as term (term.id)}
+								{@const startDate = formatDateShort(term.startingDate)}
+								{@const endDate = formatDateShort(term.endDate)}
+								<label class="flex items-center px-2 py-1.5 hover:bg-gray-50 cursor-pointer text-sm">
+									<input
+										type="checkbox"
+										checked={stagedTermIds.includes(term.id)}
+										onchange={() => toggleStagedTermSelection(term.id)}
+										class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									/>
+									<span class="truncate">
+										{term.name} ({startDate} - {endDate})
+									</span>
+								</label>
+							{/each}
+							<div class="border-t border-gray-200 px-2 py-2 flex justify-between items-center gap-2">
+								<button
+									onclick={() => { stagedTermIds = []; }}
+									class="text-xs text-gray-500 hover:text-gray-700 font-medium"
+									disabled={stagedTermIds.length === 0}
+								>
+									Clear all
+								</button>
+								<button
+									onclick={applyTermSelection}
+									class="px-3 py-1 rounded text-xs font-medium transition-colors {hasTermChanges() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}"
+									disabled={!hasTermChanges()}
+								>
+									Apply
+								</button>
+							</div>
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 
