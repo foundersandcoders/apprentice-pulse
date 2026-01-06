@@ -17,6 +17,14 @@
 	let selectedForComparison = $state<Set<string>>(new Set());
 	let showComparison = $state(false);
 
+	// Date filter state
+	let showDateFilter = $state(false);
+	let startDate = $state(dateRange.start || '');
+	let endDate = $state(dateRange.end || '');
+
+	// Today's date for input max
+	const today = new Date().toISOString().split('T')[0];
+
 	// Sorted cohort statistics
 	const sortedCohortStats = $derived.by(() => {
 		return [...cohortStats].sort((a, b) => {
@@ -104,14 +112,131 @@
 	const comparisonCohorts = $derived(
 		cohortStats.filter(cohort => selectedForComparison.has(cohort.cohortId))
 	);
+
+	// Date filter functions
+	function toggleDateFilter() {
+		showDateFilter = !showDateFilter;
+	}
+
+	function applyDateFilter() {
+		const params = new URLSearchParams();
+		if (startDate) params.set('start', startDate);
+		if (endDate) params.set('end', endDate);
+
+		const newUrl = `/admin/attendance/cohorts${params.toString() ? '?' + params.toString() : ''}`;
+		window.location.href = newUrl;
+	}
+
+	function clearDateFilter() {
+		startDate = '';
+		endDate = '';
+		window.location.href = '/admin/attendance/cohorts';
+	}
+
+	function formatDateDisplay(dateStr: string): string {
+		if (!dateStr) return '';
+		return new Date(dateStr).toLocaleDateString();
+	}
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6">
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
-		<h1 class="text-2xl font-bold mt-2">Cohort Attendance Metrics</h1>
-		<p class="text-gray-600 mt-1">Aggregate attendance statistics and trends per cohort</p>
+		<div class="flex flex-wrap items-center justify-between gap-4 mt-2">
+			<div>
+				<h1 class="text-2xl font-bold">Cohort Attendance Metrics</h1>
+				<p class="text-gray-600 mt-1">Aggregate attendance statistics and trends per cohort</p>
+			</div>
+			<button
+				onclick={toggleDateFilter}
+				class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+			>
+				📅 Date Filter
+				{#if dateRange.start || dateRange.end}
+					<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+						Active
+					</span>
+				{/if}
+			</button>
+		</div>
 	</header>
+
+	<!-- Date Filter Panel -->
+	{#if showDateFilter}
+		<div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+			<h3 class="text-lg font-medium text-gray-900 mb-4">Filter by Date Range</h3>
+
+			{#if dateRange.start || dateRange.end}
+				<div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+					<div class="flex items-center justify-between">
+						<div class="text-sm text-blue-700">
+							<strong>Current Filter:</strong>
+							{#if dateRange.start && dateRange.end}
+								{formatDateDisplay(dateRange.start)} to {formatDateDisplay(dateRange.end)}
+							{:else if dateRange.start}
+								From {formatDateDisplay(dateRange.start)}
+							{:else if dateRange.end}
+								Until {formatDateDisplay(dateRange.end)}
+							{/if}
+						</div>
+						<button
+							onclick={clearDateFilter}
+							class="text-sm text-blue-600 hover:text-blue-800 underline"
+						>
+							Clear Filter
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+					<label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">
+						Start Date
+					</label>
+					<input
+						id="startDate"
+						type="date"
+						bind:value={startDate}
+						max={today}
+						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					/>
+				</div>
+
+				<div>
+					<label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">
+						End Date
+					</label>
+					<input
+						id="endDate"
+						type="date"
+						bind:value={endDate}
+						max={today}
+						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+					/>
+				</div>
+
+				<div class="flex items-end gap-2">
+					<button
+						onclick={applyDateFilter}
+						class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+					>
+						Apply Filter
+					</button>
+					<button
+						onclick={() => { startDate = ''; endDate = ''; }}
+						class="px-4 py-2 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors"
+					>
+						Reset
+					</button>
+				</div>
+			</div>
+
+			<p class="text-xs text-gray-500 mt-3">
+				<strong>Note:</strong> Date filtering is not fully implemented in the backend yet. This interface is prepared for future enhancement.
+			</p>
+		</div>
+	{/if}
 
 	<!-- Summary Stats -->
 	{#if cohortStats.length > 0}

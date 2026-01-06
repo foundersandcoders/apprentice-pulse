@@ -16,7 +16,7 @@
    - [x] 2.4 Implement cohort comparison side-by-side view
 
 3. [ ] **Interactive Features**
-   - [ ] 3.1 Add date range filter component
+   - [x] 3.1 Add date range filter component
    - [ ] 3.2 Implement drill-down links to individual cohort members
    - [ ] 3.3 Add sorting functionality for all metrics columns
    - [ ] 3.4 Create export functionality for cohort metrics
