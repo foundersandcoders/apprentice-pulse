@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { navigating } from '$app/state';
-	import { SvelteSet } from 'svelte/reactivity';
+	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
 	import type { Cohort } from '$lib/airtable/sveltekit-wrapper';
 
@@ -17,7 +17,7 @@
 
 	// Group cohorts by prefix and sort
 	const groupedCohorts = $derived.by(() => {
-		const groups = new Map<string, Cohort[]>();
+		const groups = new SvelteMap<string, Cohort[]>();
 
 		for (const cohort of cohorts) {
 			// For MLX cohorts, group them all under "MLX"
@@ -27,7 +27,8 @@
 					groups.set(mlxKey, []);
 				}
 				groups.get(mlxKey)!.push(cohort);
-			} else {
+			}
+			else {
 				// Extract prefix (e.g., "FAC29" from "FAC29.2")
 				const prefix = cohort.name.match(/^([A-Z]+\d*)/)?.[1] || cohort.name;
 
@@ -63,7 +64,7 @@
 			})
 			.map(([prefix, cohorts]) => ({
 				prefix,
-				cohorts: cohorts.sort((a, b) => a.name.localeCompare(b.name))
+				cohorts: cohorts.sort((a, b) => a.name.localeCompare(b.name)),
 			}));
 	});
 
@@ -138,7 +139,8 @@
 		if (allSelected) {
 			// Deselect all in group
 			groupCohortIds.forEach(id => localSelectedCohorts.delete(id));
-		} else {
+		}
+		else {
 			// Select all in group
 			groupCohortIds.forEach(id => localSelectedCohorts.add(id));
 		}

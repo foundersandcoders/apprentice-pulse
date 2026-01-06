@@ -5,12 +5,13 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Make events reactive
-	let events = $state(data.events);
+	// Make events reactive - need $state for mutation in event handlers
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let events = $state<typeof data.events>([]);
 
 	// Update events when data changes (page navigation)
 	$effect(() => {
-		events = data.events;
+		events = [...data.events];
 	});
 
 	// Check-in state for authenticated users
