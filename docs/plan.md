@@ -7,7 +7,7 @@
 1. [ ] **Route Setup and Data Loading**
    - [x] 1.1 Create `/admin/attendance/cohorts/+page.server.ts` with load function
    - [x] 1.2 Fetch all cohorts and their attendance statistics
-   - [ ] 1.3 Handle date range filtering for metrics calculation
+   - [x] 1.3 Handle date range filtering for metrics calculation
 
 2. [ ] **Main Cohort Metrics Page**
    - [ ] 2.1 Create `/admin/attendance/cohorts/+page.svelte` with responsive layout

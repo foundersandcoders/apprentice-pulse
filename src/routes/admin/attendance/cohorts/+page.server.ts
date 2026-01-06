@@ -3,9 +3,27 @@ import { listCohorts, getCohortAttendanceStats } from '$lib/airtable/sveltekit-w
 import type { CohortAttendanceStats } from '$lib/types/attendance';
 
 export const load: PageServerLoad = async ({ url }) => {
-	// Optional date range filtering (for future implementation)
+	// Date range filtering support
 	const startDate = url.searchParams.get('start');
 	const endDate = url.searchParams.get('end');
+
+	// Validate date format if provided
+	let parsedStartDate: Date | null = null;
+	let parsedEndDate: Date | null = null;
+
+	if (startDate) {
+		parsedStartDate = new Date(startDate);
+		if (isNaN(parsedStartDate.getTime())) {
+			parsedStartDate = null;
+		}
+	}
+
+	if (endDate) {
+		parsedEndDate = new Date(endDate);
+		if (isNaN(parsedEndDate.getTime())) {
+			parsedEndDate = null;
+		}
+	}
 
 	try {
 		// Fetch all cohorts first
@@ -15,6 +33,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		const cohortStats: CohortAttendanceStats[] = [];
 		for (const cohort of cohorts) {
 			try {
+				// Note: getCohortAttendanceStats currently doesn't support date filtering
+				// This will be enhanced in a future update to use parsedStartDate/parsedEndDate
 				const stats = await getCohortAttendanceStats(cohort.id);
 				if (stats) {
 					cohortStats.push(stats);
@@ -27,15 +47,23 @@ export const load: PageServerLoad = async ({ url }) => {
 
 		return {
 			cohortStats,
-			startDate,
-			endDate,
+			dateRange: {
+				start: startDate,
+				end: endDate,
+				parsedStart: parsedStartDate,
+				parsedEnd: parsedEndDate,
+			},
 		};
 	} catch (err) {
 		console.error('[attendance/cohorts] Error loading data:', err);
 		return {
 			cohortStats: [],
-			startDate,
-			endDate,
+			dateRange: {
+				start: startDate,
+				end: endDate,
+				parsedStart: null,
+				parsedEnd: null,
+			},
 		};
 	}
 };
