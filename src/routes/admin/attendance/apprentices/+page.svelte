@@ -15,12 +15,61 @@
 	const needsSelection = $derived(data.needsSelection as boolean);
 	const showAll = $derived(data.showAll as boolean);
 
-	// Sort cohorts alphabetically by name
-	const sortedCohorts = $derived([...cohorts].sort((a, b) => a.name.localeCompare(b.name)));
+	// Group cohorts by prefix and sort
+	const groupedCohorts = $derived.by(() => {
+		const groups = new Map<string, Cohort[]>();
+
+		for (const cohort of cohorts) {
+			// For MLX cohorts, group them all under "MLX"
+			if (cohort.name.toLowerCase().includes('mlx')) {
+				const mlxKey = 'MLX';
+				if (!groups.has(mlxKey)) {
+					groups.set(mlxKey, []);
+				}
+				groups.get(mlxKey)!.push(cohort);
+			} else {
+				// Extract prefix (e.g., "FAC29" from "FAC29.2")
+				const prefix = cohort.name.match(/^([A-Z]+\d*)/)?.[1] || cohort.name;
+
+				if (!groups.has(prefix)) {
+					groups.set(prefix, []);
+				}
+				groups.get(prefix)!.push(cohort);
+			}
+		}
+
+		// Sort groups - newer cohorts (higher numbers) first, MLX always last
+		return Array.from(groups.entries())
+			.sort(([a], [b]) => {
+				// MLX always goes to the bottom
+				if (a === 'MLX') return 1;
+				if (b === 'MLX') return -1;
+
+				// Extract numbers from prefixes for comparison
+				const aNum = a.match(/\d+$/)?.[0];
+				const bNum = b.match(/\d+$/)?.[0];
+
+				// If both have numbers, sort by number (descending - newer first)
+				if (aNum && bNum) {
+					return parseInt(bNum) - parseInt(aNum);
+				}
+
+				// If only one has a number, prioritize it
+				if (aNum) return -1;
+				if (bNum) return 1;
+
+				// Fallback to alphabetical
+				return a.localeCompare(b);
+			})
+			.map(([prefix, cohorts]) => ({
+				prefix,
+				cohorts: cohorts.sort((a, b) => a.name.localeCompare(b.name))
+			}));
+	});
 
 	// Local state for cohort selection - need $state for reassignment in $effect to work
 	// eslint-disable-next-line svelte/no-unnecessary-state-wrap, svelte/prefer-writable-derived
-	let localSelectedCohorts = $state(new SvelteSet(selectedCohortIds));
+	let localSelectedCohorts = $state(new SvelteSet());
 	let showAllWarning = $state(false);
 
 	// Sorting state
@@ -80,6 +129,30 @@
 		else {
 			localSelectedCohorts.add(cohortId);
 		}
+	}
+
+	function toggleGroup(groupCohorts: Cohort[]) {
+		const groupCohortIds = groupCohorts.map(c => c.id);
+		const allSelected = groupCohortIds.every(id => localSelectedCohorts.has(id));
+
+		if (allSelected) {
+			// Deselect all in group
+			groupCohortIds.forEach(id => localSelectedCohorts.delete(id));
+		} else {
+			// Select all in group
+			groupCohortIds.forEach(id => localSelectedCohorts.add(id));
+		}
+	}
+
+	function isGroupSelected(groupCohorts: Cohort[]): boolean {
+		const groupCohortIds = groupCohorts.map(c => c.id);
+		return groupCohortIds.every(id => localSelectedCohorts.has(id));
+	}
+
+	function isGroupPartiallySelected(groupCohorts: Cohort[]): boolean {
+		const groupCohortIds = groupCohorts.map(c => c.id);
+		const selectedCount = groupCohortIds.filter(id => localSelectedCohorts.has(id)).length;
+		return selectedCount > 0 && selectedCount < groupCohortIds.length;
 	}
 
 	function loadSelectedCohorts() {
@@ -157,18 +230,43 @@
 			<h2 class="text-lg font-semibold mb-4">Select Cohorts</h2>
 			<p class="text-gray-600 mb-4">Choose one or more cohorts to view apprentice attendance data.</p>
 
-			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-6">
-				{#each sortedCohorts as cohort (cohort.id)}
-					<button
-						class="p-3 border rounded-lg text-left transition-colors"
-						class:bg-blue-50={localSelectedCohorts.has(cohort.id)}
-						class:border-blue-500={localSelectedCohorts.has(cohort.id)}
-						class:hover:bg-gray-50={!localSelectedCohorts.has(cohort.id)}
-						onclick={() => toggleCohort(cohort.id)}
-					>
-						<div class="font-medium">{cohort.name}</div>
-						<div class="text-sm text-gray-500">{cohort.apprenticeCount} apprentices</div>
-					</button>
+			<div class="space-y-4 mb-6">
+				{#each groupedCohorts as group (group.prefix)}
+					<div>
+						<button
+							class="text-sm font-medium mb-2 px-2 py-1 rounded transition-colors cursor-pointer hover:bg-blue-50 flex items-center gap-2"
+							class:text-blue-700={isGroupSelected(group.cohorts)}
+							class:bg-blue-50={isGroupSelected(group.cohorts)}
+							class:text-orange-700={isGroupPartiallySelected(group.cohorts)}
+							class:bg-orange-50={isGroupPartiallySelected(group.cohorts)}
+							class:text-gray-700={!isGroupSelected(group.cohorts) && !isGroupPartiallySelected(group.cohorts)}
+							onclick={() => toggleGroup(group.cohorts)}
+						>
+							{#if isGroupSelected(group.cohorts)}
+								<span class="text-blue-600">✓</span>
+							{:else if isGroupPartiallySelected(group.cohorts)}
+								<span class="text-orange-600">◐</span>
+							{:else}
+								<span class="text-gray-400">○</span>
+							{/if}
+							{group.prefix}
+							<span class="text-xs opacity-75">({group.cohorts.length} cohort{group.cohorts.length !== 1 ? 's' : ''})</span>
+						</button>
+						<div class="flex flex-wrap gap-3">
+							{#each group.cohorts as cohort (cohort.id)}
+								<button
+									class="p-3 border rounded-lg text-left transition-colors"
+									class:bg-blue-50={localSelectedCohorts.has(cohort.id)}
+									class:border-blue-500={localSelectedCohorts.has(cohort.id)}
+									class:hover:bg-gray-50={!localSelectedCohorts.has(cohort.id)}
+									onclick={() => toggleCohort(cohort.id)}
+								>
+									<div class="font-medium">{cohort.name}</div>
+									<div class="text-sm text-gray-500">{cohort.apprenticeCount} apprentices</div>
+								</button>
+							{/each}
+						</div>
+					</div>
 				{/each}
 			</div>
 
