@@ -37,21 +37,21 @@ COMPLETED=$(grep -c '^\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0"
 COMPLETED=${COMPLETED:-0}
 
 # Stage all changes FIRST
-git add -A 2>/dev/null || true
+git add -A >/dev/null 2>&1 || true
 
 # Then commit if there are staged changes
 if ! git diff --cached --quiet 2>/dev/null; then
   if [[ "$COMPLETED" -gt 0 ]]; then
     LAST_DONE=$(grep -E '^\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
-    git commit -m "feat: $LAST_DONE" 2>/dev/null || true
+    git commit -m "feat: $LAST_DONE" >/dev/null 2>&1 || true
   fi
 fi
 
 # Find next task
 NEXT_TASK=$(grep -m1 '^\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
 
-# Build the system message
-read -r -d '' MESSAGE << MSGEOF
+# Build the reason message for Claude
+read -r -d '' REASON << MSGEOF
 PLAN ITERATOR: Continue with the next task.
 
 ## Current Progress
@@ -76,8 +76,8 @@ $NEXT_TASK
 Run /stop or delete .claude/loop
 MSGEOF
 
-# Escape message for JSON
-ESCAPED_MSG=$(echo "$MESSAGE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
+# Escape reason for JSON
+ESCAPED_REASON=$(echo "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
 
-# Return JSON to continue
-echo "{\"continue\": true, \"systemMessage\": \"$ESCAPED_MSG\"}"
+# Return JSON with decision: block to prevent Claude from stopping
+echo "{\"decision\": \"block\", \"reason\": \"$ESCAPED_REASON\"}"

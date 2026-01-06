@@ -18,5 +18,12 @@
 			<h2 class="text-lg font-semibold mb-2">Events</h2>
 			<p class="text-gray-600 text-sm">Create, edit, and manage events for cohorts</p>
 		</a>
+		<a
+			href={resolve('/admin/attendance/apprentices')}
+			class="block p-6 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+		>
+			<h2 class="text-lg font-semibold mb-2">Apprentice Attendance</h2>
+			<p class="text-gray-600 text-sm">Track individual apprentice attendance rates and history</p>
+		</a>
 	</div>
 </div>

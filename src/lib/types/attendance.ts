@@ -1,5 +1,5 @@
 // Attendance status options
-export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused'] as const;
+export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused', 'Not Coming'] as const;
 export type AttendanceStatus = typeof ATTENDANCE_STATUSES[number];
 
 export interface Attendance {
@@ -43,6 +43,7 @@ export interface AttendanceStats {
 	late: number;
 	absent: number;
 	excused: number;
+	notComing: number;
 	attendanceRate: number; // 0-100 percentage
 }
 
@@ -78,4 +79,13 @@ export interface AttendanceSummary {
 	totalApprentices: number;
 	lowAttendanceCount: number; // Apprentices below 80%
 	recentCheckIns: number; // Check-ins in last 7 days
+}
+
+/** Attendance history entry for a single event */
+export interface AttendanceHistoryEntry {
+	eventId: string;
+	eventName: string;
+	eventDateTime: string;
+	status: AttendanceStatus | 'Missed'; // Missed = no attendance record
+	checkinTime: string | null;
 }

@@ -1,12 +1,14 @@
+Attendance is not showing names? (check Airtable)
 
 
-td elements reduce padding
 
 
+Not coming status
 
-Checkin page show who I am
-When checked in disable button or show that I already logged in. Now allows multiple
+Login page pretty
 
+
+Staff - Apprentice pulse, now has the student email. Use this for checkin as a student, not as an external
 
 
 Show mii plaza
@@ -14,8 +16,6 @@ Show mii plaza
 Integration with LUMA
 
 
-
-security for not checkin if not close to date.
 
 
 

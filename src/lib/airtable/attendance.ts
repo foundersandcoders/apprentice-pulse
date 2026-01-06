@@ -11,6 +11,7 @@ import type {
 	ApprenticeAttendanceStats,
 	CohortAttendanceStats,
 	AttendanceSummary,
+	AttendanceHistoryEntry,
 } from '../types/attendance.js';
 
 export function createAttendanceClient(apiKey: string, baseId: string) {
@@ -63,14 +64,19 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 * Check if a registered user has already checked in to an event
 	 */
 	async function hasUserCheckedIn(eventId: string, apprenticeId: string): Promise<boolean> {
+		// Fetch all attendance for this event and filter in JavaScript
+		// (filterByFormula with linked fields matches display value, not record ID)
 		const records = await attendanceTable
 			.select({
-				filterByFormula: `AND({${ATTENDANCE_FIELDS.EVENT}} = "${eventId}", {${ATTENDANCE_FIELDS.APPRENTICE}} = "${apprenticeId}")`,
-				maxRecords: 1,
+				returnFieldsByFieldId: true,
 			})
 			.all();
 
-		return records.length > 0;
+		return records.some((record) => {
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return eventLink?.includes(eventId) && apprenticeLink?.includes(apprenticeId);
+		});
 	}
 
 	/**
@@ -85,6 +91,77 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			.all();
 
 		return records.length > 0;
+	}
+
+	/**
+	 * Get a user's attendance record for a specific event (if exists)
+	 */
+	async function getUserAttendanceForEvent(eventId: string, apprenticeId: string): Promise<Attendance | null> {
+		const records = await attendanceTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		const record = records.find((r) => {
+			const eventLink = r.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const apprenticeLink = r.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return eventLink?.includes(eventId) && apprenticeLink?.includes(apprenticeId);
+		});
+
+		if (!record) {
+			return null;
+		}
+
+		return {
+			id: record.id,
+			eventId,
+			apprenticeId,
+			checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+			status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+		};
+	}
+
+	/**
+	 * Mark a user as "Not Coming" for an event
+	 * - Creates new attendance record if none exists
+	 * - Returns existing record if already marked "Not Coming"
+	 * - Throws error if user already checked in (Present/Late)
+	 */
+	async function markNotComing(input: CreateAttendanceInput): Promise<Attendance> {
+		// Validate event exists
+		const eventInfo = await getEventInfo(input.eventId);
+		if (!eventInfo.exists) {
+			throw new Error('Event not found');
+		}
+
+		// Check if user already has an attendance record
+		const existing = await getUserAttendanceForEvent(input.eventId, input.apprenticeId);
+		if (existing) {
+			if (existing.status === 'Not Coming') {
+				// Already marked as not coming - idempotent
+				return existing;
+			}
+			// Already checked in (Present/Late/Absent/Excused)
+			throw new Error('User already has an attendance record for this event');
+		}
+
+		// Create new attendance record with "Not Coming" status
+		const fields: Airtable.FieldSet = {
+			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
+			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
+			[ATTENDANCE_FIELDS.STATUS]: 'Not Coming',
+		};
+
+		const record = await attendanceTable.create(fields);
+
+		return {
+			id: record.id,
+			eventId: input.eventId,
+			apprenticeId: input.apprenticeId,
+			checkinTime: '', // No check-in time for "Not Coming"
+			status: 'Not Coming',
+		};
 	}
 
 	/**
@@ -331,6 +408,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const late = attendanceRecords.filter(a => a.status === 'Late').length;
 		const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
 		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
+		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
 		const attended = present + late;
 
 		const attendanceRate = totalEvents > 0
@@ -344,6 +422,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			late,
 			absent,
 			excused,
+			notComing,
 			attendanceRate,
 		};
 	}
@@ -633,11 +712,121 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		};
 	}
 
+	/**
+	 * Get attendance history for a specific apprentice
+	 * Returns a list of events with their attendance status
+	 */
+	async function getApprenticeAttendanceHistory(apprenticeId: string): Promise<AttendanceHistoryEntry[]> {
+		const apprenticesTable = base(TABLES.APPRENTICES);
+
+		// Get apprentice info to find their cohort
+		const apprenticeRecords = await apprenticesTable
+			.select({
+				filterByFormula: `RECORD_ID() = "${apprenticeId}"`,
+				maxRecords: 1,
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		if (apprenticeRecords.length === 0) {
+			return [];
+		}
+
+		const apprentice = apprenticeRecords[0];
+		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
+		const cohortId = cohortLink?.[0] ?? null;
+
+		// Get all events for this apprentice's cohort
+		const allEvents = await eventsTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		// Get all attendance records and filter by apprentice ID in JavaScript
+		// (filterByFormula with linked fields matches display value, not record ID)
+		const allAttendanceRecords = await attendanceTable
+			.select({
+				returnFieldsByFieldId: true,
+			})
+			.all();
+
+		// Filter to only records for this apprentice
+		const attendanceRecords = allAttendanceRecords.filter((record) => {
+			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
+			return apprenticeLink?.includes(apprenticeId);
+		});
+
+		// Create a map of eventId -> attendance record
+		const attendanceMap = new Map<string, Attendance>();
+		for (const record of attendanceRecords) {
+			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
+			const eventId = eventLink?.[0];
+			if (eventId) {
+				attendanceMap.set(eventId, {
+					id: record.id,
+					eventId,
+					apprenticeId,
+					checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
+					status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+				});
+			}
+		}
+
+		// Include events that are either:
+		// 1. For the apprentice's cohort (expected events - show as Missed if no attendance)
+		// 2. Have an attendance record (apprentice checked in, even if not their cohort)
+		// 3. All events if apprentice has no cohort
+		const relevantEventIds = new Set<string>();
+
+		if (cohortId) {
+			// Add cohort events
+			for (const event of allEvents) {
+				const cohortIds = event.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+				if (cohortIds?.includes(cohortId)) {
+					relevantEventIds.add(event.id);
+				}
+			}
+		}
+		else {
+			// No cohort - include all events
+			for (const event of allEvents) {
+				relevantEventIds.add(event.id);
+			}
+		}
+
+		// Add any events the apprentice has attendance for (regardless of cohort)
+		for (const eventId of attendanceMap.keys()) {
+			relevantEventIds.add(eventId);
+		}
+
+		// Build the history entries
+		const history: AttendanceHistoryEntry[] = allEvents
+			.filter(event => relevantEventIds.has(event.id))
+			.map((event) => {
+				const attendance = attendanceMap.get(event.id);
+				return {
+					eventId: event.id,
+					eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
+					eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
+					status: attendance ? attendance.status : 'Missed',
+					checkinTime: attendance?.checkinTime ?? null,
+				};
+			});
+
+		// Sort by date (most recent first)
+		history.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
+
+		return history;
+	}
+
 	return {
 		hasUserCheckedIn,
 		hasExternalCheckedIn,
+		getUserAttendanceForEvent,
 		createAttendance,
 		createExternalAttendance,
+		markNotComing,
 		updateAttendance,
 		getAttendanceForEvent,
 		getAttendanceByIds,
@@ -647,5 +836,6 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		getApprenticeAttendanceStats,
 		getCohortAttendanceStats,
 		getAttendanceSummary,
+		getApprenticeAttendanceHistory,
 	};
 }

@@ -5,16 +5,27 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Make events reactive - need $state for mutation in event handlers
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let events = $state<typeof data.events>([]);
+
+	// Update events when data changes (page navigation)
+	$effect(() => {
+		events = [...data.events];
+	});
+
 	// Check-in state for authenticated users
 	let checkingIn = $state<string | null>(null);
+	let markingNotComing = $state<string | null>(null);
 	let checkInError = $state<string | null>(null);
 
 	// Guest check-in state
-	let guestStep = $state<'code' | 'details' | 'success'>('code');
+	let guestStep = $state<'code' | 'events' | 'details' | 'success'>('code');
 	let guestCode = $state('');
 	let guestName = $state('');
 	let guestEmail = $state('');
-	let guestEvent = $state<{ id: string; name: string; dateTime: string } | null>(null);
+	let guestEvents = $state<{ id: string; name: string; dateTime: string; eventType: string; attendanceCount: number }[]>([]);
+	let guestSelectedEvent = $state<{ id: string; name: string; dateTime: string; eventType: string; attendanceCount: number } | null>(null);
 	let guestError = $state('');
 	let guestLoading = $state(false);
 
@@ -25,11 +36,19 @@
 	}, 1000);
 	onDestroy(() => clearInterval(timerInterval));
 
+	// Check if event is today
+	function isToday(dateTime: string): boolean {
+		const eventDate = new Date(dateTime);
+		const today = new Date(now);
+		return eventDate.toDateString() === today.toDateString();
+	}
+
 	// Calculate countdown/late status for an event
-	function getTimeStatus(dateTime: string): { text: string; isLate: boolean; isStartingSoon: boolean } {
+	function getTimeStatus(dateTime: string): { text: string; isLate: boolean; isStartingSoon: boolean; canCheckIn: boolean } {
 		const eventTime = new Date(dateTime).getTime();
 		const diff = eventTime - now;
 		const absDiff = Math.abs(diff);
+		const eventIsToday = isToday(dateTime);
 
 		const hours = Math.floor(absDiff / (1000 * 60 * 60));
 		const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -41,7 +60,7 @@
 			if (hours > 0) text += `${hours}h `;
 			if (hours > 0 || minutes > 0) text += `${minutes}m `;
 			text += `${seconds}s`;
-			return { text, isLate: false, isStartingSoon: diff < 10 * 60 * 1000 }; // < 10 min
+			return { text, isLate: false, isStartingSoon: diff < 10 * 60 * 1000, canCheckIn: eventIsToday };
 		}
 		else {
 			// Event has started - user is late
@@ -50,7 +69,7 @@
 			if (hours > 0 || minutes > 0) text += `${minutes}m `;
 			if (hours === 0) text += `${seconds}s `;
 			text += 'late';
-			return { text, isLate: true, isStartingSoon: false };
+			return { text, isLate: true, isStartingSoon: false, canCheckIn: true };
 		}
 	}
 
@@ -68,6 +87,11 @@
 
 	// Authenticated user check-in
 	async function handleCheckIn(eventId: string) {
+		// Prevent double-clicking by checking if already processing this event
+		if (checkingIn === eventId || markingNotComing === eventId) {
+			return;
+		}
+
 		checkingIn = eventId;
 		checkInError = null;
 
@@ -82,9 +106,11 @@
 
 			if (response.ok && result.success) {
 				// Update the event in the list to show as checked in
-				data.events = data.events.map(e =>
-					e.id === eventId ? { ...e, alreadyCheckedIn: true } : e,
+				events = events.map(e =>
+					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
 				);
+				checkInError = null; // Clear any previous errors
+				console.log('Check-in successful, updated UI for event:', eventId);
 			}
 			else {
 				checkInError = result.error || 'Check-in failed';
@@ -95,6 +121,51 @@
 		}
 		finally {
 			checkingIn = null;
+		}
+	}
+
+	// Authenticated user mark as not coming
+	async function handleNotComing(eventId: string) {
+		// Prevent double-clicking by checking if already processing this event
+		if (markingNotComing === eventId || checkingIn === eventId) {
+			return;
+		}
+
+		markingNotComing = eventId;
+		checkInError = null;
+
+		try {
+			const response = await fetch('/api/checkin/not-coming', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ eventId }),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// Update the event in the list to show as not coming
+				events = events.map(e =>
+					e.id === eventId ? { ...e, attendanceStatus: 'not-coming' as const } : e,
+				);
+				checkInError = null; // Clear any previous errors
+			}
+			else if (result.error?.includes('already has an attendance record')) {
+				// User already has a record - update UI to show as checked in
+				events = events.map(e =>
+					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
+				);
+				checkInError = 'You already have an attendance record for this event.';
+			}
+			else {
+				checkInError = result.error || 'Failed to mark as not coming';
+			}
+		}
+		catch {
+			checkInError = 'Network error. Please try again.';
+		}
+		finally {
+			markingNotComing = null;
 		}
 	}
 
@@ -113,9 +184,9 @@
 
 			const result = await response.json();
 
-			if (result.valid && result.event) {
-				guestEvent = result.event;
-				guestStep = 'details';
+			if (result.valid && result.events) {
+				guestEvents = result.events;
+				guestStep = 'events';
 			}
 			else {
 				guestError = result.error || 'Invalid code';
@@ -129,6 +200,12 @@
 		}
 	}
 
+	// Guest: select event to check in to
+	function selectGuestEvent(event: typeof guestEvents[0]) {
+		guestSelectedEvent = event;
+		guestStep = 'details';
+	}
+
 	// Guest: submit check-in
 	async function handleGuestCheckIn(e: SubmitEvent) {
 		e.preventDefault();
@@ -140,7 +217,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					eventId: guestEvent?.id,
+					eventId: guestSelectedEvent?.id,
 					code: guestCode,
 					name: guestName,
 					email: guestEmail,
@@ -173,7 +250,15 @@
 		guestCode = '';
 		guestName = '';
 		guestEmail = '';
-		guestEvent = null;
+		guestEvents = [];
+		guestSelectedEvent = null;
+		guestError = '';
+	}
+
+	// Go back to event selection
+	function backToEventSelection() {
+		guestStep = 'events';
+		guestSelectedEvent = null;
 		guestError = '';
 	}
 </script>
@@ -183,24 +268,46 @@
 </svelte:head>
 
 <main>
-	<h1>Check In</h1>
-
 	{#if data.authenticated}
 		<!-- Authenticated user view -->
-		{#if data.events.length === 0}
+		<header class="page-header">
+			<div class="header-content">
+				<h1>Check In</h1>
+				<p class="welcome-text">Welcome back!</p>
+			</div>
+			<div class="user-info">
+				{#if data.user?.name}
+					<span class="user-name">{data.user.name}</span>
+				{/if}
+				<span class="user-email">{data.user?.email}</span>
+			</div>
+		</header>
+
+		{#if events.length === 0}
 			<div class="empty-state">
 				<p>No events available for check-in right now.</p>
 			</div>
 		{:else}
 			<div class="events-list">
-				{#each data.events as event (event.id)}
+				{#each events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
-					<div class="event-card" class:checked-in={event.alreadyCheckedIn}>
+					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:not-coming={event.attendanceStatus === 'not-coming'}>
 						<div class="event-info">
 							<h2>{event.name}</h2>
 							<p class="event-time">{formatDate(event.dateTime)}</p>
-							<p class="event-type">{event.eventType}</p>
-							{#if !event.alreadyCheckedIn}
+							<div class="event-meta">
+								<span class="event-type">{event.eventType}</span>
+								{#if event.expectedCount > 0}
+									<span class="attendance-badge">
+										{event.attendanceCount}/{event.expectedCount}
+									</span>
+								{:else if event.attendanceCount > 0}
+									<span class="attendance-badge">
+										{event.attendanceCount} checked in
+									</span>
+								{/if}
+							</div>
+							{#if event.attendanceStatus === 'none'}
 								<p
 									class="countdown"
 									class:late={timeStatus.isLate}
@@ -211,14 +318,32 @@
 							{/if}
 						</div>
 						<div class="event-action">
-							{#if event.alreadyCheckedIn}
-								<span class="checked-badge">Checked In</span>
-							{:else if checkingIn === event.id}
-								<button disabled>Checking in...</button>
-							{:else}
-								<button onclick={() => handleCheckIn(event.id)}>
+							{#if event.attendanceStatus === 'checked-in'}
+								<span class="btn-base btn-success">Checked In</span>
+							{:else if event.attendanceStatus === 'not-coming'}
+								<span class="btn-base btn-warning">Not Coming</span>
+								{#if timeStatus.canCheckIn}
+									<button class="btn-base btn-clickable btn-primary change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
+										{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
+									</button>
+								{/if}
+							{:else if checkingIn === event.id || markingNotComing === event.id}
+								<button class="btn-base btn-clickable btn-primary" disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking not coming...'}</button>
+							{:else if !timeStatus.canCheckIn}
+								<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
 									Check In
 								</button>
+							{:else}
+								<div class="action-buttons">
+									<button class="btn-base btn-clickable btn-primary" onclick={() => handleCheckIn(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+										Check In
+									</button>
+									{#if data.checkInMethod === 'apprentice'}
+										<button class="btn-base btn-clickable btn-danger" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+											Not Coming
+										</button>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -232,6 +357,10 @@
 
 	{:else}
 		<!-- Guest check-in view -->
+		<header class="page-header guest">
+			<h1>Guest Check In</h1>
+			<p class="welcome-text">Check in to an event as a guest</p>
+		</header>
 		<div class="guest-checkin">
 			{#if guestStep === 'code'}
 				<p class="instructions">Enter the 4-digit event code displayed at the venue.</p>
@@ -265,11 +394,56 @@
 					for easier check-in.
 				</p>
 
+			{:else if guestStep === 'events'}
+				<p class="instructions">Select the event you want to check in to:</p>
+
+				<div class="events-list">
+					{#each guestEvents as event (event.id)}
+						{@const timeStatus = getTimeStatus(event.dateTime)}
+						<div class="event-card">
+							<div class="event-info">
+								<h2>{event.name}</h2>
+								<p class="event-time">{formatDate(event.dateTime)}</p>
+								<div class="event-meta">
+									<span class="event-type">{event.eventType}</span>
+									{#if event.attendanceCount > 0}
+										<span class="attendance-badge">
+											{event.attendanceCount} checked in
+										</span>
+									{/if}
+								</div>
+								<p
+									class="countdown"
+									class:late={timeStatus.isLate}
+									class:starting-soon={timeStatus.isStartingSoon}
+								>
+									{timeStatus.text}
+								</p>
+							</div>
+							<div class="event-action">
+								{#if !timeStatus.canCheckIn}
+									<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
+										Check In
+									</button>
+								{:else}
+									<button class="btn-base btn-clickable btn-primary" onclick={() => selectGuestEvent(event)}>
+										Check In
+									</button>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<button class="link-button" onclick={resetGuestForm}>
+					Use a different code
+				</button>
+
 			{:else if guestStep === 'details'}
-				{@const guestTimeStatus = guestEvent ? getTimeStatus(guestEvent.dateTime) : null}
+				{@const guestTimeStatus = guestSelectedEvent ? getTimeStatus(guestSelectedEvent.dateTime) : null}
 				<div class="event-preview">
-					<h2>{guestEvent?.name}</h2>
-					<p>{guestEvent ? formatDate(guestEvent.dateTime) : ''}</p>
+					<h2>{guestSelectedEvent?.name}</h2>
+					<p>{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
 					{#if guestTimeStatus}
 						<p
 							class="countdown"
@@ -311,14 +485,14 @@
 					<p class="error">{guestError}</p>
 				{/if}
 
-				<button class="link-button" onclick={resetGuestForm}>
-					Use a different code
+				<button class="link-button" onclick={backToEventSelection}>
+					Select a different event
 				</button>
 
 			{:else if guestStep === 'success'}
 				<div class="success">
 					<h2>You're checked in!</h2>
-					<p>Welcome to <strong>{guestEvent?.name}</strong></p>
+					<p>Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
 				</div>
 				<button onclick={resetGuestForm}>Check in to another event</button>
 			{/if}
@@ -329,12 +503,57 @@
 <style>
 	main {
 		max-width: 600px;
-		margin: 2rem auto;
+		margin: 0 auto;
 		padding: 1rem;
 	}
 
-	h1 {
+	/* Page header styles */
+	.page-header {
+		background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+		color: white;
+		padding: 1.5rem;
+		border-radius: 12px;
 		margin-bottom: 1.5rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+
+	.page-header.guest {
+		display: block;
+		text-align: center;
+		background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+	}
+
+	.page-header h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 600;
+	}
+
+	.welcome-text {
+		margin: 0.25rem 0 0 0;
+		opacity: 0.9;
+		font-size: 0.9rem;
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		text-align: right;
+	}
+
+	.user-name {
+		font-weight: 600;
+		font-size: 1rem;
+	}
+
+	.user-email {
+		font-size: 0.85rem;
+		opacity: 0.85;
 	}
 
 	/* Event list styles */
@@ -359,6 +578,11 @@
 		border-color: #34a853;
 	}
 
+	.event-card.not-coming {
+		background: #fff8f0;
+		border-color: #ff9800;
+	}
+
 	.event-info h2 {
 		margin: 0 0 0.25rem 0;
 		font-size: 1.1rem;
@@ -370,10 +594,27 @@
 		font-size: 0.9rem;
 	}
 
+	.event-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.25rem;
+	}
+
 	.event-type {
-		margin: 0.25rem 0 0 0;
 		color: #888;
 		font-size: 0.8rem;
+	}
+
+	.attendance-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.15rem 0.5rem;
+		background: #f0f0f0;
+		color: #555;
+		font-size: 0.75rem;
+		font-weight: 500;
+		border-radius: 12px;
 	}
 
 	.countdown {
@@ -398,41 +639,103 @@
 		color: #c62828;
 	}
 
-	.event-action button {
+	/* Base button/badge styles */
+	.btn-base {
 		padding: 0.75rem 1.5rem;
-		background: #0066cc;
-		color: white;
 		border: none;
 		border-radius: 4px;
 		font-size: 1rem;
+		min-width: 120px;
+		text-align: center;
+		display: inline-block;
+	}
+
+	.btn-base.btn-clickable {
 		cursor: pointer;
 	}
 
-	.event-action button:hover:not(:disabled) {
-		background: #0052a3;
-	}
-
-	.event-action button:disabled {
+	.btn-base.btn-clickable:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
 	}
 
-	.checked-badge {
-		padding: 0.5rem 1rem;
+	/* Color variants */
+	.btn-primary {
+		background: #0066cc;
+		color: white;
+	}
+
+	.btn-primary:hover:not(:disabled) {
+		background: #0052a3;
+	}
+
+	.btn-danger {
+		background: #dc3545;
+		color: white;
+	}
+
+	.btn-danger:hover:not(:disabled) {
+		background: #c82333;
+	}
+
+	.btn-success {
 		background: #34a853;
 		color: white;
-		border-radius: 4px;
-		font-size: 0.9rem;
+	}
+
+	.btn-warning {
+		background: #ff9800;
+		color: white;
+	}
+
+	.btn-disabled {
+		background: #ccc;
+		color: #666;
+		opacity: 1;
+	}
+
+	/* Layout helpers */
+	.action-buttons {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.change-mind-btn {
+		margin-top: 0.5rem;
 	}
 
 	/* Guest check-in styles */
 	.guest-checkin {
+		width: 100%;
+	}
+
+	.guest-checkin form {
 		max-width: 400px;
+		margin: 0 auto;
+	}
+
+	.guest-checkin .event-preview {
+		max-width: 400px;
+		margin: 0 auto 1.5rem auto;
+	}
+
+	.guest-checkin .success {
+		max-width: 400px;
+		margin: 0 auto 1rem auto;
+	}
+
+	.guest-checkin > button:not(.link-button) {
+		display: block;
+		max-width: 400px;
+		width: 100%;
+		margin: 0 auto;
 	}
 
 	.instructions {
 		margin-bottom: 1.5rem;
 		color: #666;
+		text-align: center;
 	}
 
 	form {
@@ -491,6 +794,12 @@
 		margin-top: 1rem;
 	}
 
+	.guest-checkin > .link-button {
+		display: block;
+		text-align: center;
+		width: 100%;
+	}
+
 	.link-button:hover {
 		text-decoration: underline;
 	}
@@ -545,6 +854,7 @@
 		margin-top: 2rem;
 		color: #666;
 		font-size: 0.9rem;
+		text-align: center;
 	}
 
 	.login-prompt .link-button {

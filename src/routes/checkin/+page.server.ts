@@ -1,5 +1,7 @@
 import type { PageServerLoad } from './$types';
-import { getApprenticeByEmail, listEvents, hasUserCheckedIn, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, listEvents, listCohorts, getUserAttendanceForEvent, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+
+export type AttendanceStatusUI = 'none' | 'checked-in' | 'not-coming';
 
 export interface CheckinEvent {
 	id: string;
@@ -7,7 +9,9 @@ export interface CheckinEvent {
 	dateTime: string;
 	eventType: string;
 	isPublic: boolean;
-	alreadyCheckedIn: boolean;
+	attendanceStatus: AttendanceStatusUI;
+	attendanceCount: number;
+	expectedCount: number;
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -19,17 +23,22 @@ export const load: PageServerLoad = async ({ locals }) => {
 			authenticated: false,
 			events: [] as CheckinEvent[],
 			checkInMethod: null,
+			user: null,
 		};
 	}
 
 	// Authenticated - fetch events based on apprentice record
 	const apprentice = await getApprenticeByEmail(user.email);
 
-	// Get events - filter by cohort if apprentice has one
+	// Get events and cohorts
 	const now = new Date();
-	const allEvents = await listEvents({
-		startDate: now.toISOString().split('T')[0],
-	});
+	const [allEvents, cohorts] = await Promise.all([
+		listEvents({ startDate: now.toISOString().split('T')[0] }),
+		listCohorts(),
+	]);
+
+	// Build cohort lookup for expected counts
+	const cohortApprenticeCount = new Map(cohorts.map(c => [c.id, c.apprenticeCount]));
 
 	// Filter events based on user type
 	let availableEvents;
@@ -47,14 +56,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Check attendance status for each event
 	const eventsWithStatus: CheckinEvent[] = await Promise.all(
 		availableEvents.map(async (event) => {
-			let alreadyCheckedIn = false;
+			let attendanceStatus: AttendanceStatusUI = 'none';
 
 			if (apprentice) {
-				alreadyCheckedIn = await hasUserCheckedIn(event.id, apprentice.id);
+				const attendance = await getUserAttendanceForEvent(event.id, apprentice.id);
+				if (attendance) {
+					attendanceStatus = attendance.status === 'Not Coming' ? 'not-coming' : 'checked-in';
+				}
 			}
 			else {
-				alreadyCheckedIn = await hasExternalCheckedIn(event.id, user.email);
+				const hasCheckedIn = await hasExternalCheckedIn(event.id, user.email);
+				if (hasCheckedIn) {
+					attendanceStatus = 'checked-in';
+				}
 			}
+
+			// Calculate expected count from cohorts
+			const expectedCount = event.cohortIds.reduce(
+				(sum, cohortId) => sum + (cohortApprenticeCount.get(cohortId) || 0),
+				0,
+			);
 
 			return {
 				id: event.id,
@@ -62,14 +83,23 @@ export const load: PageServerLoad = async ({ locals }) => {
 				dateTime: event.dateTime,
 				eventType: event.eventType,
 				isPublic: event.isPublic,
-				alreadyCheckedIn,
+				attendanceStatus,
+				attendanceCount: event.attendanceCount ?? 0,
+				expectedCount,
 			};
 		}),
 	);
+
+	// Sort by date (most recent first)
+	eventsWithStatus.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
 	return {
 		authenticated: true,
 		events: eventsWithStatus,
 		checkInMethod: apprentice ? 'apprentice' : 'external',
+		user: {
+			name: apprentice?.name || null,
+			email: user.email,
+		},
 	};
 };

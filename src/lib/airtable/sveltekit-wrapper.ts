@@ -17,7 +17,16 @@ import { createAttendanceClient } from './attendance.js';
 
 export type { Apprentice, ApprenticeRecord, Cohort } from './airtable.js';
 export type { Event, EventFilters, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
-export type { Attendance, CreateAttendanceInput, CreateExternalAttendanceInput, UpdateAttendanceInput } from '$lib/types/attendance.js';
+export type {
+	Attendance,
+	CreateAttendanceInput,
+	CreateExternalAttendanceInput,
+	UpdateAttendanceInput,
+	ApprenticeAttendanceStats,
+	CohortAttendanceStats,
+	AttendanceSummary,
+	AttendanceHistoryEntry,
+} from '$lib/types/attendance.js';
 
 const client = createAirtableClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
 const eventsClient = createEventsClient(AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS);
@@ -35,6 +44,7 @@ export const getApprenticesByIds = client.getApprenticesByIds;
 export const listEvents = eventsClient.listEvents;
 export const getEvent = eventsClient.getEvent;
 export const getEventByCode = eventsClient.getEventByCode;
+export const getEventsByCode = eventsClient.getEventsByCode;
 export const createEvent = eventsClient.createEvent;
 export const updateEvent = eventsClient.updateEvent;
 export const deleteEvent = eventsClient.deleteEvent;
@@ -42,8 +52,16 @@ export const deleteEvent = eventsClient.deleteEvent;
 // Attendance
 export const hasUserCheckedIn = attendanceClient.hasUserCheckedIn;
 export const hasExternalCheckedIn = attendanceClient.hasExternalCheckedIn;
+export const getUserAttendanceForEvent = attendanceClient.getUserAttendanceForEvent;
 export const createAttendance = attendanceClient.createAttendance;
 export const createExternalAttendance = attendanceClient.createExternalAttendance;
+export const markNotComing = attendanceClient.markNotComing;
 export const updateAttendance = attendanceClient.updateAttendance;
 export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
 export const getAttendanceByIds = attendanceClient.getAttendanceByIds;
+
+// Attendance statistics
+export const getApprenticeAttendanceStats = attendanceClient.getApprenticeAttendanceStats;
+export const getCohortAttendanceStats = attendanceClient.getCohortAttendanceStats;
+export const getAttendanceSummary = attendanceClient.getAttendanceSummary;
+export const getApprenticeAttendanceHistory = attendanceClient.getApprenticeAttendanceHistory;

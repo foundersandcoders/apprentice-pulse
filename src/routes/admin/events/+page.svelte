@@ -368,7 +368,7 @@
 	});
 
 	// Expandable row state
-	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
+	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused' | 'Not Coming';
 	interface RosterEntry {
 		id: string; // Apprentice ID or external attendance ID
 		attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
@@ -380,10 +380,11 @@
 	}
 
 	const statusStyles: Record<AttendanceStatus, string> = {
-		Present: 'bg-green-100 text-green-700',
-		Absent: 'bg-red-100 text-red-700',
-		Late: 'bg-yellow-100 text-yellow-700',
-		Excused: 'bg-blue-100 text-blue-700',
+		'Present': 'bg-green-100 text-green-700',
+		'Absent': 'bg-red-100 text-red-700',
+		'Late': 'bg-yellow-100 text-yellow-700',
+		'Excused': 'bg-blue-100 text-blue-700',
+		'Not Coming': 'bg-orange-100 text-orange-700',
 	};
 	let expandedEventId = $state<string | null>(null);
 	let expandedEventDateTime = $state<string | null>(null);
