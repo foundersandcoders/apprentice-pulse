@@ -15,6 +15,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const showAll = url.searchParams.get('all') === 'true';
 	const termsParam = url.searchParams.get('terms');
 	const selectedTermIds = termsParam ? termsParam.split(',').filter(Boolean) : [];
+	const startDateParam = url.searchParams.get('startDate');
+	const endDateParam = url.searchParams.get('endDate');
 
 	try {
 		// Always fetch cohorts and terms for the selection UI
@@ -31,6 +33,8 @@ export const load: PageServerLoad = async ({ url }) => {
 				terms,
 				selectedCohortIds,
 				selectedTermIds,
+				selectedStartDate: startDateParam || '',
+				selectedEndDate: endDateParam || '',
 				showAll: false,
 				needsSelection: true,
 			};
@@ -57,19 +61,24 @@ export const load: PageServerLoad = async ({ url }) => {
 		// Deduplicate in case an apprentice is in multiple cohorts
 		apprenticeIds = [...new Set(apprenticeIds)];
 
-		// Determine date range for filtering if terms are selected
-		let termStartDate: Date | null = null;
-		let termEndDate: Date | null = null;
+		// Determine date range for filtering
+		let filterStartDate: Date | null = null;
+		let filterEndDate: Date | null = null;
 
-		if (selectedTermIds.length > 0) {
+		if (startDateParam && endDateParam) {
+			// Custom date range takes priority
+			filterStartDate = new Date(startDateParam);
+			filterEndDate = new Date(endDateParam);
+		} else if (selectedTermIds.length > 0) {
+			// Fall back to term-based filtering
 			const selectedTerms = terms.filter(t => selectedTermIds.includes(t.id));
 			if (selectedTerms.length > 0) {
 				// Find earliest start date and latest end date across all selected terms
 				const startDates = selectedTerms.map(t => new Date(t.startingDate));
 				const endDates = selectedTerms.map(t => new Date(t.endDate));
 
-				termStartDate = new Date(Math.min(...startDates.map(d => d.getTime())));
-				termEndDate = new Date(Math.max(...endDates.map(d => d.getTime())));
+				filterStartDate = new Date(Math.min(...startDates.map(d => d.getTime())));
+				filterEndDate = new Date(Math.max(...endDates.map(d => d.getTime())));
 			}
 		}
 
@@ -77,7 +86,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		const apprenticeStats: ApprenticeAttendanceStats[] = [];
 		for (const apprenticeId of apprenticeIds) {
 			try {
-				const stats = await getApprenticeAttendanceStatsWithDateFilter(apprenticeId, termStartDate, termEndDate);
+				const stats = await getApprenticeAttendanceStatsWithDateFilter(apprenticeId, filterStartDate, filterEndDate);
 				if (stats) {
 					apprenticeStats.push(stats);
 				}
@@ -93,6 +102,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			terms,
 			selectedCohortIds,
 			selectedTermIds,
+			selectedStartDate: startDateParam || '',
+			selectedEndDate: endDateParam || '',
 			showAll,
 			needsSelection: false,
 		};
@@ -105,6 +116,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			terms: [],
 			selectedCohortIds,
 			selectedTermIds,
+			selectedStartDate: startDateParam || '',
+			selectedEndDate: endDateParam || '',
 			showAll: false,
 			needsSelection: true,
 		};
