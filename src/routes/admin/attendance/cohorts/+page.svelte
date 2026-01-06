@@ -307,7 +307,12 @@
 					{#each comparisonCohorts as cohort (cohort.cohortId)}
 						<div class="border rounded-lg p-4 {isLowAttendance(cohort.attendanceRate) ? 'border-red-200 bg-red-50' : 'border-gray-200'}">
 							<div class="flex items-center justify-between mb-3">
-								<h4 class="font-medium text-gray-900">{cohort.cohortName}</h4>
+								<a
+									href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+									class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+								>
+									{cohort.cohortName}
+								</a>
 								<button
 									onclick={() => toggleCohortForComparison(cohort.cohortId)}
 									class="text-gray-400 hover:text-gray-600"
@@ -441,7 +446,12 @@
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
-										<span class="font-medium">{cohort.cohortName}</span>
+										<a
+											href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+											class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+										>
+											{cohort.cohortName}
+										</a>
 										{#if isLowAttendance(cohort.attendanceRate)}
 											<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
 												Low Attendance
@@ -489,7 +499,12 @@
 									class="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
 								<div>
-									<h3 class="font-medium text-gray-900">{cohort.cohortName}</h3>
+									<a
+										href={resolve(`/admin/attendance/apprentices?cohorts=${cohort.cohortId}`)}
+										class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+									>
+										{cohort.cohortName}
+									</a>
 									{#if isLowAttendance(cohort.attendanceRate)}
 										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
 											Low Attendance

@@ -2,7 +2,8 @@ Attendance is not showing names? (check Airtable)
 
 
 when subtasks done mark task done
-
+At the end of each subtask consider if create test
+Same for report?
 
 
 Login page pretty
