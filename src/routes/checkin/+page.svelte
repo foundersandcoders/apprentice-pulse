@@ -5,6 +5,14 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Make events reactive
+	let events = $state(data.events);
+
+	// Update events when data changes (page navigation)
+	$effect(() => {
+		events = data.events;
+	});
+
 	// Check-in state for authenticated users
 	let checkingIn = $state<string | null>(null);
 	let markingNotComing = $state<string | null>(null);
@@ -78,6 +86,11 @@
 
 	// Authenticated user check-in
 	async function handleCheckIn(eventId: string) {
+		// Prevent double-clicking by checking if already processing this event
+		if (checkingIn === eventId || markingNotComing === eventId) {
+			return;
+		}
+
 		checkingIn = eventId;
 		checkInError = null;
 
@@ -92,9 +105,11 @@
 
 			if (response.ok && result.success) {
 				// Update the event in the list to show as checked in
-				data.events = data.events.map(e =>
+				events = events.map(e =>
 					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
 				);
+				checkInError = null; // Clear any previous errors
+				console.log('Check-in successful, updated UI for event:', eventId);
 			}
 			else {
 				checkInError = result.error || 'Check-in failed';
@@ -110,6 +125,11 @@
 
 	// Authenticated user mark as not coming
 	async function handleNotComing(eventId: string) {
+		// Prevent double-clicking by checking if already processing this event
+		if (markingNotComing === eventId || checkingIn === eventId) {
+			return;
+		}
+
 		markingNotComing = eventId;
 		checkInError = null;
 
@@ -124,13 +144,14 @@
 
 			if (response.ok && result.success) {
 				// Update the event in the list to show as not coming
-				data.events = data.events.map(e =>
+				events = events.map(e =>
 					e.id === eventId ? { ...e, attendanceStatus: 'not-coming' as const } : e,
 				);
+				checkInError = null; // Clear any previous errors
 			}
 			else if (result.error?.includes('already has an attendance record')) {
 				// User already has a record - update UI to show as checked in
-				data.events = data.events.map(e =>
+				events = events.map(e =>
 					e.id === eventId ? { ...e, attendanceStatus: 'checked-in' as const } : e,
 				);
 				checkInError = 'You already have an attendance record for this event.';
@@ -261,13 +282,13 @@
 			</div>
 		</header>
 
-		{#if data.events.length === 0}
+		{#if events.length === 0}
 			<div class="empty-state">
 				<p>No events available for check-in right now.</p>
 			</div>
 		{:else}
 			<div class="events-list">
-				{#each data.events as event (event.id)}
+				{#each events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
 					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:not-coming={event.attendanceStatus === 'not-coming'}>
 						<div class="event-info">
@@ -297,27 +318,27 @@
 						</div>
 						<div class="event-action">
 							{#if event.attendanceStatus === 'checked-in'}
-								<span class="checked-badge">Checked In</span>
+								<span class="btn-base btn-success">Checked In</span>
 							{:else if event.attendanceStatus === 'not-coming'}
-								<span class="not-coming-badge">Not Coming</span>
+								<span class="btn-base btn-warning">Not Coming</span>
 								{#if timeStatus.canCheckIn}
-									<button class="change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
+									<button class="btn-base btn-clickable btn-primary change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
 										{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
 									</button>
 								{/if}
 							{:else if checkingIn === event.id || markingNotComing === event.id}
-								<button disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking...'}</button>
+								<button class="btn-base btn-clickable btn-primary" disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking not coming...'}</button>
 							{:else if !timeStatus.canCheckIn}
-								<button class="disabled-future" disabled title="Check-in opens on the day of the event">
+								<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
 									Check In
 								</button>
 							{:else}
 								<div class="action-buttons">
-									<button onclick={() => handleCheckIn(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+									<button class="btn-base btn-clickable btn-primary" onclick={() => handleCheckIn(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
 										Check In
 									</button>
 									{#if data.checkInMethod === 'apprentice'}
-										<button class="not-coming-btn" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+										<button class="btn-base btn-clickable btn-danger" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
 											Not Coming
 										</button>
 									{/if}
@@ -400,11 +421,11 @@
 							</div>
 							<div class="event-action">
 								{#if !timeStatus.canCheckIn}
-									<button class="disabled-future" disabled title="Check-in opens on the day of the event">
+									<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
 										Check In
 									</button>
 								{:else}
-									<button onclick={() => selectGuestEvent(event)}>
+									<button class="btn-base btn-clickable btn-primary" onclick={() => selectGuestEvent(event)}>
 										Check In
 									</button>
 								{/if}
@@ -617,95 +638,70 @@
 		color: #c62828;
 	}
 
-	.event-action button {
+	/* Base button/badge styles */
+	.btn-base {
 		padding: 0.75rem 1.5rem;
-		background: #0066cc;
-		color: white;
 		border: none;
 		border-radius: 4px;
 		font-size: 1rem;
+		min-width: 120px;
+		text-align: center;
+		display: inline-block;
+	}
+
+	.btn-base.btn-clickable {
 		cursor: pointer;
 	}
 
-	.event-action button:hover:not(:disabled) {
+	.btn-base.btn-clickable:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Color variants */
+	.btn-primary {
+		background: #0066cc;
+		color: white;
+	}
+
+	.btn-primary:hover:not(:disabled) {
 		background: #0052a3;
 	}
 
-	.event-action button:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
+	.btn-danger {
+		background: #dc3545;
+		color: white;
 	}
 
-	.action-buttons button:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
+	.btn-danger:hover:not(:disabled) {
+		background: #c82333;
 	}
 
-	.event-action button.disabled-future {
+	.btn-success {
+		background: #34a853;
+		color: white;
+	}
+
+	.btn-warning {
+		background: #ff9800;
+		color: white;
+	}
+
+	.btn-disabled {
 		background: #ccc;
 		color: #666;
 		opacity: 1;
 	}
 
-	.checked-badge {
-		padding: 0.5rem 1rem;
-		background: #34a853;
-		color: white;
-		border-radius: 4px;
-		font-size: 0.9rem;
-	}
-
-	.not-coming-badge {
-		padding: 0.5rem 1rem;
-		background: #ff9800;
-		color: white;
-		border-radius: 4px;
-		font-size: 0.9rem;
-	}
-
+	/* Layout helpers */
 	.action-buttons {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
 
-	.not-coming-btn {
-		padding: 0.5rem 1rem;
-		background: #dc3545;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 0.85rem;
-		cursor: pointer;
-	}
-
-	.not-coming-btn:hover:not(:disabled) {
-		background: #c82333;
-	}
-
-	.not-coming-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
 	.change-mind-btn {
 		margin-top: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: #0066cc;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 0.85rem;
-		cursor: pointer;
-	}
-
-	.change-mind-btn:hover:not(:disabled) {
-		background: #0052a3;
-	}
-
-	.change-mind-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	/* Guest check-in styles */
