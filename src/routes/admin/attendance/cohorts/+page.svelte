@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { resolve } from '$app/paths';
+	import { navigating } from '$app/state';
 	import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { CohortAttendanceStats } from '$lib/types/attendance';
 
@@ -33,6 +34,13 @@
 
 	// Today's date for input max
 	const today = new Date().toISOString().split('T')[0];
+
+	// Loading state
+	const isLoading = $derived(navigating.to?.url.pathname === '/admin/attendance/cohorts');
+
+	// Error handling
+	const hasData = $derived(cohortStats.length > 0);
+	const hasError = $derived(!hasData && !isLoading);
 
 	// Sorted cohort statistics
 	const sortedCohortStats = $derived.by(() => {
@@ -130,12 +138,24 @@
 	}
 
 	function applyDateFilter() {
-		const params = new SvelteURLSearchParams();
-		if (startDate) params.set('start', startDate);
-		if (endDate) params.set('end', endDate);
+		try {
+			// Validate date inputs
+			if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+				alert('Start date must be before end date');
+				return;
+			}
 
-		const newUrl = `/admin/attendance/cohorts${params.toString() ? '?' + params.toString() : ''}`;
-		window.location.href = newUrl;
+			const params = new SvelteURLSearchParams();
+			if (startDate) params.set('start', startDate);
+			if (endDate) params.set('end', endDate);
+
+			const newUrl = `/admin/attendance/cohorts${params.toString() ? '?' + params.toString() : ''}`;
+			window.location.href = newUrl;
+		}
+		catch (error) {
+			console.error('Date filter error:', error);
+			alert('Failed to apply date filter. Please try again.');
+		}
 	}
 
 	function clearDateFilter() {
@@ -151,51 +171,65 @@
 
 	// Export functions
 	function exportToCSV() {
-		const headers = [
-			'Cohort Name',
-			'Apprentice Count',
-			'Total Events',
-			'Attendance Rate (%)',
-			'Present',
-			'Late',
-			'Absent',
-			'Excused',
-			'Trend Direction',
-			'Trend Change (%)',
-		];
+		try {
+			if (sortedCohortStats.length === 0) {
+				alert('No data available to export');
+				return;
+			}
 
-		const rows = sortedCohortStats.map(cohort => [
-			cohort.cohortName,
-			cohort.apprenticeCount.toString(),
-			cohort.totalEvents.toString(),
-			cohort.attendanceRate.toString(),
-			cohort.present.toString(),
-			cohort.late.toString(),
-			cohort.absent.toString(),
-			cohort.excused.toString(),
-			cohort.trend.direction,
-			cohort.trend.change.toString(),
-		]);
+			const headers = [
+				'Cohort Name',
+				'Apprentice Count',
+				'Total Events',
+				'Attendance Rate (%)',
+				'Present',
+				'Late',
+				'Absent',
+				'Excused',
+				'Trend Direction',
+				'Trend Change (%)',
+			];
 
-		const csvContent = [
-			headers.join(','),
-			...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')),
-		].join('\n');
+			const rows = sortedCohortStats.map(cohort => [
+				cohort.cohortName,
+				cohort.apprenticeCount.toString(),
+				cohort.totalEvents.toString(),
+				cohort.attendanceRate.toString(),
+				cohort.present.toString(),
+				cohort.late.toString(),
+				cohort.absent.toString(),
+				cohort.excused.toString(),
+				cohort.trend.direction,
+				cohort.trend.change.toString(),
+			]);
 
-		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-		const link = document.createElement('a');
+			const csvContent = [
+				headers.join(','),
+				...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')),
+			].join('\n');
 
-		const url = URL.createObjectURL(blob);
-		link.setAttribute('href', url);
+			const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+			const link = document.createElement('a');
 
-		const dateStr = new Date().toISOString().split('T')[0];
-		const filename = `cohort-attendance-metrics-${dateStr}.csv`;
-		link.setAttribute('download', filename);
+			const url = URL.createObjectURL(blob);
+			link.setAttribute('href', url);
 
-		link.style.visibility = 'hidden';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+			const dateStr = new Date().toISOString().split('T')[0];
+			const filename = `cohort-attendance-metrics-${dateStr}.csv`;
+			link.setAttribute('download', filename);
+
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+
+			// Clean up
+			URL.revokeObjectURL(url);
+		}
+		catch (error) {
+			console.error('Export failed:', error);
+			alert('Failed to export data. Please try again.');
+		}
 	}
 </script>
 
@@ -231,6 +265,17 @@
 			</div>
 		</div>
 	</header>
+
+	<!-- Loading Overlay -->
+	{#if isLoading}
+		<div class="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+			<div class="text-center">
+				<div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
+				<p class="text-gray-600 font-medium">Loading cohort metrics...</p>
+				<p class="text-gray-500 text-sm mt-1">This may take a moment</p>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Date Filter Panel -->
 	{#if showDateFilter}
@@ -447,7 +492,19 @@
 	{/if}
 
 	<!-- Cohort Metrics Table -->
-	{#if cohortStats.length === 0}
+	{#if hasError}
+		<div class="text-center py-12">
+			<div class="text-red-400 text-4xl mb-4">⚠️</div>
+			<h3 class="text-lg font-medium text-gray-900 mb-2">Failed to load cohort data</h3>
+			<p class="text-gray-600 mb-4">There was an error loading the cohort attendance statistics.</p>
+			<button
+				onclick={() => window.location.reload()}
+				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+			>
+				Try Again
+			</button>
+		</div>
+	{:else if !hasData}
 		<div class="text-center py-12">
 			<div class="text-gray-400 text-4xl mb-4">📊</div>
 			<h3 class="text-lg font-medium text-gray-900 mb-2">No cohort data available</h3>

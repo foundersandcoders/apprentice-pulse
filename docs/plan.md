@@ -28,7 +28,7 @@
 
 5. [ ] **Testing and Polish**
    - [x] 5.1 Test with various cohort sizes and data scenarios
-   - [ ] 5.2 Add loading states and error handling
+   - [x] 5.2 Add loading states and error handling
    - [ ] 5.3 Ensure mobile responsiveness for the metrics table
 
 ## Notes
