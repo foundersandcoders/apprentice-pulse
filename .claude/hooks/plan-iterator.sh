@@ -23,7 +23,7 @@ if [[ ! -f "$PLAN_FILE" ]]; then
 fi
 
 # Count remaining tasks (unchecked boxes)
-REMAINING=$(grep -c '^\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
+REMAINING=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
 REMAINING=${REMAINING:-0}
 
 # All tasks complete - cleanup and exit
@@ -33,7 +33,7 @@ if [[ "$REMAINING" -eq 0 ]]; then
 fi
 
 # Count completed tasks
-COMPLETED=$(grep -c '^\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
+COMPLETED=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
 COMPLETED=${COMPLETED:-0}
 
 # Stage all changes FIRST
@@ -42,13 +42,13 @@ git add -A >/dev/null 2>&1 || true
 # Then commit if there are staged changes
 if ! git diff --cached --quiet 2>/dev/null; then
   if [[ "$COMPLETED" -gt 0 ]]; then
-    LAST_DONE=$(grep -E '^\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
+    LAST_DONE=$(grep -E '^\s*\([0-9]\+\.\s*\)?\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
     git commit -m "feat: $LAST_DONE" >/dev/null 2>&1 || true
   fi
 fi
 
 # Find next task
-NEXT_TASK=$(grep -m1 '^\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
+NEXT_TASK=$(grep -m1 '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
 
 # Build the reason message for Claude
 read -r -d '' REASON << MSGEOF
