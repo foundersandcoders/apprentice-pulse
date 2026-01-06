@@ -11,7 +11,7 @@
 
 2. [ ] **Main Cohort Metrics Page**
    - [x] 2.1 Create `/admin/attendance/cohorts/+page.svelte` with responsive layout
-   - [ ] 2.2 Display cohorts table with sortable columns (name, attendance rate, trend)
+   - [x] 2.2 Display cohorts table with sortable columns (name, attendance rate, trend)
    - [ ] 2.3 Add visual indicators for attendance rate thresholds
    - [ ] 2.4 Implement cohort comparison side-by-side view
 
