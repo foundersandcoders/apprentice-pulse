@@ -406,7 +406,6 @@
 									Attendance Rate{getSortIndicator('attendanceRate')}
 								</th>
 								<th class="text-right p-3 border-b">Lateness Rate</th>
-								<th class="text-right p-3 border-b">Attended</th>
 								<th class="text-right p-3 pr-6 border-b">Actions</th>
 							</tr>
 						</thead>
@@ -426,9 +425,6 @@
 									</td>
 									<td class="p-3 text-right text-yellow-600">
 										{apprentice.totalEvents > 0 ? ((apprentice.late / apprentice.totalEvents) * 100).toFixed(0) : 0}%
-									</td>
-									<td class="p-3 text-right text-gray-600">
-										{apprentice.attended}/{apprentice.totalEvents}
 									</td>
 									<td class="p-3 pr-6 text-right">
 										<a
