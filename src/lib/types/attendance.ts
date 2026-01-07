@@ -109,27 +109,29 @@ export interface AttendanceHistoryEntry {
 export interface MonthlyAttendancePoint {
 	month: string; // Display format: "Jan 2025"
 	sortKey: string; // Sort format: "2025-01"
-	percentage: number;
+	percentage: number; // Attendance rate: (Present + Late) / Total
+	latenessPercentage: number; // Lateness rate: Late / Total
 	attended: number;
+	late: number;
 	total: number;
 }
 
 /**
  * Calculate monthly attendance percentages from history entries
- * Groups events by month and calculates attendance rate for each
+ * Groups events by month and calculates attendance and lateness rates
  */
 export function calculateMonthlyAttendance(history: AttendanceHistoryEntry[]): MonthlyAttendancePoint[] {
 	if (history.length === 0) return [];
 
 	// Group events by month
-	const monthlyData = new Map<string, { attended: number; total: number }>();
+	const monthlyData = new Map<string, { attended: number; late: number; total: number }>();
 
 	for (const entry of history) {
 		const date = new Date(entry.eventDateTime);
 		const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
 		if (!monthlyData.has(sortKey)) {
-			monthlyData.set(sortKey, { attended: 0, total: 0 });
+			monthlyData.set(sortKey, { attended: 0, late: 0, total: 0 });
 		}
 
 		const data = monthlyData.get(sortKey)!;
@@ -138,6 +140,11 @@ export function calculateMonthlyAttendance(history: AttendanceHistoryEntry[]): M
 		// Present and Late count as attended
 		if (entry.status === 'Present' || entry.status === 'Late') {
 			data.attended++;
+		}
+
+		// Track late separately
+		if (entry.status === 'Late') {
+			data.late++;
 		}
 	}
 
@@ -153,7 +160,9 @@ export function calculateMonthlyAttendance(history: AttendanceHistoryEntry[]): M
 				month: `${monthName} ${year}`,
 				sortKey,
 				percentage: data.total > 0 ? (data.attended / data.total) * 100 : 0,
+				latenessPercentage: data.total > 0 ? (data.late / data.total) * 100 : 0,
 				attended: data.attended,
+				late: data.late,
 				total: data.total,
 			};
 		});

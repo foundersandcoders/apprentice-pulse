@@ -6,6 +6,7 @@
 	export interface ChartDataPoint {
 		month: string;
 		percentage: number;
+		latenessPercentage?: number;
 	}
 
 	interface Props {
@@ -14,6 +15,9 @@
 	}
 
 	let { data, title = 'Attendance Trend' }: Props = $props();
+
+	// Check if we have lateness data to display
+	const hasLatenessData = $derived(data.some(d => (d.latenessPercentage ?? 0) > 0));
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 	// Not using $state for chart to avoid effect loop - only needed for cleanup reference
@@ -31,31 +35,59 @@
 		const ctx = canvas.getContext('2d');
 		if (!ctx) return;
 
+		// Build datasets - always include attendance, conditionally include lateness
+		const datasets = [
+			{
+				label: 'Attendance',
+				data: data.map(d => d.percentage),
+				borderColor: 'rgb(79, 70, 229)',
+				backgroundColor: 'rgba(79, 70, 229, 0.1)',
+				borderWidth: 2,
+				fill: true,
+				tension: 0.3,
+				pointBackgroundColor: 'rgb(79, 70, 229)',
+				pointBorderColor: '#fff',
+				pointBorderWidth: 2,
+				pointRadius: 4,
+				pointHoverRadius: 6,
+			},
+		];
+
+		// Add lateness dataset if there's data
+		if (hasLatenessData) {
+			datasets.push({
+				label: 'Lateness',
+				data: data.map(d => d.latenessPercentage ?? 0),
+				borderColor: 'rgb(234, 179, 8)',
+				backgroundColor: 'rgba(234, 179, 8, 0.1)',
+				borderWidth: 2,
+				fill: false,
+				tension: 0.3,
+				pointBackgroundColor: 'rgb(234, 179, 8)',
+				pointBorderColor: '#fff',
+				pointBorderWidth: 2,
+				pointRadius: 4,
+				pointHoverRadius: 6,
+			});
+		}
+
 		chartInstance = new Chart(ctx, {
 			type: 'line',
 			data: {
 				labels: data.map(d => d.month),
-				datasets: [{
-					label: 'Attendance %',
-					data: data.map(d => d.percentage),
-					borderColor: 'rgb(79, 70, 229)',
-					backgroundColor: 'rgba(79, 70, 229, 0.1)',
-					borderWidth: 2,
-					fill: true,
-					tension: 0.3,
-					pointBackgroundColor: 'rgb(79, 70, 229)',
-					pointBorderColor: '#fff',
-					pointBorderWidth: 2,
-					pointRadius: 4,
-					pointHoverRadius: 6,
-				}]
+				datasets,
 			},
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
 				plugins: {
 					legend: {
-						display: false,
+						display: hasLatenessData,
+						position: 'top' as const,
+						labels: {
+							usePointStyle: true,
+							padding: 20,
+						},
 					},
 					tooltip: {
 						backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -64,7 +96,7 @@
 						padding: 10,
 						cornerRadius: 8,
 						callbacks: {
-							label: (context) => `${context.parsed.y?.toFixed(1) ?? 0}%`
+							label: (context) => `${context.dataset.label}: ${context.parsed.y?.toFixed(1) ?? 0}%`
 						}
 					}
 				},
