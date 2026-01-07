@@ -26,7 +26,7 @@
 >
 	<div class="flex justify-between items-center mb-4">
 		<div>
-			<h2 class="text-lg font-semibold">Cohort Overview</h2>
+			<h2 class="text-lg font-semibold">Attendance Stats</h2>
 			<p class="text-sm text-gray-500">{stats.apprenticeCount} apprentice{stats.apprenticeCount !== 1 ? 's' : ''}</p>
 		</div>
 		<div class="flex items-center gap-2">
