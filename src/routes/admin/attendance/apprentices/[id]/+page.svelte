@@ -108,6 +108,20 @@
 		editingCheckinTime = '';
 	}
 
+	// Handle Escape key to cancel editing
+	$effect(() => {
+		if (!editingEntryId) return;
+
+		const handleKeydown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				cancelEditing();
+			}
+		};
+
+		document.addEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
+	});
+
 	async function saveStatusChange() {
 		if (!editingEntryId) return;
 
