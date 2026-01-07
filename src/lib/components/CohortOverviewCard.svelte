@@ -8,36 +8,30 @@
 
 	let { stats }: Props = $props();
 
-	const LOW_ATTENDANCE_THRESHOLD = 80;
-
 	function getAttendanceColor(rate: number): string {
 		if (rate >= 90) return 'text-green-600';
 		if (rate >= 80) return 'text-yellow-600';
 		return 'text-red-600';
 	}
 
-	const hasAtRiskApprentices = $derived(stats.apprenticesAtRisk > 0);
+	const latenessRate = $derived(stats.totalEvents > 0 ? (stats.late / stats.totalEvents) * 100 : 0);
 </script>
 
-<div
-	class="p-6 bg-white border border-gray-200 rounded-xl shadow-sm"
-	class:border-red-300={hasAtRiskApprentices}
-	class:bg-red-50={hasAtRiskApprentices}
->
+<div class="p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
 	<div class="flex justify-between items-center mb-4">
 		<div>
 			<h2 class="text-lg font-semibold">Attendance Stats</h2>
 			<p class="text-sm text-gray-500">{stats.apprenticeCount} apprentice{stats.apprenticeCount !== 1 ? 's' : ''}</p>
 		</div>
-		<div class="flex items-center gap-2">
-			<span class="text-2xl font-bold {getAttendanceColor(stats.attendanceRate)}">
-				{stats.attendanceRate.toFixed(0)}%
+		<div class="flex items-center gap-4 text-sm">
+			<span>
+				<span class="text-gray-600">Global Attendance:</span>
+				<span class="font-semibold {getAttendanceColor(stats.attendanceRate)}">{stats.attendanceRate.toFixed(0)}%</span>
 			</span>
-			{#if hasAtRiskApprentices}
-				<span class="text-red-500" title="{stats.apprenticesAtRisk} apprentice{stats.apprenticesAtRisk !== 1 ? 's' : ''} below {LOW_ATTENDANCE_THRESHOLD}%">
-					({stats.apprenticesAtRisk} at risk)
-				</span>
-			{/if}
+			<span>
+				<span class="text-gray-600">Global Lateness:</span>
+				<span class="font-semibold text-yellow-600">{latenessRate.toFixed(0)}%</span>
+			</span>
 		</div>
 	</div>
 
