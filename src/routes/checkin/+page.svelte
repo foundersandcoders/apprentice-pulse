@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -280,6 +281,12 @@
 					<span class="user-name">{data.user.name}</span>
 				{/if}
 				<span class="user-email">{data.user?.email}</span>
+				<div class="nav-links">
+					{#if data.user?.type === 'staff'}
+						<a href={resolve('/admin')} class="nav-link">Admin</a>
+					{/if}
+					<a href={resolve('/api/auth/logout')} class="nav-link">Logout</a>
+				</div>
 			</div>
 		</header>
 
@@ -554,6 +561,22 @@
 	.user-email {
 		font-size: 0.85rem;
 		opacity: 0.85;
+	}
+
+	.nav-links {
+		display: flex;
+		gap: 1rem;
+		margin-top: 0.5rem;
+	}
+
+	.nav-link {
+		font-size: 0.85rem;
+		color: #3b82f6;
+		text-decoration: none;
+	}
+
+	.nav-link:hover {
+		text-decoration: underline;
 	}
 
 	/* Event list styles */

@@ -13,7 +13,7 @@
 		message = '';
 
 		try {
-			const response = await fetch('/api/auth/student/login', {
+			const response = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email, redirect: redirectTo }),
@@ -38,11 +38,11 @@
 </script>
 
 <svelte:head>
-	<title>Student Login - Apprentice Pulse</title>
+	<title>Login - Apprentice Pulse</title>
 </svelte:head>
 
 <main>
-	<h1>Student Login</h1>
+	<h1>Login</h1>
 
 	{#if status === 'success'}
 		<div class="success">
@@ -71,7 +71,7 @@
 		</form>
 
 		<p class="help">
-			Enter your apprentice email to check in to sessions.
+			Enter your email to sign in.
 		</p>
 	{/if}
 </main>

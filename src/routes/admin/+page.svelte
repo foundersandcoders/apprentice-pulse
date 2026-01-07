@@ -4,26 +4,45 @@
 </script>
 
 <div class="p-6 max-w-4xl mx-auto">
-	<header class="mb-6">
-		<a href={resolve('/')} class="text-blue-600 hover:underline text-sm">← Back to Home</a>
-		<h1 class="text-2xl font-bold mt-2">Admin Dashboard</h1>
-		<p class="text-gray-600 mt-1">Welcome, {data.user?.email}</p>
+	<header class="mb-6 flex justify-between items-start">
+		<div>
+			<h1 class="text-2xl font-bold">Admin Dashboard</h1>
+			<p class="text-gray-600 mt-1">Welcome, {data.user?.email}</p>
+		</div>
+		<div class="flex gap-4 text-sm">
+			<a href={resolve('/checkin')} class="text-blue-600 hover:underline">Check In</a>
+			<a href={resolve('/api/auth/logout')} class="text-gray-500 hover:text-gray-700">Logout</a>
+		</div>
 	</header>
 
-	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+	<div class="grid gap-6 sm:grid-cols-2">
 		<a
 			href={resolve('/admin/events')}
-			class="block p-6 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all"
 		>
-			<h2 class="text-lg font-semibold mb-2">Events</h2>
-			<p class="text-gray-600 text-sm">Create, edit, and manage events for cohorts</p>
+			<div class="flex items-start gap-4">
+				<div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
+					📅
+				</div>
+				<div>
+					<h2 class="text-lg font-semibold mb-1 group-hover:text-blue-600 transition-colors">Events</h2>
+					<p class="text-gray-600 text-sm">Create, edit, and manage events for cohorts</p>
+				</div>
+			</div>
 		</a>
 		<a
 			href={resolve('/admin/attendance/apprentices')}
-			class="block p-6 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-green-300 transition-all"
 		>
-			<h2 class="text-lg font-semibold mb-2">Apprentice Attendance</h2>
-			<p class="text-gray-600 text-sm">Track individual apprentice attendance rates and history</p>
+			<div class="flex items-start gap-4">
+				<div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-green-200 transition-colors">
+					✓
+				</div>
+				<div>
+					<h2 class="text-lg font-semibold mb-1 group-hover:text-green-600 transition-colors">Attendance</h2>
+					<p class="text-gray-600 text-sm">Track individual apprentice attendance rates and history</p>
+				</div>
+			</div>
 		</a>
 	</div>
 </div>

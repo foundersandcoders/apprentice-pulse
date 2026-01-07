@@ -1,9 +1,3 @@
-Colors single place? not consisntant
-
-
-
-
-Individual learner page, make it clearer, Attended is Present+late and equivalent for the opposite
 Review navigation
 
 survey send email

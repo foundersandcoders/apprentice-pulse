@@ -43,7 +43,7 @@ describe('hooks.server', () => {
 			expect(event.locals.user).toEqual(session);
 		});
 
-		it('should redirect unauthenticated users from /admin to /admin/login', async () => {
+		it('should redirect unauthenticated users from /admin to /login', async () => {
 			mockGetSession.mockReturnValue(null);
 
 			const event = createMockEvent('/admin');
@@ -51,11 +51,11 @@ describe('hooks.server', () => {
 
 			await expect(handle({ event: event as never, resolve })).rejects.toMatchObject({
 				status: 303,
-				location: '/admin/login?redirect=%2Fadmin',
+				location: '/login?redirect=%2Fadmin',
 			});
 		});
 
-		it('should redirect students from /admin to home', async () => {
+		it('should redirect students from /admin to /checkin', async () => {
 			const session = { email: 'student@example.com', type: 'student' as const };
 			mockGetSession.mockReturnValue(session);
 
@@ -64,19 +64,8 @@ describe('hooks.server', () => {
 
 			await expect(handle({ event: event as never, resolve })).rejects.toMatchObject({
 				status: 303,
-				location: '/',
+				location: '/checkin',
 			});
-		});
-
-		it('should allow unauthenticated access to /admin/login', async () => {
-			mockGetSession.mockReturnValue(null);
-
-			const event = createMockEvent('/admin/login');
-			const resolve = createMockResolve();
-
-			await handle({ event: event as never, resolve });
-
-			expect(resolve).toHaveBeenCalled();
 		});
 	});
 
@@ -121,7 +110,7 @@ describe('hooks.server', () => {
 			});
 		});
 
-		it('should redirect authenticated students from /login to home', async () => {
+		it('should redirect authenticated students from /login to /checkin', async () => {
 			const session = { email: 'student@example.com', type: 'student' as const };
 			mockGetSession.mockReturnValue(session);
 
@@ -130,20 +119,7 @@ describe('hooks.server', () => {
 
 			await expect(handle({ event: event as never, resolve })).rejects.toMatchObject({
 				status: 303,
-				location: '/',
-			});
-		});
-
-		it('should redirect authenticated staff from /admin/login to /admin', async () => {
-			const session = { email: 'staff@example.com', type: 'staff' as const };
-			mockGetSession.mockReturnValue(session);
-
-			const event = createMockEvent('/admin/login');
-			const resolve = createMockResolve();
-
-			await expect(handle({ event: event as never, resolve })).rejects.toMatchObject({
-				status: 303,
-				location: '/admin',
+				location: '/checkin',
 			});
 		});
 	});

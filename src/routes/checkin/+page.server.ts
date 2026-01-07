@@ -109,6 +109,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		user: {
 			name: apprentice?.name || null,
 			email: user.email,
+			type: user.type,
 		},
 	};
 };
