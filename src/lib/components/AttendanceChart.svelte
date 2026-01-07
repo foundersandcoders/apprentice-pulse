@@ -96,33 +96,33 @@
 						padding: 10,
 						cornerRadius: 8,
 						callbacks: {
-							label: (context) => `${context.dataset.label}: ${context.parsed.y?.toFixed(1) ?? 0}%`
-						}
-					}
+							label: context => `${context.dataset.label}: ${context.parsed.y?.toFixed(1) ?? 0}%`,
+						},
+					},
 				},
 				scales: {
 					y: {
 						min: 0,
 						max: 100,
 						ticks: {
-							callback: (value) => `${value}%`,
+							callback: value => `${value}%`,
 							stepSize: 20,
 						},
 						grid: {
 							color: 'rgba(0, 0, 0, 0.05)',
-						}
+						},
 					},
 					x: {
 						grid: {
 							display: false,
-						}
-					}
+						},
+					},
 				},
 				interaction: {
 					intersect: false,
 					mode: 'index',
-				}
-			}
+				},
+			},
 		});
 
 		return () => {

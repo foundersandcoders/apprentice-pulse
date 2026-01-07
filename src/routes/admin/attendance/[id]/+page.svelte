@@ -22,7 +22,7 @@
 	const backLink = $derived(
 		cohortsParam
 			? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
-			: resolve('/admin/attendance')
+			: resolve('/admin/attendance'),
 	);
 
 	// Loading state - show when navigating back to cohort attendance list
@@ -229,6 +229,7 @@
 
 	<header class="mb-6 flex justify-between items-start">
 		<div>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- backLink is already resolved -->
 			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
 			<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName} - Attendance</h1>
 			{#if stats.cohortName}
