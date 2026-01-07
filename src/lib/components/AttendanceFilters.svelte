@@ -163,8 +163,8 @@
 
 <div class="space-y-4">
 	<!-- Filter Mode Selection -->
-	<div class="flex items-center space-x-6">
-		<span class="text-sm font-medium text-gray-700">Filter by:</span>
+	<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+		<span class="text-sm font-medium text-gray-700">Time Period:</span>
 		<label class="flex items-center space-x-2 cursor-pointer">
 			<input
 				type="radio"

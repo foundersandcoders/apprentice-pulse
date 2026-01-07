@@ -324,13 +324,39 @@
 
 		</div>
 	{:else}
-		<!-- Attendance Filter -->
-		<div class="mb-6">
-			<AttendanceFiltersComponent
-				{terms}
-				filters={currentFilters}
-				onFiltersChange={handleFiltersChange}
-			/>
+		<!-- Filters Card -->
+		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6">
+			<h2 class="text-lg font-semibold mb-4">Filters</h2>
+
+			<!-- Cohorts Filter -->
+			<div class="flex flex-wrap items-center gap-2 pb-4 border-b border-gray-100">
+				<span class="text-sm font-medium text-gray-700">Cohorts:</span>
+				{#if showAll}
+					<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">All Cohorts</span>
+				{:else}
+					{#each selectedCohortIds as cohortId (cohortId)}
+						{@const cohort = cohorts.find(c => c.id === cohortId)}
+						{#if cohort}
+							<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">{cohort.name}</span>
+						{/if}
+					{/each}
+				{/if}
+				<button
+					class="text-blue-600 hover:underline text-sm transition-colors ml-2"
+					onclick={clearSelection}
+				>
+					Change selection
+				</button>
+			</div>
+
+			<!-- Time Period Filter -->
+			<div class="pt-4">
+				<AttendanceFiltersComponent
+					{terms}
+					filters={currentFilters}
+					onFiltersChange={handleFiltersChange}
+				/>
+			</div>
 		</div>
 
 		<!-- Attendance Stats Card -->
@@ -344,32 +370,11 @@
 		</div>
 
 		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-			<h2 class="text-lg font-semibold mb-4">Individual Apprentices</h2>
-			<!-- Filters & Controls -->
-			<div class="mb-6 flex flex-wrap gap-4 items-center">
-				<div class="flex flex-wrap gap-2 items-center">
-					<span class="text-sm text-gray-600">Showing:</span>
-					{#if showAll}
-						<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">All Cohorts</span>
-					{:else}
-						{#each selectedCohortIds as cohortId (cohortId)}
-							{@const cohort = cohorts.find(c => c.id === cohortId)}
-							{#if cohort}
-								<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">{cohort.name}</span>
-							{/if}
-						{/each}
-					{/if}
-					<button
-						class="text-blue-600 hover:underline text-sm transition-colors"
-						onclick={clearSelection}
-					>
-						Change selection
-					</button>
-				</div>
-
-				<div class="text-sm text-gray-500 ml-auto">
+			<div class="flex justify-between items-center mb-4">
+				<h2 class="text-lg font-semibold">Individual Apprentices</h2>
+				<span class="text-sm text-gray-500">
 					{sortedApprentices.length} apprentice{sortedApprentices.length !== 1 ? 's' : ''}
-				</div>
+				</span>
 			</div>
 
 			<!-- Apprentices Table -->
