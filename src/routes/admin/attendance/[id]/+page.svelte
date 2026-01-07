@@ -4,8 +4,9 @@
 	import { navigating, page } from '$app/state';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
-	import { ATTENDANCE_STATUSES, getStatusBadgeClass } from '$lib/types/attendance';
+	import { ATTENDANCE_STATUSES, getStatusBadgeClass, calculateMonthlyAttendance } from '$lib/types/attendance';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { parseFiltersFromParams, filtersToParams } from '$lib/types/filters';
 	import type { Term } from '$lib/airtable/sveltekit-wrapper';
@@ -35,6 +36,9 @@
 	$effect(() => {
 		history = data.history as AttendanceHistoryEntry[];
 	});
+
+	// Calculate monthly attendance data for chart
+	const monthlyChartData = $derived(calculateMonthlyAttendance(history));
 
 	// Current filters from URL params
 	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
@@ -333,5 +337,10 @@
 				</table>
 			</div>
 		{/if}
+	</div>
+
+	<!-- Attendance Trend Chart -->
+	<div class="mt-8">
+		<AttendanceChart data={monthlyChartData} title="Attendance Trend" />
 	</div>
 </div>

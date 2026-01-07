@@ -4,8 +4,9 @@ import {
 	listTerms,
 	getApprenticesByCohortId,
 	getApprenticeStats,
+	getApprenticeAttendanceHistory,
 } from '$lib/airtable/sveltekit-wrapper';
-import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
+import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
 
 export const load: PageServerLoad = async ({ url }) => {
 	// Support multiple cohorts via comma-separated IDs
@@ -28,6 +29,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		if (selectedCohortIds.length === 0 && !showAll) {
 			return {
 				apprentices: [],
+				combinedHistory: [],
 				cohorts,
 				terms,
 				selectedCohortIds,
@@ -82,26 +84,32 @@ export const load: PageServerLoad = async ({ url }) => {
 			}
 		}
 
-		// Fetch attendance stats for each apprentice
+		// Fetch attendance stats and history for each apprentice
 		const apprenticeStats: ApprenticeAttendanceStats[] = [];
+		const allHistory: AttendanceHistoryEntry[] = [];
 		const dateOptions = filterStartDate && filterEndDate
 			? { startDate: filterStartDate, endDate: filterEndDate }
 			: undefined;
 
 		for (const apprenticeId of apprenticeIds) {
 			try {
-				const stats = await getApprenticeStats(apprenticeId, dateOptions);
+				const [stats, history] = await Promise.all([
+					getApprenticeStats(apprenticeId, dateOptions),
+					getApprenticeAttendanceHistory(apprenticeId, dateOptions),
+				]);
 				if (stats) {
 					apprenticeStats.push(stats);
 				}
+				allHistory.push(...history);
 			}
 			catch (err) {
-				console.error(`[attendance] Error fetching stats for ${apprenticeId}:`, err);
+				console.error(`[attendance] Error fetching data for ${apprenticeId}:`, err);
 			}
 		}
 
 		return {
 			apprentices: apprenticeStats,
+			combinedHistory: allHistory,
 			cohorts,
 			terms,
 			selectedCohortIds,
@@ -116,6 +124,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		console.error('[attendance] Error loading data:', err);
 		return {
 			apprentices: [],
+			combinedHistory: [],
 			cohorts: [],
 			terms: [],
 			selectedCohortIds,

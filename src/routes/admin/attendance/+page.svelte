@@ -3,11 +3,13 @@
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
-	import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
+	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
+	import { calculateMonthlyAttendance } from '$lib/types/attendance';
 	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 
 	let { data } = $props();
 
@@ -18,6 +20,10 @@
 
 	const selectedCohortIds = $derived(data.selectedCohortIds as string[]);
 	const needsSelection = $derived(data.needsSelection as boolean);
+	const combinedHistory = $derived(data.combinedHistory as AttendanceHistoryEntry[]);
+
+	// Calculate monthly attendance data for chart
+	const monthlyChartData = $derived(calculateMonthlyAttendance(combinedHistory));
 	const showAll = $derived(data.showAll as boolean);
 
 	// Current filters from URL params
@@ -413,6 +419,11 @@
 					</table>
 				</div>
 			{/if}
+		</div>
+
+		<!-- Attendance Trend Chart -->
+		<div class="mt-8">
+			<AttendanceChart data={monthlyChartData} title="Cohort Attendance Trend" />
 		</div>
 	{/if}
 </div>

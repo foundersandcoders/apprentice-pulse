@@ -104,3 +104,57 @@ export interface AttendanceHistoryEntry {
 	checkinTime: string | null;
 	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
 }
+
+/** Monthly attendance data point for charts */
+export interface MonthlyAttendancePoint {
+	month: string; // Display format: "Jan 2025"
+	sortKey: string; // Sort format: "2025-01"
+	percentage: number;
+	attended: number;
+	total: number;
+}
+
+/**
+ * Calculate monthly attendance percentages from history entries
+ * Groups events by month and calculates attendance rate for each
+ */
+export function calculateMonthlyAttendance(history: AttendanceHistoryEntry[]): MonthlyAttendancePoint[] {
+	if (history.length === 0) return [];
+
+	// Group events by month
+	const monthlyData = new Map<string, { attended: number; total: number }>();
+
+	for (const entry of history) {
+		const date = new Date(entry.eventDateTime);
+		const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+		if (!monthlyData.has(sortKey)) {
+			monthlyData.set(sortKey, { attended: 0, total: 0 });
+		}
+
+		const data = monthlyData.get(sortKey)!;
+		data.total++;
+
+		// Present and Late count as attended
+		if (entry.status === 'Present' || entry.status === 'Late') {
+			data.attended++;
+		}
+	}
+
+	// Convert to array and sort by date
+	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+	return Array.from(monthlyData.entries())
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([sortKey, data]) => {
+			const [year, monthNum] = sortKey.split('-');
+			const monthName = months[parseInt(monthNum, 10) - 1];
+			return {
+				month: `${monthName} ${year}`,
+				sortKey,
+				percentage: data.total > 0 ? (data.attended / data.total) * 100 : 0,
+				attended: data.attended,
+				total: data.total,
+			};
+		});
+}
