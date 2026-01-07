@@ -241,10 +241,11 @@
 <div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6 flex justify-between items-start">
 		<div>
-			<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 			{#if needsSelection}
+				<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 				<h1 class="text-2xl font-bold mt-2">Attendance</h1>
 			{:else}
+				<button onclick={clearSelection} class="text-blue-600 hover:underline text-sm">← Change Cohorts</button>
 				<h1 class="text-2xl font-bold mt-2">Cohort Attendance</h1>
 			{/if}
 		</div>
@@ -341,12 +342,6 @@
 						{/if}
 					{/each}
 				{/if}
-				<button
-					class="text-blue-600 hover:underline text-sm transition-colors ml-2"
-					onclick={clearSelection}
-				>
-					Change selection
-				</button>
 			</div>
 
 			<!-- Time Period Filter -->
