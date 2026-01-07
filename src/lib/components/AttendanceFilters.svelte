@@ -164,7 +164,6 @@
 <div class="space-y-4">
 	<!-- Filter Mode Selection -->
 	<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-		<span class="text-sm font-medium text-gray-700">Time Period:</span>
 		<label class="flex items-center space-x-2 cursor-pointer">
 			<input
 				type="radio"
@@ -212,17 +211,7 @@
 					}}
 					class="w-full text-left border rounded px-3 py-2 text-sm bg-white hover:border-blue-300 flex justify-between items-center"
 				>
-					<span class="truncate">
-						{#if appliedTermIds.length === 0}
-							<span class="text-gray-400">Filter by terms...</span>
-						{:else}
-							{@const selectedTermNames = terms
-								.filter(t => appliedTermIds.includes(t.id))
-								.map(t => t.name)
-								.join(', ')}
-							{selectedTermNames}
-						{/if}
-					</span>
+					<span class="text-gray-600">Select terms...</span>
 					<span class="text-gray-400 ml-1">{termDropdownOpen ? '▲' : '▼'}</span>
 				</button>
 				{#if termDropdownOpen}
