@@ -4,12 +4,13 @@
 	import { navigating, page } from '$app/state';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
-	import { calculateMonthlyAttendance } from '$lib/types/attendance';
+	import { calculateMonthlyAttendance, calculateCohortOverview } from '$lib/types/attendance';
 	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
+	import CohortOverviewCard from '$lib/components/CohortOverviewCard.svelte';
 
 	let { data } = $props();
 
@@ -25,6 +26,9 @@
 	// Calculate monthly attendance data for chart
 	const monthlyChartData = $derived(calculateMonthlyAttendance(combinedHistory));
 	const showAll = $derived(data.showAll as boolean);
+
+	// Calculate cohort overview stats
+	const cohortOverview = $derived(calculateCohortOverview(apprentices));
 
 	// Current filters from URL params
 	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
@@ -325,7 +329,13 @@
 			/>
 		</div>
 
+		<!-- Cohort Overview Card -->
+		<div class="mb-6">
+			<CohortOverviewCard stats={cohortOverview} />
+		</div>
+
 		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+			<h2 class="text-lg font-semibold mb-4">Individual Apprentices</h2>
 			<!-- Filters & Controls -->
 			<div class="mb-6 flex flex-wrap gap-4 items-center">
 				<div class="flex flex-wrap gap-2 items-center">
