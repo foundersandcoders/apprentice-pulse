@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
@@ -56,9 +56,9 @@
 		switch (status) {
 			case 'Present': return 'bg-green-100 text-green-800';
 			case 'Late': return 'bg-yellow-100 text-yellow-800';
-			case 'Absent': return 'bg-red-100 text-red-800';
+			case 'Not Check-in': return 'bg-red-100 text-red-800';
 			case 'Excused': return 'bg-blue-100 text-blue-800';
-			case 'Not Coming': return 'bg-orange-100 text-orange-800';
+			case 'Absent': return 'bg-orange-100 text-orange-800';
 			default: return 'bg-gray-100 text-gray-600';
 		}
 	}
@@ -129,9 +129,9 @@
 		if (!entry) return;
 
 		const hasExistingRecord = !!entry.attendanceId;
-		const needsRecord = editingStatus !== 'Absent';
+		const needsRecord = editingStatus !== 'Not Check-in';
 
-		// Case: No record and changing to Absent - just update local UI
+		// Case: No record and changing to Not Check-in - just update local UI
 		if (!hasExistingRecord && !needsRecord) {
 			history = history.map(h =>
 				h.eventId === entry.eventId
@@ -191,17 +191,8 @@
 			}
 
 			if (result.success) {
-				// Update local state
-				history = history.map(h =>
-					h.eventId === entry.eventId
-						? {
-								...h,
-								status: editingStatus,
-								checkinTime: checkinTime || null,
-								attendanceId: result.attendance.id,
-							}
-						: h,
-				);
+				// Refetch all data to update stats card
+				await invalidateAll();
 			}
 			else {
 				console.error('Failed to update status:', result);

@@ -25,13 +25,13 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	try {
-		// Only registered apprentices can mark "Not Coming"
+		// Only registered apprentices can mark "Absent"
 		const apprentice = await getApprenticeByEmail(session.email);
 
 		if (!apprentice) {
 			return json({
 				success: false,
-				error: 'Only registered apprentices can mark as not coming',
+				error: 'Only registered apprentices can mark as absent',
 			}, { status: 403 });
 		}
 
@@ -51,8 +51,8 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 		});
 	}
 	catch (error) {
-		console.error('Failed to mark as not coming:', error);
-		const message = error instanceof Error ? error.message : 'Failed to mark as not coming';
+		console.error('Failed to mark as absent:', error);
+		const message = error instanceof Error ? error.message : 'Failed to mark as absent';
 		return json({ success: false, error: message }, { status: 500 });
 	}
 };

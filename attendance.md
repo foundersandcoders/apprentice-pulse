@@ -25,7 +25,7 @@ This document describes how attendance is calculated, stored, and displayed thro
 | Apprentice | `fldOyo3hlj9Ht0rfZ` | multipleRecordLinks | Link to Apprentices table |
 | Event | `fldiHd75LYtopwyN9` | multipleRecordLinks | Link to Events table |
 | Check-in Time | `fldvXHPmoLlEA8EuN` | dateTime | When the user checked in |
-| Status | `fldew45fDGpgl1aRr` | singleSelect | Present/Absent/Late/Excused/Not Coming |
+| Status | `fldew45fDGpgl1aRr` | singleSelect | Present/Not Check-in/Late/Excused/Absent |
 | External Name | `fldIhZnMxfjh9ps78` | singleLineText | For non-registered attendees |
 | External Email | `fldHREfpkx1bGv3K3` | email | For non-registered attendees |
 
@@ -46,16 +46,16 @@ This document describes how attendance is calculated, stored, and displayed thro
 Defined in `src/lib/types/attendance.ts`:
 
 ```typescript
-const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused', 'Not Coming'] as const;
+const ATTENDANCE_STATUSES = ['Present', 'Not Check-in', 'Late', 'Excused', 'Absent'] as const;
 ```
 
 | Status | Description | Has Check-in Time | Counts as Attended |
 |--------|-------------|-------------------|-------------------|
 | Present | Checked in before event start | Yes | Yes |
 | Late | Checked in after event start | Yes | Yes |
-| Absent | Did not attend (explicit or implicit) | No | No |
+| Not Check-in | Did not attend (explicit or implicit) | No | No |
 | Excused | Absence excused by staff | No | No |
-| Not Coming | Pre-declared absence | No | No |
+| Absent | Pre-declared absence | No | No |
 
 ### Status Determination Logic
 
@@ -85,7 +85,7 @@ POST /api/checkin
     │   │
     │   ├─► getUserAttendanceForEvent() - Already have record?
     │   │   │
-    │   │   ├─► Status = "Not Coming" → updateAttendance() to Present/Late
+    │   │   ├─► Status = "Absent" → updateAttendance() to Present/Late
     │   │   │
     │   │   └─► Other status → Error "Already checked in"
     │   │
@@ -96,14 +96,14 @@ POST /api/checkin
         └─► createExternalAttendance() with name/email
 ```
 
-### 2. Mark Not Coming Flow
+### 2. Mark Absent Flow
 
 ```
-POST /api/checkin/not-coming
+POST /api/checkin/absent
     │
     ├─► getApprenticeByEmail() - Must be registered apprentice
     │
-    └─► markNotComing() - Creates record with status="Not Coming", no checkinTime
+    └─► markNotComing() - Creates record with status="Absent", no checkinTime
 ```
 
 ### 3. Staff Manual Check-in
@@ -136,14 +136,14 @@ Located in `src/lib/airtable/attendance.ts:407`:
 function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
     const present = attendanceRecords.filter(a => a.status === 'Present').length;
     const late = attendanceRecords.filter(a => a.status === 'Late').length;
-    const explicitAbsent = attendanceRecords.filter(a => a.status === 'Absent').length;
+    const explicitNotCheckin = attendanceRecords.filter(a => a.status === 'Not Check-in').length;
     const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
-    const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
+    const notComing = attendanceRecords.filter(a => a.status === 'Absent').length;
 
-    // IMPLICIT ABSENT: Events with no attendance record
+    // IMPLICIT NOT CHECK-IN: Events with no attendance record
     const recordedEvents = attendanceRecords.length;
     const missingEvents = totalEvents - recordedEvents;
-    const absent = explicitAbsent + missingEvents;
+    const notCheckin = explicitNotCheckin + missingEvents;
 
     const attended = present + late;
 
@@ -156,7 +156,7 @@ function calculateStats(attendanceRecords: Attendance[], totalEvents: number): A
         attended,
         present,
         late,
-        absent,      // explicitAbsent + missingEvents
+        notCheckin,  // explicitNotCheckin + missingEvents
         excused,
         notComing,
         attendanceRate,
@@ -245,9 +245,9 @@ function calculateTrend(currentRate: number, previousRate: number): AttendanceTr
 
 ## Known Issues
 
-### BUG: Negative Absent Count (-2 in screenshot)
+### BUG: Negative Not Check-in Count (-2 in screenshot)
 
-**Symptom**: The stats card shows `Absent: -2`
+**Symptom**: The stats card shows `Not Check-in: -2`
 
 **Root Cause**: Mismatch between attendance records counted and events counted.
 
@@ -303,7 +303,7 @@ But stats only count cohort events. So:
 | Endpoint | Method | Description | File |
 |----------|--------|-------------|------|
 | `/api/checkin` | POST | Student/staff check-in | `src/routes/api/checkin/+server.ts` |
-| `/api/checkin/not-coming` | POST | Mark as not coming | `src/routes/api/checkin/not-coming/+server.ts` |
+| `/api/checkin/absent` | POST | Mark as absent | `src/routes/api/checkin/absent/+server.ts` |
 | `/api/checkin/validate-code` | POST | Validate guest check-in code | `src/routes/api/checkin/validate-code/+server.ts` |
 
 ### Attendance Management
@@ -318,8 +318,8 @@ But stats only count cohort events. So:
 
 | Endpoint | Creates Record | Updates Record | Fields Written |
 |----------|---------------|----------------|----------------|
-| POST `/api/checkin` | Yes (if no record) | Yes (if "Not Coming") | APPRENTICE, EVENT, CHECKIN_TIME, STATUS |
-| POST `/api/checkin/not-coming` | Yes | No | APPRENTICE, EVENT, STATUS="Not Coming" |
+| POST `/api/checkin` | Yes (if no record) | Yes (if "Absent") | APPRENTICE, EVENT, CHECKIN_TIME, STATUS |
+| POST `/api/checkin/absent` | Yes | No | APPRENTICE, EVENT, STATUS="Absent" |
 | POST `/api/attendance` | Yes | Yes (if status override) | APPRENTICE, EVENT, CHECKIN_TIME, STATUS |
 | PATCH `/api/attendance/[id]` | No | Yes | STATUS, CHECKIN_TIME |
 
@@ -335,7 +335,7 @@ Displays:
 - Name, cohort
 - Attendance rate (color-coded: green ≥90%, yellow ≥80%, red <80%)
 - Trend indicator (↗ up, ↘ down, → stable)
-- Grid: Attended | Present | Late | Absent | Not Coming
+- Grid: Present | Late | Excused | Not Check-in | Absent (with Attended below Present + Late)
 - Total: "X of Y events"
 
 ### Apprentice List Page
@@ -382,7 +382,7 @@ Data loading: `+page.server.ts` calls:
 | File | Purpose |
 |------|---------|
 | `src/routes/api/checkin/+server.ts` | Main check-in endpoint |
-| `src/routes/api/checkin/not-coming/+server.ts` | Mark not coming |
+| `src/routes/api/checkin/absent/+server.ts` | Mark absent |
 | `src/routes/api/attendance/+server.ts` | Staff creates attendance |
 | `src/routes/api/attendance/[id]/+server.ts` | Update attendance |
 | `src/routes/api/events/[id]/roster/+server.ts` | Event roster with attendance |
@@ -427,12 +427,12 @@ Data loading: `+page.server.ts` calls:
 │                         ↓                                               │
 │     present = count where status='Present'                             │
 │     late = count where status='Late'                                   │
-│     explicitAbsent = count where status='Absent'                       │
+│     explicitNotCheckin = count where status='Not Check-in'             │
 │     excused = count where status='Excused'                             │
-│     notComing = count where status='Not Coming'                        │
+│     notComing = count where status='Absent'                            │
 │                         ↓                                               │
 │     missingEvents = relevantEvents.length - apprenticeAttendance.length│
-│     absent = explicitAbsent + missingEvents  ← CAN BE NEGATIVE!        │
+│     notCheckin = explicitNotCheckin + missingEvents  ← CAN BE NEGATIVE!│
 │                         ↓                                               │
 │     attended = present + late                                          │
 │     attendanceRate = (attended / totalEvents) * 100                    │
@@ -459,7 +459,7 @@ Data loading: `+page.server.ts` calls:
 │                         ↓                                               │
 │  5. For each relevant event:                                           │
 │     - If has attendance record → use that status                       │
-│     - If no attendance record → status = 'Absent'                      │
+│     - If no attendance record → status = 'Not Check-in'                │
 │                         ↓                                               │
 │  6. Sort by date (most recent first)                                   │
 │                                                                         │

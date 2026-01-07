@@ -526,13 +526,13 @@ describe('attendance', () => {
 			expect(history).toHaveLength(2);
 			// History is sorted by date descending (most recent first)
 			expect(history[0].eventName).toBe('Tuesday Class');
-			expect(history[0].status).toBe('Absent'); // No attendance record = Absent
+			expect(history[0].status).toBe('Not Check-in'); // No attendance record = Not Check-in
 			expect(history[1].eventName).toBe('Monday Class');
 			expect(history[1].status).toBe('Present');
 			expect(history[1].checkinTime).toBe('2025-01-06T09:05:00.000Z');
 		});
 
-		it('should mark events without attendance as Absent', async () => {
+		it('should mark events without attendance as Not Check-in', async () => {
 			// Mock apprentice with cohort
 			const mockApprentice = {
 				id: 'recApprentice1',
@@ -568,7 +568,7 @@ describe('attendance', () => {
 			const history = await client.getApprenticeAttendanceHistory('recApprentice1');
 
 			expect(history).toHaveLength(1);
-			expect(history[0].status).toBe('Absent');
+			expect(history[0].status).toBe('Not Check-in');
 			expect(history[0].checkinTime).toBeNull();
 		});
 	});

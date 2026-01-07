@@ -53,8 +53,8 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 			const existingAttendance = await getUserAttendanceForEvent(eventId, apprentice.id);
 
 			if (existingAttendance) {
-				// Handle "Not Coming" → "Check In" transition
-				if (existingAttendance.status === 'Not Coming') {
+				// Handle "Absent" → "Check In" transition
+				if (existingAttendance.status === 'Absent') {
 					const event = await getEvent(eventId);
 					const status = determineStatus(event?.dateTime ?? null);
 

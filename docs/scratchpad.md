@@ -1,21 +1,20 @@
-survey send email
+Colors single place? not consisntant
 
-link surveys with student. track not fulfilled
 
 status naming:
-  Absent -> Not Check-in
-  Not Coming -> Absent
+  ✓ Absent -> Not Check-in (DONE)
+  ✓ Not Coming -> Absent (DONE)
 
-ON Details. Why actions column?
-
-pressing esc stops editing
+where is the absent button on checkin page?????
 
 
 
 Individual learner page, make it clearer, Attended is Present+late and equivalent for the opposite
-cahnge status there
-same filters as cohort
 Review navigation
+
+survey send email
+
+link surveys with student. track not fulfilled
 
 Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
 

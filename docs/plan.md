@@ -7,7 +7,7 @@ Simplify attendance tracking to focus on what matters: **apprentices attending e
 ## Core Principles
 
 1. An apprentice's attendance stats should ONLY include events where their cohort was assigned
-2. No attendance record = implicit Absent (staff don't manually mark absences)
+2. No attendance record = implicit Not Check-in (staff don't manually mark absences)
 3. Same filtering options (term/date) available on both list and detail pages
 4. No duplicated code - reusable filter logic
 
@@ -81,7 +81,7 @@ Ensures attendance records always match the relevant events.
 
 Change `getApprenticeAttendanceHistory()` to only return events for the apprentice's cohort. This makes history consistent with stats.
 
-If no attendance record exists for a cohort event → show as "Absent" (implicit).
+If no attendance record exists for a cohort event → show as "Not Check-in" (implicit).
 
 #### 2.2 Remove "add attendance from other cohorts" logic
 

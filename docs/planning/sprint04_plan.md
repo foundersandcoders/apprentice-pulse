@@ -127,7 +127,7 @@ Leverage existing Attendance table with linked Apprentice and Event records.
 ```
 Attendance record → Apprentice (link) → Cohort (link)
                  → Event (link) → Date, Cohort
-                 → Status (Present/Absent/Late/Excused)
+                 → Status (Present/Not Check-in/Late/Excused/Absent)
 ```
 
 ### Aggregate Queries Strategy

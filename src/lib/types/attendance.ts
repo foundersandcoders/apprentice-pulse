@@ -1,5 +1,5 @@
 // Attendance status options
-export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused', 'Not Coming'] as const;
+export const ATTENDANCE_STATUSES = ['Present', 'Not Check-in', 'Late', 'Excused', 'Absent'] as const;
 export type AttendanceStatus = typeof ATTENDANCE_STATUSES[number];
 
 export interface Attendance {
@@ -88,5 +88,5 @@ export interface AttendanceHistoryEntry {
 	eventDateTime: string;
 	status: AttendanceStatus;
 	checkinTime: string | null;
-	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Absent')
+	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
 }

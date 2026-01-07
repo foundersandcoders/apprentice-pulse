@@ -54,7 +54,7 @@ export const GET: RequestHandler = async ({ params }) => {
 				name: apprentice.name,
 				email: apprentice.email,
 				type: 'apprentice',
-				status: attendanceInfo?.status ?? 'Absent',
+				status: attendanceInfo?.status ?? 'Not Check-in',
 				checkinTime: attendanceInfo?.checkinTime,
 			});
 			addedApprenticeIds.add(apprentice.id);
@@ -101,8 +101,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			}
 		}
 
-		// Sort: Present first, then Late, Excused, Not Coming, Absent last; then alphabetically
-		const statusOrder: Record<AttendanceStatus, number> = { 'Present': 0, 'Late': 1, 'Excused': 2, 'Not Coming': 3, 'Absent': 4 };
+		// Sort: Present first, then Late, Excused, Absent, Not Check-in last; then alphabetically
+		const statusOrder: Record<AttendanceStatus, number> = { 'Present': 0, 'Late': 1, 'Excused': 2, 'Absent': 3, 'Not Check-in': 4 };
 		roster.sort((a, b) => {
 			const statusDiff = statusOrder[a.status] - statusOrder[b.status];
 			if (statusDiff !== 0) return statusDiff;
@@ -117,7 +117,7 @@ export const GET: RequestHandler = async ({ params }) => {
 				present: roster.filter(r => r.status === 'Present').length,
 				late: roster.filter(r => r.status === 'Late').length,
 				excused: roster.filter(r => r.status === 'Excused').length,
-				absent: roster.filter(r => r.status === 'Absent').length,
+				absent: roster.filter(r => r.status === 'Not Check-in').length,
 			},
 		});
 	}

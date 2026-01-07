@@ -123,9 +123,9 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	}
 
 	/**
-	 * Mark a user as "Not Coming" for an event
+	 * Mark a user as "Absent" for an event
 	 * - Creates new attendance record if none exists
-	 * - Returns existing record if already marked "Not Coming"
+	 * - Returns existing record if already marked "Absent"
 	 * - Throws error if user already checked in (Present/Late)
 	 */
 	async function markNotComing(input: CreateAttendanceInput): Promise<Attendance> {
@@ -138,19 +138,19 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		// Check if user already has an attendance record
 		const existing = await getUserAttendanceForEvent(input.eventId, input.apprenticeId);
 		if (existing) {
-			if (existing.status === 'Not Coming') {
-				// Already marked as not coming - idempotent
+			if (existing.status === 'Absent') {
+				// Already marked as absent - idempotent
 				return existing;
 			}
-			// Already checked in (Present/Late/Absent/Excused)
+			// Already checked in (Present/Late/Not Check-in/Excused)
 			throw new Error('User already has an attendance record for this event');
 		}
 
-		// Create new attendance record with "Not Coming" status
+		// Create new attendance record with "Absent" status
 		const fields: Airtable.FieldSet = {
 			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
 			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
-			[ATTENDANCE_FIELDS.STATUS]: 'Not Coming',
+			[ATTENDANCE_FIELDS.STATUS]: 'Absent',
 		};
 
 		const record = await attendanceTable.create(fields);
@@ -159,8 +159,8 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			id: record.id,
 			eventId: input.eventId,
 			apprenticeId: input.apprenticeId,
-			checkinTime: '', // No check-in time for "Not Coming"
-			status: 'Not Coming',
+			checkinTime: '', // No check-in time for "Absent"
+			status: 'Absent',
 		};
 	}
 
@@ -560,16 +560,16 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 	/**
 	 * Calculate base attendance stats from attendance records
-	 * Missing events (no attendance record) are counted as 'Absent'
+	 * Missing events (no attendance record) are counted as 'Not Check-in'
 	 */
 	function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
 		const present = attendanceRecords.filter(a => a.status === 'Present').length;
 		const late = attendanceRecords.filter(a => a.status === 'Late').length;
-		const explicitAbsent = attendanceRecords.filter(a => a.status === 'Absent').length;
+		const explicitAbsent = attendanceRecords.filter(a => a.status === 'Not Check-in').length;
 		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
-		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
+		const notComing = attendanceRecords.filter(a => a.status === 'Absent').length;
 
-		// Count missing attendance records as 'Absent'
+		// Count missing attendance records as 'Not Check-in'
 		// Guard against negative values (shouldn't happen if attendance is filtered correctly)
 		const recordedEvents = attendanceRecords.length;
 		const missingEvents = Math.max(0, totalEvents - recordedEvents);
@@ -796,7 +796,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 *
 	 * Key behavior:
 	 * - Only shows events assigned to the apprentice's cohort
-	 * - Events with no attendance record are shown as 'Absent' (implicit)
+	 * - Events with no attendance record are shown as 'Not Check-in' (implicit)
 	 * - Optionally filters by date range
 	 */
 	async function getApprenticeAttendanceHistory(
@@ -847,7 +847,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 				eventId: event.id,
 				eventName: event.name,
 				eventDateTime: event.dateTime,
-				status: attendance ? attendance.status : 'Absent',
+				status: attendance ? attendance.status : 'Not Check-in',
 				checkinTime: attendance?.checkinTime ?? null,
 				attendanceId: attendance?.id ?? null,
 			};

@@ -368,7 +368,7 @@
 	});
 
 	// Expandable row state
-	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused' | 'Not Coming';
+	type AttendanceStatus = 'Present' | 'Not Check-in' | 'Late' | 'Excused' | 'Absent';
 	interface RosterEntry {
 		id: string; // Apprentice ID or external attendance ID
 		attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
@@ -381,10 +381,10 @@
 
 	const statusStyles: Record<AttendanceStatus, string> = {
 		'Present': 'bg-green-100 text-green-700',
-		'Absent': 'bg-red-100 text-red-700',
+		'Not Check-in': 'bg-red-100 text-red-700',
 		'Late': 'bg-yellow-100 text-yellow-700',
 		'Excused': 'bg-blue-100 text-blue-700',
-		'Not Coming': 'bg-orange-100 text-orange-700',
+		'Absent': 'bg-orange-100 text-orange-700',
 	};
 	let expandedEventId = $state<string | null>(null);
 	let expandedEventDateTime = $state<string | null>(null);
@@ -509,10 +509,10 @@
 		}
 
 		const hasExistingRecord = !!person.attendanceId;
-		const needsRecord = editingStatus !== 'Absent'; // Excused still needs a record for tracking
+		const needsRecord = editingStatus !== 'Not Check-in'; // Excused still needs a record for tracking
 		const countsAsAttendance = editingStatus === 'Present' || editingStatus === 'Late';
 
-		// Case: No record and changing to Absent - just update local UI
+		// Case: No record and changing to Not Check-in - just update local UI
 		if (!hasExistingRecord && !needsRecord) {
 			rosterData = rosterData.map(p =>
 				p.id === person.id ? { ...p, status: editingStatus, checkinTime: undefined } : p,

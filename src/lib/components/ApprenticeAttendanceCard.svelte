@@ -67,7 +67,7 @@
 	</div>
 
 	<div class="grid grid-cols-5 gap-2 text-center text-sm">
-		<!-- Row 1: Present, Late, Excused, Absent, Not Coming -->
+		<!-- Row 1: Present, Late, Excused, Not Check-in, Absent -->
 		<div class="bg-green-50 rounded p-2">
 			<div class="font-semibold text-green-600">{apprentice.present}</div>
 			<div class="text-gray-500 text-xs">Present</div>
@@ -82,11 +82,11 @@
 		</div>
 		<div class="bg-red-50 rounded p-2">
 			<div class="font-semibold text-red-600">{apprentice.absent}</div>
-			<div class="text-gray-500 text-xs">Absent</div>
+			<div class="text-gray-500 text-xs">Not Check-in</div>
 		</div>
 		<div class="bg-orange-50 rounded p-2">
 			<div class="font-semibold text-orange-600">{apprentice.notComing}</div>
-			<div class="text-gray-500 text-xs">Not Coming</div>
+			<div class="text-gray-500 text-xs">Absent</div>
 		</div>
 		<!-- Row 2: Attended spans under Present + Late -->
 		<div class="col-span-2 bg-indigo-50 rounded p-2 border-t-2 border-indigo-200">
