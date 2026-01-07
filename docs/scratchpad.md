@@ -1,9 +1,10 @@
+attendace send email
 
 survey send email
 
 link surveys with student. track not fulfilled
 
-Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
+Per week email to Jess. Absent, not survey, whoever marked "In need of support"
 
 Absent reason.
 
