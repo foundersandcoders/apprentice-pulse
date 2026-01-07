@@ -42,6 +42,16 @@
 	let editingCheckinTime = $state<string>('');
 	let statusUpdateLoading = $state(false);
 
+	// When status changes to Present/Late and no check-in time is set, populate with event start time
+	$effect(() => {
+		if (editingEntryId && (editingStatus === 'Present' || editingStatus === 'Late') && !editingCheckinTime) {
+			const entry = history.find(h => h.eventId === editingEntryId);
+			if (entry) {
+				editingCheckinTime = new Date(entry.eventDateTime).toISOString().slice(0, 16);
+			}
+		}
+	});
+
 	function getStatusColor(status: string): string {
 		switch (status) {
 			case 'Present': return 'bg-green-100 text-green-800';
@@ -81,11 +91,13 @@
 			if (entry.checkinTime) {
 				// Use existing checkin time
 				editingCheckinTime = new Date(entry.checkinTime).toISOString().slice(0, 16);
-			} else {
+			}
+			else {
 				// Use event start time as default
 				editingCheckinTime = new Date(entry.eventDateTime).toISOString().slice(0, 16);
 			}
-		} else {
+		}
+		else {
 			editingCheckinTime = '';
 		}
 	}
@@ -104,14 +116,13 @@
 
 		const hasExistingRecord = !!entry.attendanceId;
 		const needsRecord = editingStatus !== 'Absent';
-		const countsAsAttendance = editingStatus === 'Present' || editingStatus === 'Late';
 
 		// Case: No record and changing to Absent - just update local UI
 		if (!hasExistingRecord && !needsRecord) {
 			history = history.map(h =>
 				h.eventId === entry.eventId
 					? { ...h, status: editingStatus, checkinTime: null, attendanceId: null }
-					: h
+					: h,
 			);
 			editingEntryId = null;
 			return;
@@ -131,7 +142,7 @@
 				apprenticeId: stats.apprenticeId,
 				status: editingStatus,
 				checkinTime,
-				attendanceId: entry.attendanceId
+				attendanceId: entry.attendanceId,
 			});
 
 			if (hasExistingRecord) {
@@ -147,7 +158,8 @@
 					}),
 				});
 				result = await response.json();
-			} else {
+			}
+			else {
 				// Create new record
 				const response = await fetch('/api/attendance', {
 					method: 'POST',
@@ -169,21 +181,24 @@
 				history = history.map(h =>
 					h.eventId === entry.eventId
 						? {
-							...h,
-							status: editingStatus,
-							checkinTime: checkinTime || null,
-							attendanceId: result.attendance.id
-						}
-						: h
+								...h,
+								status: editingStatus,
+								checkinTime: checkinTime || null,
+								attendanceId: result.attendance.id,
+							}
+						: h,
 				);
-			} else {
+			}
+			else {
 				console.error('Failed to update status:', result);
 				alert('Failed to update status: ' + result.error);
 			}
-		} catch (error) {
+		}
+		catch (error) {
 			console.error('Error updating status:', error);
 			alert('Failed to update status. Please try again.');
-		} finally {
+		}
+		finally {
 			statusUpdateLoading = false;
 			editingEntryId = null;
 		}

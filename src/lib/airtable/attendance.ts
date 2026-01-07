@@ -396,7 +396,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	function getEventsForCohort(
 		allEvents: EventForStats[],
 		cohortId: string | null,
-		options?: { startDate?: Date; endDate?: Date }
+		options?: { startDate?: Date; endDate?: Date },
 	): EventForStats[] {
 		// Filter by cohort (if no cohort, return empty - apprentice must belong to a cohort)
 		if (!cohortId) {
@@ -407,7 +407,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 		// Filter by date range if provided
 		if (options?.startDate && options?.endDate) {
-			events = events.filter(e => {
+			events = events.filter((e) => {
 				const eventDate = new Date(e.dateTime);
 				return eventDate >= options.startDate! && eventDate <= options.endDate!;
 			});
@@ -422,7 +422,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 */
 	function filterAttendanceToEvents(
 		attendance: Attendance[],
-		eventIds: Set<string>
+		eventIds: Set<string>,
 	): Attendance[] {
 		return attendance.filter(a => eventIds.has(a.eventId));
 	}
@@ -447,7 +447,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 */
 	async function getApprenticeStats(
 		apprenticeId: string,
-		options?: { startDate?: Date; endDate?: Date }
+		options?: { startDate?: Date; endDate?: Date },
 	): Promise<ApprenticeAttendanceStats | null> {
 		const apprenticesTable = base(TABLES.APPRENTICES);
 		const cohortsTable = base(TABLES.COHORTS);
@@ -494,7 +494,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const allAttendance = await getAllAttendance();
 		const apprenticeAttendance = filterAttendanceToEvents(
 			allAttendance.filter(a => a.apprenticeId === apprenticeId),
-			relevantEventIds
+			relevantEventIds,
 		);
 
 		// Calculate stats
@@ -513,11 +513,11 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			? options.endDate
 			: now;
 
-		const recentEvents = relevantEvents.filter(e => {
+		const recentEvents = relevantEvents.filter((e) => {
 			const d = new Date(e.dateTime);
 			return d >= fourWeeksAgo && d <= trendEndDate;
 		});
-		const previousEvents = relevantEvents.filter(e => {
+		const previousEvents = relevantEvents.filter((e) => {
 			const d = new Date(e.dateTime);
 			return d >= trendStartDate && d < fourWeeksAgo;
 		});
@@ -592,7 +592,6 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			attendanceRate,
 		};
 	}
-
 
 	/**
 	 * Get attendance statistics for a specific cohort
@@ -802,7 +801,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	 */
 	async function getApprenticeAttendanceHistory(
 		apprenticeId: string,
-		options?: { startDate?: Date; endDate?: Date }
+		options?: { startDate?: Date; endDate?: Date },
 	): Promise<AttendanceHistoryEntry[]> {
 		const apprenticesTable = base(TABLES.APPRENTICES);
 
@@ -832,7 +831,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const allAttendance = await getAllAttendance();
 		const apprenticeAttendance = filterAttendanceToEvents(
 			allAttendance.filter(a => a.apprenticeId === apprenticeId),
-			relevantEventIds
+			relevantEventIds,
 		);
 
 		// Create a map of eventId -> attendance record
