@@ -11,8 +11,8 @@
 	let { terms, filters, onFiltersChange }: Props = $props();
 
 	// Filter mode state - determines which filter type is active
-	type FilterMode = 'terms' | 'dateRange';
-	let filterMode = $state<FilterMode>('terms');
+	type FilterMode = 'all' | 'terms' | 'dateRange';
+	let filterMode = $state<FilterMode>('all');
 
 	// Term filter state
 	let stagedTermIds = $state<string[]>([]);
@@ -55,8 +55,11 @@
 		if (appliedStartDate && appliedEndDate) {
 			filterMode = 'dateRange';
 		}
-		else {
+		else if (appliedTermIds.length > 0) {
 			filterMode = 'terms';
+		}
+		else {
+			filterMode = 'all';
 		}
 	});
 
@@ -118,7 +121,17 @@
 	// Handle filter mode change
 	function setFilterMode(mode: FilterMode) {
 		filterMode = mode;
-		if (mode === 'terms') {
+		if (mode === 'all') {
+			// Clear all filters
+			stagedTermIds = [];
+			stagedStartDate = '';
+			stagedEndDate = '';
+			// If we had any filters, clear them
+			if (appliedTermIds.length > 0 || appliedStartDate || appliedEndDate) {
+				onFiltersChange({});
+			}
+		}
+		else if (mode === 'terms') {
 			// Clear date selection when switching to terms
 			stagedStartDate = '';
 			stagedEndDate = '';
@@ -152,6 +165,17 @@
 	<!-- Filter Mode Selection -->
 	<div class="flex items-center space-x-6">
 		<span class="text-sm font-medium text-gray-700">Filter by:</span>
+		<label class="flex items-center space-x-2 cursor-pointer">
+			<input
+				type="radio"
+				name="filterMode"
+				value="all"
+				checked={filterMode === 'all'}
+				onchange={() => setFilterMode('all')}
+				class="text-blue-600 focus:ring-blue-500"
+			/>
+			<span class="text-sm text-gray-700">All</span>
+		</label>
 		<label class="flex items-center space-x-2 cursor-pointer">
 			<input
 				type="radio"
@@ -203,7 +227,7 @@
 				</button>
 				{#if termDropdownOpen}
 					<div
-						class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-48 overflow-y-auto"
+						class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg max-h-72 overflow-y-auto"
 						onmousedown={e => e.stopPropagation()}
 						role="listbox"
 						tabindex="-1"
