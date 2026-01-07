@@ -62,8 +62,9 @@ export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
 export const getAttendanceByIds = attendanceClient.getAttendanceByIds;
 
 // Attendance statistics
-export const getApprenticeAttendanceStats = attendanceClient.getApprenticeAttendanceStats;
-export const getApprenticeAttendanceStatsWithDateFilter = attendanceClient.getApprenticeAttendanceStatsWithDateFilter;
+export const getApprenticeStats = attendanceClient.getApprenticeStats; // New unified function
+export const getApprenticeAttendanceStats = attendanceClient.getApprenticeAttendanceStats; // Deprecated
+export const getApprenticeAttendanceStatsWithDateFilter = attendanceClient.getApprenticeAttendanceStatsWithDateFilter; // Deprecated
 export const getCohortAttendanceStats = attendanceClient.getCohortAttendanceStats;
 export const getAttendanceSummary = attendanceClient.getAttendanceSummary;
 export const getApprenticeAttendanceHistory = attendanceClient.getApprenticeAttendanceHistory;
