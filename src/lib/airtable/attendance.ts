@@ -383,6 +383,48 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		});
 	}
 
+	// ============================================
+	// Filter helpers (single source of truth)
+	// ============================================
+
+	/**
+	 * Get events for a specific cohort, optionally filtered by date range
+	 * This is THE source of truth for which events count toward an apprentice's stats
+	 */
+	function getEventsForCohort(
+		allEvents: EventForStats[],
+		cohortId: string | null,
+		options?: { startDate?: Date; endDate?: Date }
+	): EventForStats[] {
+		// Filter by cohort (if no cohort, return empty - apprentice must belong to a cohort)
+		if (!cohortId) {
+			return [];
+		}
+
+		let events = allEvents.filter(e => e.cohortIds.includes(cohortId));
+
+		// Filter by date range if provided
+		if (options?.startDate && options?.endDate) {
+			events = events.filter(e => {
+				const eventDate = new Date(e.dateTime);
+				return eventDate >= options.startDate! && eventDate <= options.endDate!;
+			});
+		}
+
+		return events;
+	}
+
+	/**
+	 * Filter attendance records to only include those for the specified events
+	 * Ensures attendance count never exceeds event count
+	 */
+	function filterAttendanceToEvents(
+		attendance: Attendance[],
+		eventIds: Set<string>
+	): Attendance[] {
+		return attendance.filter(a => eventIds.has(a.eventId));
+	}
+
 	/**
 	 * Calculate trend by comparing two periods
 	 */
@@ -412,8 +454,9 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
 
 		// Count missing attendance records as 'Absent'
+		// Guard against negative values (shouldn't happen if attendance is filtered correctly)
 		const recordedEvents = attendanceRecords.length;
-		const missingEvents = totalEvents - recordedEvents;
+		const missingEvents = Math.max(0, totalEvents - recordedEvents);
 		const absent = explicitAbsent + missingEvents;
 
 		const attended = present + late;
