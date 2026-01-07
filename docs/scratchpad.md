@@ -1,14 +1,21 @@
-Attendance is not showing names? (check Airtable)
+attendace send email
+
+survey send email
+
+link surveys with student. track not fulfilled
+
+Per week email to Jess. Absent, not survey, whoever marked "In need of support"
+
+Absent reason.
+
+Events view, list of people, show link to apprentices to go to personalised
 
 
 
-
-Not coming status
-
-Login page pretty
+survey URL is OK?
 
 
-Staff - Apprentice pulse, now has the student email. Use this for checkin as a student, not as an external
+
 
 
 Show mii plaza
@@ -16,7 +23,8 @@ Show mii plaza
 Integration with LUMA
 
 
-
+are we sure we want to give access to airtable?
 
 
 On readme how give permissions
+

@@ -5,7 +5,7 @@
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
-	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
+	import { ATTENDANCE_STATUSES, getStatusBadgeClass, type AttendanceStatus } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -368,7 +368,6 @@
 	});
 
 	// Expandable row state
-	type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused' | 'Not Coming';
 	interface RosterEntry {
 		id: string; // Apprentice ID or external attendance ID
 		attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
@@ -379,13 +378,6 @@
 		checkinTime?: string;
 	}
 
-	const statusStyles: Record<AttendanceStatus, string> = {
-		'Present': 'bg-green-100 text-green-700',
-		'Absent': 'bg-red-100 text-red-700',
-		'Late': 'bg-yellow-100 text-yellow-700',
-		'Excused': 'bg-blue-100 text-blue-700',
-		'Not Coming': 'bg-orange-100 text-orange-700',
-	};
 	let expandedEventId = $state<string | null>(null);
 	let expandedEventDateTime = $state<string | null>(null);
 	let rosterData = $state<RosterEntry[]>([]);
@@ -509,10 +501,10 @@
 		}
 
 		const hasExistingRecord = !!person.attendanceId;
-		const needsRecord = editingStatus !== 'Absent'; // Excused still needs a record for tracking
+		const needsRecord = editingStatus !== 'Not Check-in'; // Excused still needs a record for tracking
 		const countsAsAttendance = editingStatus === 'Present' || editingStatus === 'Late';
 
-		// Case: No record and changing to Absent - just update local UI
+		// Case: No record and changing to Not Check-in - just update local UI
 		if (!hasExistingRecord && !needsRecord) {
 			rosterData = rosterData.map(p =>
 				p.id === person.id ? { ...p, status: editingStatus, checkinTime: undefined } : p,
@@ -1002,10 +994,10 @@
 		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
 		{:else}
-			<div bind:this={tableContainer} class="overflow-auto max-h-140 border border-gray-200 rounded-lg">
+			<div bind:this={tableContainer} class="overflow-auto max-h-140 bg-white border border-gray-200 rounded-xl shadow-sm">
 				<table class="w-full border-collapse">
 					<thead class="sticky top-0 z-10">
-						<tr class="bg-gray-100 text-left">
+						<tr class="bg-gray-50 text-left">
 							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('name')}
@@ -1487,7 +1479,7 @@
 								<!-- Normal display row -->
 								<tr
 									data-event-id={event.id}
-									class="border-b hover:bg-gray-100"
+									class="border-b hover:bg-gray-50 transition-colors"
 									class:cursor-pointer={hasRoster && !isAddingEvent}
 									class:bg-blue-50={isExpanded}
 									class:bg-stone-100={isPast && !isExpanded}
@@ -1641,7 +1633,7 @@
 																			e.stopPropagation();
 																			startEditingStatus(person);
 																		}}
-																		class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs hover:ring-2 hover:ring-offset-1 hover:ring-gray-300"
+																		class="{getStatusBadgeClass(person.status)} px-2 py-0.5 rounded text-xs hover:ring-2 hover:ring-offset-1 hover:ring-gray-300"
 																		title="Click to change status"
 																	>
 																		{person.status}
@@ -1980,7 +1972,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="ec-calendar-wrapper border border-gray-200 rounded-lg p-4 bg-white" class:series-mode={isCreatingSeries}>
+			<div class="ec-calendar-wrapper bg-white border border-gray-200 rounded-xl shadow-sm p-4" class:series-mode={isCreatingSeries}>
 				<Calendar plugins={calendarPlugins} options={calendarOptions} />
 			</div>
 		</section>

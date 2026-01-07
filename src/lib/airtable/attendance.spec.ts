@@ -418,11 +418,11 @@ describe('attendance', () => {
 		});
 	});
 
-	describe('getApprenticeAttendanceStats', () => {
+	describe('getApprenticeStats', () => {
 		it('should return null when apprentice not found', async () => {
 			mockTable.select.mockReturnValue({ all: vi.fn().mockResolvedValue([]) });
 
-			const stats = await client.getApprenticeAttendanceStats('nonexistent');
+			const stats = await client.getApprenticeStats('nonexistent');
 
 			expect(stats).toBeNull();
 		});
@@ -526,26 +526,26 @@ describe('attendance', () => {
 			expect(history).toHaveLength(2);
 			// History is sorted by date descending (most recent first)
 			expect(history[0].eventName).toBe('Tuesday Class');
-			expect(history[0].status).toBe('Missed'); // No attendance record
+			expect(history[0].status).toBe('Not Check-in'); // No attendance record = Not Check-in
 			expect(history[1].eventName).toBe('Monday Class');
 			expect(history[1].status).toBe('Present');
 			expect(history[1].checkinTime).toBe('2025-01-06T09:05:00.000Z');
 		});
 
-		it('should mark events without attendance as Missed', async () => {
-			// Mock apprentice without cohort
+		it('should mark events without attendance as Not Check-in', async () => {
+			// Mock apprentice with cohort
 			const mockApprentice = {
 				id: 'recApprentice1',
 				get: vi.fn((field: string) => {
 					const data: Record<string, unknown> = {
 						[APPRENTICE_FIELDS.NAME]: 'Test Apprentice',
-						[APPRENTICE_FIELDS.COHORT]: undefined,
+						[APPRENTICE_FIELDS.COHORT]: ['recCohort1'],
 					};
 					return data[field];
 				}),
 			};
 
-			// Mock events (all events since no cohort)
+			// Mock event assigned to that cohort
 			const mockEvents = [
 				{
 					id: 'recEvent1',
@@ -553,7 +553,7 @@ describe('attendance', () => {
 						const data: Record<string, unknown> = {
 							[EVENT_FIELDS.NAME]: 'Event 1',
 							[EVENT_FIELDS.DATE_TIME]: '2025-01-06T09:00:00.000Z',
-							[EVENT_FIELDS.COHORT]: [],
+							[EVENT_FIELDS.COHORT]: ['recCohort1'], // Assigned to apprentice's cohort
 						};
 						return data[field];
 					}),
@@ -568,7 +568,7 @@ describe('attendance', () => {
 			const history = await client.getApprenticeAttendanceHistory('recApprentice1');
 
 			expect(history).toHaveLength(1);
-			expect(history[0].status).toBe('Missed');
+			expect(history[0].status).toBe('Not Check-in');
 			expect(history[0].checkinTime).toBeNull();
 		});
 	});

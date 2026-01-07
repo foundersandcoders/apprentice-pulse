@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSession } from '$lib/server/session';
-import { getApprenticeByEmail, markNotComing } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, getStaffByEmail, markNotComing } from '$lib/airtable/sveltekit-wrapper';
 
 export const POST: RequestHandler = async ({ cookies, request }) => {
 	const session = getSession(cookies);
@@ -25,13 +25,22 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	try {
-		// Only registered apprentices can mark "Not Coming"
-		const apprentice = await getApprenticeByEmail(session.email);
+		// Only registered apprentices can mark "Absent"
+		// First try direct email lookup
+		let apprentice = await getApprenticeByEmail(session.email);
+
+		// If not found, check if user is staff with linked learner email
+		if (!apprentice) {
+			const staff = await getStaffByEmail(session.email);
+			if (staff?.learnerEmail) {
+				apprentice = await getApprenticeByEmail(staff.learnerEmail);
+			}
+		}
 
 		if (!apprentice) {
 			return json({
 				success: false,
-				error: 'Only registered apprentices can mark as not coming',
+				error: 'Only registered apprentices can mark as absent',
 			}, { status: 403 });
 		}
 
@@ -51,8 +60,8 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 		});
 	}
 	catch (error) {
-		console.error('Failed to mark as not coming:', error);
-		const message = error instanceof Error ? error.message : 'Failed to mark as not coming';
+		console.error('Failed to mark as absent:', error);
+		const message = error instanceof Error ? error.message : 'Failed to mark as absent';
 		return json({ success: false, error: message }, { status: 500 });
 	}
 };

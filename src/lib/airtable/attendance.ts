@@ -123,9 +123,9 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	}
 
 	/**
-	 * Mark a user as "Not Coming" for an event
+	 * Mark a user as "Absent" for an event
 	 * - Creates new attendance record if none exists
-	 * - Returns existing record if already marked "Not Coming"
+	 * - Returns existing record if already marked "Absent"
 	 * - Throws error if user already checked in (Present/Late)
 	 */
 	async function markNotComing(input: CreateAttendanceInput): Promise<Attendance> {
@@ -138,19 +138,19 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		// Check if user already has an attendance record
 		const existing = await getUserAttendanceForEvent(input.eventId, input.apprenticeId);
 		if (existing) {
-			if (existing.status === 'Not Coming') {
-				// Already marked as not coming - idempotent
+			if (existing.status === 'Absent') {
+				// Already marked as absent - idempotent
 				return existing;
 			}
-			// Already checked in (Present/Late/Absent/Excused)
+			// Already checked in (Present/Late/Not Check-in/Excused)
 			throw new Error('User already has an attendance record for this event');
 		}
 
-		// Create new attendance record with "Not Coming" status
+		// Create new attendance record with "Absent" status
 		const fields: Airtable.FieldSet = {
 			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
 			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
-			[ATTENDANCE_FIELDS.STATUS]: 'Not Coming',
+			[ATTENDANCE_FIELDS.STATUS]: 'Absent',
 		};
 
 		const record = await attendanceTable.create(fields);
@@ -159,8 +159,8 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			id: record.id,
 			eventId: input.eventId,
 			apprenticeId: input.apprenticeId,
-			checkinTime: '', // No check-in time for "Not Coming"
-			status: 'Not Coming',
+			checkinTime: '', // No check-in time for "Absent"
+			status: 'Absent',
 		};
 	}
 
@@ -334,6 +334,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	/** Event data needed for stats calculations */
 	interface EventForStats {
 		id: string;
+		name: string;
 		dateTime: string;
 		cohortIds: string[];
 	}
@@ -377,60 +378,77 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			const cohortIds = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
 			return {
 				id: record.id,
+				name: (record.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 				cohortIds: cohortIds ?? [],
 			};
 		});
 	}
 
-	/**
-	 * Calculate trend by comparing two periods
-	 */
-	function calculateTrend(currentRate: number, previousRate: number): AttendanceTrend {
-		const change = currentRate - previousRate;
-		let direction: AttendanceTrend['direction'] = 'stable';
-		if (change > 2) direction = 'up';
-		else if (change < -2) direction = 'down';
+	// ============================================
+	// Filter helpers (single source of truth)
+	// ============================================
 
-		return {
-			direction,
-			change: Math.round(change * 10) / 10,
-			currentRate,
-			previousRate,
-		};
+	/**
+	 * Get events for a specific cohort, optionally filtered by date range
+	 * This is THE source of truth for which events count toward an apprentice's stats
+	 */
+	function getEventsForCohort(
+		allEvents: EventForStats[],
+		cohortId: string | null,
+		options?: { startDate?: Date; endDate?: Date },
+	): EventForStats[] {
+		// Filter by cohort (if no cohort, return empty - apprentice must belong to a cohort)
+		if (!cohortId) {
+			return [];
+		}
+
+		let events = allEvents.filter(e => e.cohortIds.includes(cohortId));
+
+		// Filter by date range if provided
+		if (options?.startDate && options?.endDate) {
+			events = events.filter((e) => {
+				const eventDate = new Date(e.dateTime);
+				return eventDate >= options.startDate! && eventDate <= options.endDate!;
+			});
+		}
+
+		return events;
 	}
 
 	/**
-	 * Calculate base attendance stats from attendance records
+	 * Filter attendance records to only include those for the specified events
+	 * Ensures attendance count never exceeds event count
 	 */
-	function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
-		const present = attendanceRecords.filter(a => a.status === 'Present').length;
-		const late = attendanceRecords.filter(a => a.status === 'Late').length;
-		const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
-		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
-		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
-		const attended = present + late;
+	function filterAttendanceToEvents(
+		attendance: Attendance[],
+		eventIds: Set<string>,
+	): Attendance[] {
+		return attendance.filter(a => eventIds.has(a.eventId));
+	}
 
-		const attendanceRate = totalEvents > 0
-			? Math.round((attended / totalEvents) * 1000) / 10
-			: 0;
-
-		return {
-			totalEvents,
-			attended,
-			present,
-			late,
-			absent,
-			excused,
-			notComing,
-			attendanceRate,
-		};
+	/**
+	 * Calculate attendance rate from attendance records for a set of events
+	 */
+	function calculateAttendanceRate(attendance: Attendance[], eventCount: number): number {
+		if (eventCount === 0) return 0;
+		const attended = attendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+		return (attended / eventCount) * 100;
 	}
 
 	/**
 	 * Get attendance statistics for a specific apprentice
+	 * Unified function that replaces getApprenticeAttendanceStats and getApprenticeAttendanceStatsWithDateFilter
+	 *
+	 * Key behavior:
+	 * - Only counts events assigned to the apprentice's cohort
+	 * - Only counts attendance for those cohort events
+	 * - Optionally filters by date range
 	 */
-	async function getApprenticeAttendanceStats(apprenticeId: string): Promise<ApprenticeAttendanceStats | null> {
+	async function getApprenticeStats(
+		apprenticeId: string,
+		options?: { startDate?: Date; endDate?: Date },
+	): Promise<ApprenticeAttendanceStats | null> {
 		const apprenticesTable = base(TABLES.APPRENTICES);
 		const cohortsTable = base(TABLES.COHORTS);
 
@@ -467,15 +485,17 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			}
 		}
 
-		// Get all events for this apprentice's cohort
+		// Get events for this cohort (with optional date filter)
 		const allEvents = await getAllEvents();
-		const relevantEvents = cohortId
-			? allEvents.filter(e => e.cohortIds.includes(cohortId))
-			: allEvents;
+		const relevantEvents = getEventsForCohort(allEvents, cohortId, options);
+		const relevantEventIds = new Set(relevantEvents.map(e => e.id));
 
-		// Get attendance records for this apprentice
+		// Get attendance for this apprentice, filtered to cohort events only
 		const allAttendance = await getAllAttendance();
-		const apprenticeAttendance = allAttendance.filter(a => a.apprenticeId === apprenticeId);
+		const apprenticeAttendance = filterAttendanceToEvents(
+			allAttendance.filter(a => a.apprenticeId === apprenticeId),
+			relevantEventIds,
+		);
 
 		// Calculate stats
 		const stats = calculateStats(apprenticeAttendance, relevantEvents.length);
@@ -485,24 +505,31 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
 		const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
 
-		const recentEvents = relevantEvents.filter(e => new Date(e.dateTime) >= fourWeeksAgo);
+		// Constrain trend calculation to the filtered date range
+		const trendStartDate = options?.startDate && options.startDate > eightWeeksAgo
+			? options.startDate
+			: eightWeeksAgo;
+		const trendEndDate = options?.endDate && options.endDate < now
+			? options.endDate
+			: now;
+
+		const recentEvents = relevantEvents.filter((e) => {
+			const d = new Date(e.dateTime);
+			return d >= fourWeeksAgo && d <= trendEndDate;
+		});
 		const previousEvents = relevantEvents.filter((e) => {
 			const d = new Date(e.dateTime);
-			return d >= eightWeeksAgo && d < fourWeeksAgo;
+			return d >= trendStartDate && d < fourWeeksAgo;
 		});
 
 		const recentEventIds = new Set(recentEvents.map(e => e.id));
 		const previousEventIds = new Set(previousEvents.map(e => e.id));
 
-		const recentAttendance = apprenticeAttendance.filter(a => recentEventIds.has(a.eventId));
-		const previousAttendance = apprenticeAttendance.filter(a => previousEventIds.has(a.eventId));
+		const recentAttendance = filterAttendanceToEvents(apprenticeAttendance, recentEventIds);
+		const previousAttendance = filterAttendanceToEvents(apprenticeAttendance, previousEventIds);
 
-		const recentRate = recentEvents.length > 0
-			? (recentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / recentEvents.length) * 100
-			: 0;
-		const previousRate = previousEvents.length > 0
-			? (previousAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length / previousEvents.length) * 100
-			: 0;
+		const recentRate = calculateAttendanceRate(recentAttendance, recentEvents.length);
+		const previousRate = calculateAttendanceRate(previousAttendance, previousEvents.length);
 
 		return {
 			...stats,
@@ -511,6 +538,58 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			cohortId,
 			cohortName,
 			trend: calculateTrend(recentRate, previousRate),
+		};
+	}
+
+	/**
+	 * Calculate trend by comparing two periods
+	 */
+	function calculateTrend(currentRate: number, previousRate: number): AttendanceTrend {
+		const change = currentRate - previousRate;
+		let direction: AttendanceTrend['direction'] = 'stable';
+		if (change > 2) direction = 'up';
+		else if (change < -2) direction = 'down';
+
+		return {
+			direction,
+			change: Math.round(change * 10) / 10,
+			currentRate,
+			previousRate,
+		};
+	}
+
+	/**
+	 * Calculate base attendance stats from attendance records
+	 * Missing events (no attendance record) are counted as 'Not Check-in'
+	 */
+	function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
+		const present = attendanceRecords.filter(a => a.status === 'Present').length;
+		const late = attendanceRecords.filter(a => a.status === 'Late').length;
+		const explicitAbsent = attendanceRecords.filter(a => a.status === 'Not Check-in').length;
+		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
+		const notComing = attendanceRecords.filter(a => a.status === 'Absent').length;
+
+		// Count missing attendance records as 'Not Check-in'
+		// Guard against negative values (shouldn't happen if attendance is filtered correctly)
+		const recordedEvents = attendanceRecords.length;
+		const missingEvents = Math.max(0, totalEvents - recordedEvents);
+		const absent = explicitAbsent + missingEvents;
+
+		const attended = present + late;
+
+		const attendanceRate = totalEvents > 0
+			? Math.round((attended / totalEvents) * 1000) / 10
+			: 0;
+
+		return {
+			totalEvents,
+			attended,
+			present,
+			late,
+			absent,
+			excused,
+			notComing,
+			attendanceRate,
 		};
 	}
 
@@ -714,9 +793,16 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 	/**
 	 * Get attendance history for a specific apprentice
-	 * Returns a list of events with their attendance status
+	 *
+	 * Key behavior:
+	 * - Only shows events assigned to the apprentice's cohort
+	 * - Events with no attendance record are shown as 'Not Check-in' (implicit)
+	 * - Optionally filters by date range
 	 */
-	async function getApprenticeAttendanceHistory(apprenticeId: string): Promise<AttendanceHistoryEntry[]> {
+	async function getApprenticeAttendanceHistory(
+		apprenticeId: string,
+		options?: { startDate?: Date; endDate?: Date },
+	): Promise<AttendanceHistoryEntry[]> {
 		const apprenticesTable = base(TABLES.APPRENTICES);
 
 		// Get apprentice info to find their cohort
@@ -736,83 +822,36 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
 		const cohortId = cohortLink?.[0] ?? null;
 
-		// Get all events for this apprentice's cohort
-		const allEvents = await eventsTable
-			.select({
-				returnFieldsByFieldId: true,
-			})
-			.all();
+		// Get events for this cohort (with optional date filter)
+		const allEvents = await getAllEvents();
+		const relevantEvents = getEventsForCohort(allEvents, cohortId, options);
+		const relevantEventIds = new Set(relevantEvents.map(e => e.id));
 
-		// Get all attendance records and filter by apprentice ID in JavaScript
-		// (filterByFormula with linked fields matches display value, not record ID)
-		const allAttendanceRecords = await attendanceTable
-			.select({
-				returnFieldsByFieldId: true,
-			})
-			.all();
-
-		// Filter to only records for this apprentice
-		const attendanceRecords = allAttendanceRecords.filter((record) => {
-			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
-			return apprenticeLink?.includes(apprenticeId);
-		});
+		// Get attendance for this apprentice, filtered to cohort events only
+		const allAttendance = await getAllAttendance();
+		const apprenticeAttendance = filterAttendanceToEvents(
+			allAttendance.filter(a => a.apprenticeId === apprenticeId),
+			relevantEventIds,
+		);
 
 		// Create a map of eventId -> attendance record
 		const attendanceMap = new Map<string, Attendance>();
-		for (const record of attendanceRecords) {
-			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
-			const eventId = eventLink?.[0];
-			if (eventId) {
-				attendanceMap.set(eventId, {
-					id: record.id,
-					eventId,
-					apprenticeId,
-					checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
-					status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
-				});
-			}
+		for (const attendance of apprenticeAttendance) {
+			attendanceMap.set(attendance.eventId, attendance);
 		}
 
-		// Include events that are either:
-		// 1. For the apprentice's cohort (expected events - show as Missed if no attendance)
-		// 2. Have an attendance record (apprentice checked in, even if not their cohort)
-		// 3. All events if apprentice has no cohort
-		const relevantEventIds = new Set<string>();
-
-		if (cohortId) {
-			// Add cohort events
-			for (const event of allEvents) {
-				const cohortIds = event.get(EVENT_FIELDS.COHORT) as string[] | undefined;
-				if (cohortIds?.includes(cohortId)) {
-					relevantEventIds.add(event.id);
-				}
-			}
-		}
-		else {
-			// No cohort - include all events
-			for (const event of allEvents) {
-				relevantEventIds.add(event.id);
-			}
-		}
-
-		// Add any events the apprentice has attendance for (regardless of cohort)
-		for (const eventId of attendanceMap.keys()) {
-			relevantEventIds.add(eventId);
-		}
-
-		// Build the history entries
-		const history: AttendanceHistoryEntry[] = allEvents
-			.filter(event => relevantEventIds.has(event.id))
-			.map((event) => {
-				const attendance = attendanceMap.get(event.id);
-				return {
-					eventId: event.id,
-					eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
-					eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
-					status: attendance ? attendance.status : 'Missed',
-					checkinTime: attendance?.checkinTime ?? null,
-				};
-			});
+		// Build the history entries - one for each relevant event
+		const history: AttendanceHistoryEntry[] = relevantEvents.map((event) => {
+			const attendance = attendanceMap.get(event.id);
+			return {
+				eventId: event.id,
+				eventName: event.name,
+				eventDateTime: event.dateTime,
+				status: attendance ? attendance.status : 'Not Check-in',
+				checkinTime: attendance?.checkinTime ?? null,
+				attendanceId: attendance?.id ?? null,
+			};
+		});
 
 		// Sort by date (most recent first)
 		history.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
@@ -833,7 +872,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		// Aggregate functions
 		getAllAttendance,
 		getAllEvents,
-		getApprenticeAttendanceStats,
+		getApprenticeStats,
 		getCohortAttendanceStats,
 		getAttendanceSummary,
 		getApprenticeAttendanceHistory,

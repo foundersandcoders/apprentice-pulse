@@ -25,7 +25,8 @@ Create a new plan from a Jira task: fetch details, transition to In Progress, cr
 4. **Create the feature branch**:
    - Generate branch name: `feature/{ticket-id-lowercase}-{slugified-summary}`
    - Example: `AP-23 Add Bulk Event Creation` → `feature/ap-23-add-bulk-event-creation`
-   - Run: `git checkout main && git pull && git checkout -b {branch-name}`
+   - Run: `git checkout <default-branch> && git pull && git checkout -b {branch-name}`
+   - If the default branch is not `main`, use the repo's default branch instead
 
 5. **Write the plan**:
    - Create/overwrite `docs/plan.md`
@@ -67,7 +68,7 @@ Create a new plan from a Jira task: fetch details, transition to In Progress, cr
 
 ## Rules
 
-- **Checkbox format**: Must use `- [ ]` exactly (the plan-iterator hook reads this)
+- **Checkbox format**: Use `1. [ ]` for main tasks and `- [ ] 1.1` for subtasks (the plan-iterator hook reads these)
 - **Numbered structure**: Use numbered main tasks (1, 2, 3) with numbered subtasks (1.1, 1.2, etc)
 - **Small tasks**: Each task = one focused change, completable in one session
 - **Logical order**: Order by dependency

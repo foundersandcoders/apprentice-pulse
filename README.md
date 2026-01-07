@@ -20,46 +20,72 @@ AUTH_SECRET=your_auth_secret_min_32_chars
 
 ## Authentication
 
-The app uses **magic link authentication** with separate login flows for staff and students:
+The app uses **magic link authentication** with a single login page for all users:
 
 ### User Types
 
-| Type | Login Page | Validates Against | Default Redirect |
-|------|------------|-------------------|------------------|
-| Staff | `/admin/login` | Staff table (collaborator email) | `/admin` |
-| Student | `/login` | Apprentices table (learner email) | `/` |
+| Type | Validates Against | Landing Page |
+|------|-------------------|--------------|
+| Staff | Staff table (collaborator email) | `/admin` |
+| Student | Apprentices table (learner email) | `/checkin` |
 
 ### How It Works
 
-1. User enters email on the appropriate login page
-2. Server validates email exists in the corresponding Airtable table
+1. User enters email at `/login`
+2. Server checks Staff table first, then Apprentices table
 3. JWT token generated (15-minute expiry) and emailed via Resend
 4. User clicks link → token verified → session cookie set (90-day expiry)
-5. User redirected to appropriate dashboard
+5. User redirected based on type: staff → `/admin`, students → `/checkin`
 
 ### Route Protection
 
 The app uses SvelteKit hooks (`src/hooks.server.ts`) for centralized route protection:
 
-- `/admin/*` → Staff only (redirects students to `/`)
+- `/admin/*` → Staff only (redirects students to `/checkin`)
 - `/checkin` → Any authenticated user (staff or student)
-- `/login`, `/admin/login` → Redirects away if already authenticated
+- `/login` → Redirects authenticated users to their landing page
+- `/` → Redirects to `/login` (unauthenticated) or landing page (authenticated)
 
 ### Check-in Access
 
 Both staff and students can access `/checkin`. The system determines check-in behavior based on apprentice record:
 
-| User | Has Apprentice Record? | Events Shown | Attendance Method |
-|------|------------------------|--------------|-------------------|
-| Student | Yes | Cohort + public | Linked to apprentice ID |
-| Staff | Yes (if also apprentice) | Cohort + public | Linked to apprentice ID |
-| Staff | No | Public only | External (uses session email) |
+| User | Apprentice Link? | Events Shown | Attendance Method | Absent Button |
+|------|------------------|--------------|-------------------|---------------|
+| Student | N/A (is apprentice) | Cohort + public | Linked to apprentice ID | Yes |
+| Staff | Yes (linked) | Cohort + public | Linked to apprentice ID | Yes |
+| Staff | No | Public only | External (uses session email) | No |
+
+See [Staff Who Are Also Apprentices](#staff-who-are-also-apprentices) for setup instructions.
 
 ### Adding Staff Members
 
 1. Add them as a **collaborator** in the Airtable workspace
 2. Add a record in the **Staff - Apprentice Pulse** table, selecting their collaborator profile
-3. They can now log in at `/admin/login` using their collaborator email
+3. They can now log in at `/login` using their collaborator email
+
+### Staff Who Are Also Apprentices
+
+Some staff members may also be apprentices (e.g., apprentice coaches). These users need to:
+- Log in as **staff** to access admin features
+- Check in as an **apprentice** to have attendance tracked against their apprentice record
+
+The system supports this via the **Apprentice Link** field in the Staff table:
+
+1. In the **Staff - Apprentice Pulse** table, link the staff record to their **Apprentice** record using the `Apprentice Link` field
+2. The `Learner email` lookup field will automatically populate from the linked apprentice
+
+**How it works:**
+
+When a staff member accesses the check-in page:
+1. System first tries to find an apprentice record matching their staff email
+2. If not found, it checks if the staff record has a linked apprentice (via `Learner email` lookup)
+3. If a linked apprentice is found, the staff member gets the full apprentice check-in experience:
+   - Sees their cohort events (not just public events)
+   - Can mark themselves as "Absent"
+   - Attendance is recorded against their apprentice record
+
+This allows staff to maintain a single login (their staff email) while still being tracked as apprentices for attendance purposes.
 
 ## Development
 
@@ -73,21 +99,15 @@ In development, you can test login using the UI or via curl:
 
 ### Via UI
 1. Start the dev server: `npm run dev`
-2. Go to `/login` (students) or `/admin/login` (staff)
-3. Enter an email that exists in the appropriate Airtable table
+2. Go to `/login`
+3. Enter an email that exists in either the Staff or Apprentices table
 4. Check your email for the magic link
 
 ### Via curl
 ```sh
-# Staff login
-curl -X POST http://localhost:5173/api/auth/staff/login \
+curl -X POST http://localhost:5173/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "staff@example.com"}'
-
-# Student login
-curl -X POST http://localhost:5173/api/auth/student/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "student@example.com"}'
+  -d '{"email": "your@email.com"}'
 ```
 
 Then click the magic link in your email, or manually visit:

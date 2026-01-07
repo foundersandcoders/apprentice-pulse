@@ -62,7 +62,7 @@ Attendance tracking using a junction table pattern (one record per apprentice pe
 | Apprentice | `fldOyo3hlj9Ht0rfZ` | multipleRecordLinks | Links to Apprentices |
 | Event | `fldiHd75LYtopwyN9` | multipleRecordLinks | Links to Events |
 | Checkin Time | `fldvXHPmoLlEA8EuN` | dateTime | When student checked in |
-| Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status (Present, Absent, Late, Excused) |
+| Status | `fldew45fDGpgl1aRr` | singleSelect | Attendance status (Present, Not Check-in, Late, Excused, Absent) |
 | Date Time (from Event) | `fldokfSk68MhJGlm6` | multipleLookupValues | Event date/time lookup |
 | FAC Cohort (from Event) | `fldkc9zLJe7NZVAz1` | multipleLookupValues | Cohort lookup from Event |
 | External Name | `fldIhZnMxfjh9ps78` | singleLineText | Name for non-registered attendees |
@@ -176,16 +176,18 @@ Intervention and support request tracking.
 
 ---
 
-## Staff - Apprentice Pulse
+## Learners / Staff - Apprentice Pulse
 
 **Table ID:** `tblJjn62ExE1LVjmx`
 
-Staff members for authentication. Uses Airtable collaborators for email lookup.
+Staff members for authentication. Uses Airtable collaborators for email lookup. Staff who are also apprentices can be linked to their apprentice record.
 
 | Field | ID | Type | Purpose |
 |-------|-----|------|---------|
 | Id | `fldbTKP32s3Soev91` | autoNumber | Record ID |
-| Staff Name | `fldHEHhQInmSdipn8` | singleCollaborator | Collaborator with id, email, name |
+| Staff Member | `fldHEHhQInmSdipn8` | singleCollaborator | Collaborator with id, email, name |
+| Apprentice Link | `fldAMwe9jOOdwIyBY` | multipleRecordLinks | Links to Apprentices table |
+| Learner email (from Apprentice Link) | `fldPjDZTSySzbefXz` | multipleLookupValues | Lookup of learner email from linked apprentice |
 
 ---
 
@@ -265,6 +267,20 @@ Extended learner record with ILR and Skills Bootcamp data. Use Apprentices table
 | Concerns status | `fldYl3ol1wQCNsyvq` | multipleSelects | Status of concerns |
 | Attendance | `fldHL8kAX3eTUkOOq` | multipleRecordLinks | Attendance records |
 | Attendance (%) | `fldRqJ9ZnhdUXbXTb` | percent | Attendance percentage |
+
+---
+
+## Terms - Apprentice Pulse
+
+**Table ID:** `tbl4gkcG92Bc8gFU7`
+
+Term intervals for filtering and organizing data by academic periods.
+
+| Field | ID | Type | Purpose |
+|-------|-----|------|---------|
+| Name | `fldrnRBnBuHbscSy7` | singleLineText | Term name (e.g. "Term 1 2024", "Summer 2024") |
+| Starting Date | `fldlzwlqYo7rMMSDp` | date | Term start date |
+| End Date | `fldJKhrzNZNCD6SYY` | date | Term end date |
 
 ---
 

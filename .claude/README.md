@@ -9,6 +9,8 @@ Custom automation for working with Jira tasks.
 | `/plan AP-23` | Start a Jira task (fetch → branch → plan → activate loop) |
 | `/stop` | Stop the iterator loop early |
 | `/update-report` | Document meaningful changes to `docs/report.md` |
+| `/evaluate-report` | Decide if the last task needs a report.md update |
+| `/evaluate-tests` | Decide what tests are required for the last task |
 
 ## Complete Workflow
 
@@ -37,11 +39,12 @@ The hook (`.claude/hooks/plan-iterator.sh`) runs after each Claude response:
 
 ```
 docs/plan.md
-- [x] Completed task 1
-- [x] Completed task 2
-- [ ] Current task     ◄── Claude works on this
-- [ ] Next task
-- [ ] Final task
+1. [x] Setup
+   - [x] 1.1 Completed task 1
+   - [x] 1.2 Completed task 2
+2. [ ] Current task     ◄── Claude works on this
+   - [ ] 2.1 Next task
+   - [ ] 2.2 Final task
 ```
 
 For each task, Claude:
@@ -73,6 +76,8 @@ When the loop ends, you decide what to do next:
 | `.claude/commands/plan.md` | `/plan` command definition |
 | `.claude/commands/stop.md` | `/stop` command definition |
 | `.claude/commands/update-report.md` | `/update-report` command definition |
+| `.claude/commands/evaluate-report.sh` | `/evaluate-report` command definition |
+| `.claude/commands/evaluate-tests.sh` | `/evaluate-tests` command definition |
 | `docs/plan.md` | Current task checklist (created per-task) |
 | `docs/report.md` | Project documentation |
 

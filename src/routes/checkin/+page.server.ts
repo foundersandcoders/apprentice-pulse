@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
-import { getApprenticeByEmail, listEvents, listCohorts, getUserAttendanceForEvent, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, getStaffByEmail, listEvents, listCohorts, getUserAttendanceForEvent, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
 
-export type AttendanceStatusUI = 'none' | 'checked-in' | 'not-coming';
+export type AttendanceStatusUI = 'none' | 'checked-in' | 'absent';
 
 export interface CheckinEvent {
 	id: string;
@@ -28,7 +28,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	// Authenticated - fetch events based on apprentice record
-	const apprentice = await getApprenticeByEmail(user.email);
+	// First try direct email lookup
+	let apprentice = await getApprenticeByEmail(user.email);
+
+	// If not found and user is staff, check for linked learner email
+	if (!apprentice && user.type === 'staff') {
+		const staff = await getStaffByEmail(user.email);
+		if (staff?.learnerEmail) {
+			apprentice = await getApprenticeByEmail(staff.learnerEmail);
+		}
+	}
 
 	// Get events and cohorts
 	const now = new Date();
@@ -61,7 +70,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			if (apprentice) {
 				const attendance = await getUserAttendanceForEvent(event.id, apprentice.id);
 				if (attendance) {
-					attendanceStatus = attendance.status === 'Not Coming' ? 'not-coming' : 'checked-in';
+					attendanceStatus = attendance.status === 'Absent' ? 'absent' : 'checked-in';
 				}
 			}
 			else {
@@ -100,6 +109,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		user: {
 			name: apprentice?.name || null,
 			email: user.email,
+			type: user.type,
 		},
 	};
 };

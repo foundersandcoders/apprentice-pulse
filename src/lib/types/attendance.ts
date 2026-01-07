@@ -1,6 +1,20 @@
 // Attendance status options
-export const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Late', 'Excused', 'Not Coming'] as const;
+export const ATTENDANCE_STATUSES = ['Present', 'Not Check-in', 'Late', 'Excused', 'Absent'] as const;
 export type AttendanceStatus = typeof ATTENDANCE_STATUSES[number];
+
+// Centralized status styling - single source of truth for colors
+export const STATUS_STYLES: Record<AttendanceStatus, { bg: string; text: string; badge: string }> = {
+	'Present': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-700' },
+	'Late': { bg: 'bg-yellow-50', text: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-700' },
+	'Excused': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
+	'Not Check-in': { bg: 'bg-red-50', text: 'text-red-600', badge: 'bg-red-100 text-red-700' },
+	'Absent': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-700' },
+};
+
+// Helper to get badge classes for a status
+export function getStatusBadgeClass(status: AttendanceStatus): string {
+	return STATUS_STYLES[status]?.badge ?? 'bg-gray-100 text-gray-700';
+}
 
 export interface Attendance {
 	id: string;
@@ -86,6 +100,70 @@ export interface AttendanceHistoryEntry {
 	eventId: string;
 	eventName: string;
 	eventDateTime: string;
-	status: AttendanceStatus | 'Missed'; // Missed = no attendance record
+	status: AttendanceStatus;
 	checkinTime: string | null;
+	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
+}
+
+/** Monthly attendance data point for charts */
+export interface MonthlyAttendancePoint {
+	month: string; // Display format: "Jan 2025"
+	sortKey: string; // Sort format: "2025-01"
+	percentage: number; // Attendance rate: (Present + Late) / Total
+	latenessPercentage: number; // Lateness rate: Late / Total
+	attended: number;
+	late: number;
+	total: number;
+}
+
+/**
+ * Calculate monthly attendance percentages from history entries
+ * Groups events by month and calculates attendance and lateness rates
+ */
+export function calculateMonthlyAttendance(history: AttendanceHistoryEntry[]): MonthlyAttendancePoint[] {
+	if (history.length === 0) return [];
+
+	// Group events by month
+	const monthlyData = new Map<string, { attended: number; late: number; total: number }>();
+
+	for (const entry of history) {
+		const date = new Date(entry.eventDateTime);
+		const sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+		if (!monthlyData.has(sortKey)) {
+			monthlyData.set(sortKey, { attended: 0, late: 0, total: 0 });
+		}
+
+		const data = monthlyData.get(sortKey)!;
+		data.total++;
+
+		// Present and Late count as attended
+		if (entry.status === 'Present' || entry.status === 'Late') {
+			data.attended++;
+		}
+
+		// Track late separately
+		if (entry.status === 'Late') {
+			data.late++;
+		}
+	}
+
+	// Convert to array and sort by date
+	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+	return Array.from(monthlyData.entries())
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([sortKey, data]) => {
+			const [year, monthNum] = sortKey.split('-');
+			const monthName = months[parseInt(monthNum, 10) - 1];
+			return {
+				month: `${monthName} ${year}`,
+				sortKey,
+				percentage: data.total > 0 ? (data.attended / data.total) * 100 : 0,
+				latenessPercentage: data.total > 0 ? (data.late / data.total) * 100 : 0,
+				attended: data.attended,
+				late: data.late,
+				total: data.total,
+			};
+		});
 }

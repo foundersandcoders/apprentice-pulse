@@ -38,15 +38,20 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	try {
+		console.log('POST /api/attendance:', { eventId, apprenticeId, status, checkinTime });
+
 		// First create the attendance record (auto-determines Present/Late)
 		let attendance = await createAttendance({ eventId, apprenticeId });
+		console.log('Created attendance:', attendance);
 
 		// If a specific status was requested and it differs, update it
 		if (status && status !== attendance.status) {
+			console.log('Updating status from', attendance.status, 'to', status);
 			attendance = await updateAttendance(attendance.id, {
 				status,
 				checkinTime: checkinTime ?? attendance.checkinTime,
 			});
+			console.log('Updated attendance:', attendance);
 		}
 
 		return json({

@@ -10,6 +10,7 @@ export const TABLES = {
 	STAFF: 'tblJjn62ExE1LVjmx',
 	EVENTS: 'tblkbskw4fuTq0E9p',
 	ATTENDANCE: 'tblkDbhJcuT9TTwFc',
+	TERMS: 'tbl4gkcG92Bc8gFU7',
 } as const;
 
 // Fields - Cohorts
@@ -29,6 +30,8 @@ export const APPRENTICE_FIELDS = {
 // Fields - Staff
 export const STAFF_FIELDS = {
 	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
+	APPRENTICE_LINK: 'fldAMwe9jOOdwIyBY', // multipleRecordLinks to Apprentices
+	LEARNER_EMAIL: 'fldPjDZTSySzbefXz', // multipleLookupValues from linked Apprentice
 } as const;
 
 // Fields - Events
@@ -51,9 +54,16 @@ export const ATTENDANCE_FIELDS = {
 	APPRENTICE: 'fldOyo3hlj9Ht0rfZ', // multipleRecordLinks to Apprentices
 	EVENT: 'fldiHd75LYtopwyN9', // multipleRecordLinks to Events
 	CHECKIN_TIME: 'fldvXHPmoLlEA8EuN', // dateTime
-	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Absent/Late)
+	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Not Check-in/Late/Excused/Absent)
 	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
 	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
+} as const;
+
+// Fields - Terms
+export const TERM_FIELDS = {
+	NAME: 'fldrnRBnBuHbscSy7', // singleLineText
+	STARTING_DATE: 'fldlzwlqYo7rMMSDp', // date
+	END_DATE: 'fldJKhrzNZNCD6SYY', // date
 } as const;
 
 // Defaults

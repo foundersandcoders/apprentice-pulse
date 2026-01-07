@@ -15,7 +15,7 @@ import { createAirtableClient } from './airtable.js';
 import { createEventsClient } from './events.js';
 import { createAttendanceClient } from './attendance.js';
 
-export type { Apprentice, ApprenticeRecord, Cohort } from './airtable.js';
+export type { Apprentice, ApprenticeRecord, Cohort, Term, StaffRecord } from './airtable.js';
 export type { Event, EventFilters, CreateEventInput, UpdateEventInput } from '$lib/types/event.js';
 export type {
 	Attendance,
@@ -34,9 +34,11 @@ const attendanceClient = createAttendanceClient(AIRTABLE_API_KEY, AIRTABLE_BASE_
 
 export const getApprenticesByFacCohort = client.getApprenticesByFacCohort;
 export const findStaffByEmail = client.findStaffByEmail;
+export const getStaffByEmail = client.getStaffByEmail;
 export const findApprenticeByEmail = client.findApprenticeByEmail;
 export const getApprenticeByEmail = client.getApprenticeByEmail;
 export const listCohorts = client.listCohorts;
+export const listTerms = client.listTerms;
 export const getApprenticesByCohortId = client.getApprenticesByCohortId;
 export const getApprenticesByIds = client.getApprenticesByIds;
 
@@ -61,7 +63,7 @@ export const getAttendanceForEvent = attendanceClient.getAttendanceForEvent;
 export const getAttendanceByIds = attendanceClient.getAttendanceByIds;
 
 // Attendance statistics
-export const getApprenticeAttendanceStats = attendanceClient.getApprenticeAttendanceStats;
+export const getApprenticeStats = attendanceClient.getApprenticeStats;
 export const getCohortAttendanceStats = attendanceClient.getCohortAttendanceStats;
 export const getAttendanceSummary = attendanceClient.getAttendanceSummary;
 export const getApprenticeAttendanceHistory = attendanceClient.getApprenticeAttendanceHistory;

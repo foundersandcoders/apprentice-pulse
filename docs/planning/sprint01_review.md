@@ -95,7 +95,7 @@ Replaced the legacy date-as-columns structure with a normalized table:
 - Each attendance record is a row (not a column)
 - Links to Apprentice via `fldOyo3hlj9Ht0rfZ`
 - Date stored in `fldvXHPmoLlEA8EuN`
-- Status (Present/Absent/Late) via `fldew45fDGpgl1aRr`
+- Status (Present/Not Check-in/Late/Excused/Absent) via `fldew45fDGpgl1aRr`
 
 This eliminates the need for dynamic field creation when adding events.
 

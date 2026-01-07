@@ -7,7 +7,7 @@ config({ path: '.env.local' });
 const apiKey = process.env.AIRTABLE_API_KEY;
 const bases = [
 	{ name: 'Learners', id: process.env.AIRTABLE_BASE_ID_LEARNERS },
-	{ name: 'Learner Feedback', id: process.env.AIRTABLE_BASE_ID_FEEDBACK },
+	// { name: 'Learner Feedback', id: process.env.AIRTABLE_BASE_ID_FEEDBACK },
 ];
 
 interface AirtableField {

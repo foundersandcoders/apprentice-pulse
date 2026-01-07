@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -124,7 +125,7 @@
 		}
 	}
 
-	// Authenticated user mark as not coming
+	// Authenticated user mark as absent
 	async function handleNotComing(eventId: string) {
 		// Prevent double-clicking by checking if already processing this event
 		if (markingNotComing === eventId || checkingIn === eventId) {
@@ -135,7 +136,7 @@
 		checkInError = null;
 
 		try {
-			const response = await fetch('/api/checkin/not-coming', {
+			const response = await fetch('/api/checkin/absent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ eventId }),
@@ -144,9 +145,9 @@
 			const result = await response.json();
 
 			if (response.ok && result.success) {
-				// Update the event in the list to show as not coming
+				// Update the event in the list to show as absent
 				events = events.map(e =>
-					e.id === eventId ? { ...e, attendanceStatus: 'not-coming' as const } : e,
+					e.id === eventId ? { ...e, attendanceStatus: 'absent' as const } : e,
 				);
 				checkInError = null; // Clear any previous errors
 			}
@@ -158,7 +159,7 @@
 				checkInError = 'You already have an attendance record for this event.';
 			}
 			else {
-				checkInError = result.error || 'Failed to mark as not coming';
+				checkInError = result.error || 'Failed to mark as absent';
 			}
 		}
 		catch {
@@ -280,6 +281,12 @@
 					<span class="user-name">{data.user.name}</span>
 				{/if}
 				<span class="user-email">{data.user?.email}</span>
+				<div class="nav-links">
+					{#if data.user?.type === 'staff'}
+						<a href={resolve('/admin')} class="nav-link">Admin</a>
+					{/if}
+					<a href={resolve('/api/auth/logout')} class="nav-link">Logout</a>
+				</div>
 			</div>
 		</header>
 
@@ -291,7 +298,7 @@
 			<div class="events-list">
 				{#each events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
-					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:not-coming={event.attendanceStatus === 'not-coming'}>
+					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:absent={event.attendanceStatus === 'absent'}>
 						<div class="event-info">
 							<h2>{event.name}</h2>
 							<p class="event-time">{formatDate(event.dateTime)}</p>
@@ -320,15 +327,15 @@
 						<div class="event-action">
 							{#if event.attendanceStatus === 'checked-in'}
 								<span class="btn-base btn-success">Checked In</span>
-							{:else if event.attendanceStatus === 'not-coming'}
-								<span class="btn-base btn-warning">Not Coming</span>
+							{:else if event.attendanceStatus === 'absent'}
+								<span class="btn-base btn-warning">Absent</span>
 								{#if timeStatus.canCheckIn}
 									<button class="btn-base btn-clickable btn-primary change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
 										{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
 									</button>
 								{/if}
 							{:else if checkingIn === event.id || markingNotComing === event.id}
-								<button class="btn-base btn-clickable btn-primary" disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking not coming...'}</button>
+								<button class="btn-base btn-clickable btn-primary" disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking absent...'}</button>
 							{:else if !timeStatus.canCheckIn}
 								<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
 									Check In
@@ -340,7 +347,7 @@
 									</button>
 									{#if data.checkInMethod === 'apprentice'}
 										<button class="btn-base btn-clickable btn-danger" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
-											Not Coming
+											Absent
 										</button>
 									{/if}
 								</div>
@@ -556,6 +563,22 @@
 		opacity: 0.85;
 	}
 
+	.nav-links {
+		display: flex;
+		gap: 1rem;
+		margin-top: 0.5rem;
+	}
+
+	.nav-link {
+		font-size: 0.85rem;
+		color: #3b82f6;
+		text-decoration: none;
+	}
+
+	.nav-link:hover {
+		text-decoration: underline;
+	}
+
 	/* Event list styles */
 	.events-list {
 		display: flex;
@@ -578,7 +601,7 @@
 		border-color: #34a853;
 	}
 
-	.event-card.not-coming {
+	.event-card.absent {
 		background: #fff8f0;
 		border-color: #ff9800;
 	}

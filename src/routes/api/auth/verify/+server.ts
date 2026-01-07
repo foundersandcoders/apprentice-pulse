@@ -28,5 +28,5 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		redirect(303, redirectTo);
 	}
 
-	redirect(303, payload.type === 'staff' ? '/admin' : '/');
+	redirect(303, payload.type === 'staff' ? '/admin' : '/checkin');
 };

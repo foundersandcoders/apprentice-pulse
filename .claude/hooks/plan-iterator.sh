@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Plan Iterator Hook (Stop event)
 # Automatically continues through tasks in docs/plan.md
@@ -12,9 +13,7 @@ PLAN_FILE="docs/plan.md"
 LOOP_MARKER=".claude/loop"
 
 # Only run if loop marker exists (opt-in)
-if [[ ! -f "$LOOP_MARKER" ]]; then
-  exit 0
-fi
+[[ -f "$LOOP_MARKER" ]] || exit 0
 
 # No plan file = stop and cleanup
 if [[ ! -f "$PLAN_FILE" ]]; then
@@ -22,36 +21,197 @@ if [[ ! -f "$PLAN_FILE" ]]; then
   exit 0
 fi
 
-# Count remaining tasks (unchecked boxes)
-REMAINING=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
-REMAINING=${REMAINING:-0}
+# --- Helpers ---------------------------------------------------------------
+
+portable_sed_inplace() {
+  # Usage: portable_sed_inplace 's/old/new/' file
+  # Works on macOS (BSD sed) and Linux (GNU sed)
+  local expr="$1"
+  local file="$2"
+  sed -i.bak "$expr" "$file"
+  rm -f "${file}.bak"
+}
+
+sanitize_git_subject() {
+  # Read stdin, output a safe one-line git subject (<=72 chars), no newlines
+  python3 - <<'PY'
+import sys
+s = sys.stdin.read()
+s = s.replace("\r", " ").replace("\n", " ")
+s = " ".join(s.split())  # collapse whitespace
+if s.startswith("-"):
+  s = s.lstrip("-").strip()
+if len(s) > 72:
+  s = s[:69] + "..."
+print(s)
+PY
+}
+
+# --- Parse plan.md once (leaf-only semantics) ------------------------------
+
+# AWK outputs 5 lines:
+# 1) remaining_leaf_count
+# 2) completed_leaf_count
+# 3) next_task_text
+# 4) last_done_text (leaf or standalone main)
+# 5) space-separated main task numbers that should be auto-marked complete
+IFS=$'\t' read -r REMAINING COMPLETED NEXT_TASK LAST_DONE TO_COMPLETE < <(
+  awk '
+  function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+  function after_checkbox(s) {
+    # strip leading numbering/bullet + checkbox, return the rest
+    # main: "1. [ ] Task" or "1. [x] Task"
+    # sub:  "   - [ ] 1.1 Task" or "   - [x] 1.1 Task"
+    gsub(/^[[:space:]]*[0-9]+\.[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+    gsub(/^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+    return trim(s)
+  }
+
+  BEGIN {
+    # leaf-only counts:
+    remaining = 0
+    completed = 0
+    next_task = ""
+    last_done = ""
+
+    # track which mains exist and their checkbox state
+    # main_state[n] = "incomplete" | "complete"
+    # track subtasks existence + incomplete/complete counts per main
+    # sub_any[n] = 1 if any subtask exists for main n
+    # sub_incomplete[n], sub_complete[n]
+  }
+
+  # Main task: incomplete (strict [ ])
+  match($0, /^([0-9]+)\.[[:space:]]*\[ \][[:space:]]*(.*)$/, m) {
+    n = m[1]
+    main_state[n] = "incomplete"
+    main_text[n] = trim(m[2])
+    next
+  }
+
+  # Main task: complete (strict [x])
+  match($0, /^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$/, m) {
+    n = m[1]
+    main_state[n] = "complete"
+    main_text[n] = trim(m[2])
+    next
+  }
+
+  # Subtask: strict [ ] or [x], and requires a leading main number like 1.1, 2.3 etc
+  match($0, /^[[:space:]]*-[[:space:]]*\[([ x])\][[:space:]]*([0-9]+)\.[0-9]+[[:space:]]*(.*)$/, m) {
+    status = m[1]
+    n = m[2]
+    sub_any[n] = 1
+
+    if (status == "x") {
+      sub_complete[n]++
+      completed++
+      last_done = after_checkbox($0)
+    } else {
+      sub_incomplete[n]++
+      remaining++
+      if (next_task == "") next_task = after_checkbox($0)
+    }
+
+    next
+  }
+
+  END {
+    # Standalone mains (no subtasks) are leaf/actionable
+    for (n in main_state) {
+      if (!sub_any[n]) {
+        if (main_state[n] == "complete") {
+          completed++
+          last_done = main_text[n]
+        } else if (main_state[n] == "incomplete") {
+          remaining++
+          if (next_task == "") next_task = main_text[n]
+        }
+      }
+    }
+
+    # Determine which incomplete mains should auto-complete:
+    # - main exists and is incomplete
+    # - has subtasks
+    # - 0 incomplete subtasks
+    # - at least 1 complete subtask (avoid marking empty sections)
+    to_complete = ""
+    for (n in sub_any) {
+      if (main_state[n] == "incomplete" && sub_incomplete[n] == 0 && sub_complete[n] > 0) {
+        to_complete = to_complete (to_complete ? " " : "") n
+      }
+    }
+
+    # Output as a single line, fields separated by tabs, then read in bash
+    # (Use \t to keep NEXT_TASK / LAST_DONE intact even if they contain spaces)
+    printf "%d\t%d\t%s\t%s\t%s\n", remaining, completed, next_task, last_done, to_complete
+  }
+  ' "$PLAN_FILE"
+)
+
+# Auto-mark main tasks complete (portable sed). Only after parse decides.
+if [[ -n "${TO_COMPLETE:-}" ]]; then
+  # Mark each numbered main "N. [ ]" -> "N. [x]"
+  for n in $TO_COMPLETE; do
+    portable_sed_inplace "s/^${n}\.[[:space:]]*\\[ \\]/${n}. [x]/" "$PLAN_FILE"
+  done
+
+  # Re-parse after modifications to get fresh counts/next/last_done
+  IFS=$'\t' read -r REMAINING COMPLETED NEXT_TASK LAST_DONE _ < <(
+    awk '
+    function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+    function after_checkbox(s) {
+      gsub(/^[[:space:]]*[0-9]+\.[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+      gsub(/^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*/, "", s)
+      return trim(s)
+    }
+
+    BEGIN { remaining=0; completed=0; next_task=""; last_done="" }
+
+    match($0, /^([0-9]+)\.[[:space:]]*\[ \][[:space:]]*(.*)$/, m) { main_state[m[1]]="incomplete"; main_text[m[1]]=trim(m[2]); next }
+    match($0, /^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$/, m) { main_state[m[1]]="complete";   main_text[m[1]]=trim(m[2]); next }
+
+    match($0, /^[[:space:]]*-[[:space:]]*\[([ x])\][[:space:]]*([0-9]+)\.[0-9]+[[:space:]]*(.*)$/, m) {
+      status=m[1]; n=m[2]; sub_any[n]=1
+      if (status=="x") { completed++; last_done=after_checkbox($0) }
+      else { remaining++; if (next_task=="") next_task=after_checkbox($0) }
+      next
+    }
+
+    END {
+      for (n in main_state) if (!sub_any[n]) {
+        if (main_state[n]=="complete") { completed++; last_done=main_text[n] }
+        else { remaining++; if (next_task=="") next_task=main_text[n] }
+      }
+      printf "%d\t%d\t%s\t%s\n", remaining, completed, next_task, last_done
+    }
+    ' "$PLAN_FILE"
+  )
+fi
 
 # All tasks complete - cleanup and exit
-if [[ "$REMAINING" -eq 0 ]]; then
+if [[ "${REMAINING:-0}" -eq 0 ]]; then
   rm -f "$LOOP_MARKER"
   exit 0
 fi
-
-# Count completed tasks
-COMPLETED=$(grep -c '^\s*\([0-9]\+\.\s*\)\?\s*- \[x\]' "$PLAN_FILE" 2>/dev/null | head -1 || echo "0")
-COMPLETED=${COMPLETED:-0}
 
 # Stage all changes FIRST
 git add -A >/dev/null 2>&1 || true
 
 # Then commit if there are staged changes
 if ! git diff --cached --quiet 2>/dev/null; then
-  if [[ "$COMPLETED" -gt 0 ]]; then
-    LAST_DONE=$(grep -E '^\s*\([0-9]\+\.\s*\)?\s*- \[x\]' "$PLAN_FILE" | tail -1 | sed 's/.*\[x\] //')
-    git commit -m "feat: $LAST_DONE" >/dev/null 2>&1 || true
+  if [[ "${COMPLETED:-0}" -gt 0 ]]; then
+    if [[ -n "${LAST_DONE:-}" ]]; then
+      SAFE_SUBJECT="$(printf '%s' "$LAST_DONE" | sanitize_git_subject)"
+      if [[ -n "$SAFE_SUBJECT" ]]; then
+        git commit -m "feat: $SAFE_SUBJECT" >/dev/null 2>&1 || true
+      fi
+    fi
   fi
 fi
 
-# Find next task
-NEXT_TASK=$(grep -m1 '^\s*\([0-9]\+\.\s*\)\?\s*- \[ \]' "$PLAN_FILE" | sed 's/.*\[ \] //' | sed 's/"/\\"/g')
-
-# Build the reason message for Claude
-read -r -d '' REASON << MSGEOF
+# Escape reason for JSON
+REASON=$(cat <<MSGEOF
 PLAN ITERATOR: Continue with the next task.
 
 ## Current Progress
@@ -62,11 +222,22 @@ $NEXT_TASK
 
 ## Post-Task Checklist (do after completing the task above)
 
-1. **Mark done**: Change \`- [ ]\` to \`- [x]\` for the completed task in docs/plan.md
+1. **Mark done**: Change \`1. [ ]\` or \`- [ ]\` to \`1. [x]\` or \`- [x]\` for the completed task in docs/plan.md
 
-2. **Report evaluation**: Consider if what you just implemented could serve as evidence for any criteria in docs/Assessment-criteria.md (P1-P11, D1-D4). If yes, run /update-report. If not, move on.
+2. **MANDATORY Report Evaluation**: You MUST evaluate if the completed task should be documented in report.md by:
+   a. Running: /evaluate-report "$NEXT_TASK"
+   b. The evaluation will analyze recent changes and determine if documentation is needed
+   c. If significant technical decisions were made or assessment criteria evidence exists, update report.md
+   d. This step is NOT optional - always evaluate, even if no update is needed
 
-3. **Working preferences**:
+3. **MANDATORY Test Evaluation**: You MUST evaluate what testing is needed for the completed task by:
+   a. Running: /evaluate-tests "$NEXT_TASK"
+   b. The evaluation will determine if unit tests, API tests, or integration tests are needed
+   c. Create missing tests (Vitest unit tests and/or Postman collections via MCP)
+   d. Run tests to ensure they pass
+   e. This step is NOT optional - always evaluate testing needs
+
+4. **Working preferences**:
    - Keep changes small and focused
    - Ensure code is consistent with existing patterns
    - Use proven, well-established approaches
@@ -75,9 +246,7 @@ $NEXT_TASK
 ## To Stop Early
 Run /stop or delete .claude/loop
 MSGEOF
+)
+ESCAPED_REASON=$(printf '%s' "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
 
-# Escape reason for JSON
-ESCAPED_REASON=$(echo "$REASON" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read())[1:-1])')
-
-# Return JSON with decision: block to prevent Claude from stopping
 echo "{\"decision\": \"block\", \"reason\": \"$ESCAPED_REASON\"}"

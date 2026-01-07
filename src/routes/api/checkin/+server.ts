@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getSession } from '$lib/server/session';
 import {
 	getApprenticeByEmail,
+	getStaffByEmail,
 	createAttendance,
 	createExternalAttendance,
 	getUserAttendanceForEvent,
@@ -46,15 +47,24 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 
 	try {
 		// Check if user has an apprentice record
-		const apprentice = await getApprenticeByEmail(session.email);
+		// First try direct email lookup
+		let apprentice = await getApprenticeByEmail(session.email);
+
+		// If not found, check if user is staff with linked learner email
+		if (!apprentice) {
+			const staff = await getStaffByEmail(session.email);
+			if (staff?.learnerEmail) {
+				apprentice = await getApprenticeByEmail(staff.learnerEmail);
+			}
+		}
 
 		if (apprentice) {
 			// Apprentice flow: check in using apprentice ID
 			const existingAttendance = await getUserAttendanceForEvent(eventId, apprentice.id);
 
 			if (existingAttendance) {
-				// Handle "Not Coming" → "Check In" transition
-				if (existingAttendance.status === 'Not Coming') {
+				// Handle "Absent" → "Check In" transition
+				if (existingAttendance.status === 'Absent') {
 					const event = await getEvent(eventId);
 					const status = determineStatus(event?.dateTime ?? null);
 
