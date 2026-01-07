@@ -88,10 +88,15 @@
 			<div class="font-semibold text-orange-600">{apprentice.notComing}</div>
 			<div class="text-gray-500 text-xs">Absent</div>
 		</div>
-		<!-- Row 2: Attended spans under Present + Late -->
+		<!-- Row 2: Attended under Present + Late, Missed under Not Check-in + Absent -->
 		<div class="col-span-2 bg-indigo-50 rounded p-2 border-t-2 border-indigo-200">
 			<div class="font-semibold text-indigo-600">{apprentice.attended}</div>
 			<div class="text-gray-500 text-xs">Attended</div>
+		</div>
+		<div></div><!-- Empty cell under Excused -->
+		<div class="col-span-2 bg-rose-50 rounded p-2 border-t-2 border-rose-200">
+			<div class="font-semibold text-rose-600">{apprentice.absent + apprentice.notComing}</div>
+			<div class="text-gray-500 text-xs">Missed</div>
 		</div>
 	</div>
 
