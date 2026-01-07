@@ -53,27 +53,27 @@
 								{formatDate(event.eventDateTime)}
 							</td>
 							<td class="p-3 text-center">
-								<span class="{STATUS_STYLES['Present'].badge} px-3 py-0.5 rounded-full text-sm">
+								<span class="{STATUS_STYLES['Present'].badge} px-4 py-0.5 rounded-full text-sm">
 									{event.present}
 								</span>
 							</td>
 							<td class="p-3 text-center">
-								<span class="{STATUS_STYLES['Late'].badge} px-3 py-0.5 rounded-full text-sm">
+								<span class="{STATUS_STYLES['Late'].badge} px-4 py-0.5 rounded-full text-sm">
 									{event.late}
 								</span>
 							</td>
 							<td class="p-3 text-center">
-								<span class="{STATUS_STYLES['Excused'].badge} px-3 py-0.5 rounded-full text-sm">
+								<span class="{STATUS_STYLES['Excused'].badge} px-4 py-0.5 rounded-full text-sm">
 									{event.excused}
 								</span>
 							</td>
 							<td class="p-3 text-center">
-								<span class="{STATUS_STYLES['Not Check-in'].badge} px-3 py-0.5 rounded-full text-sm">
+								<span class="{STATUS_STYLES['Not Check-in'].badge} px-4 py-0.5 rounded-full text-sm">
 									{event.notCheckin}
 								</span>
 							</td>
 							<td class="p-3 pr-6 text-center">
-								<span class="{STATUS_STYLES['Absent'].badge} px-3 py-0.5 rounded-full text-sm">
+								<span class="{STATUS_STYLES['Absent'].badge} px-4 py-0.5 rounded-full text-sm">
 									{event.absent}
 								</span>
 							</td>
