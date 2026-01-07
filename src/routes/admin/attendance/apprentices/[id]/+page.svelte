@@ -1,14 +1,40 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
+	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
 	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
+	import type { AttendanceFilters } from '$lib/types/filters';
+	import { parseFiltersFromParams, filtersToParams } from '$lib/types/filters';
+	import type { Term } from '$lib/airtable/sveltekit-wrapper';
 	import { format } from 'date-fns';
 
 	let { data } = $props();
 
 	const stats = $derived(data.stats as ApprenticeAttendanceStats);
-	let history = $state(data.history as AttendanceHistoryEntry[]);
+	const terms = $derived(data.terms as Term[]);
+	// History is mutable (user can edit status inline), so we need $state + $effect
+	// eslint-disable-next-line svelte/prefer-writable-derived
+	let history = $state<AttendanceHistoryEntry[]>([]);
+
+	// Sync history when data changes
+	$effect(() => {
+		history = data.history as AttendanceHistoryEntry[];
+	});
+
+	// Current filters from URL params
+	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
+
+	// Handle filter changes
+	function handleFiltersChange(newFilters: AttendanceFilters) {
+		const basePath = resolve(`/admin/attendance/apprentices/${stats.apprenticeId}`);
+		const filterParams = filtersToParams(newFilters);
+		const newUrl = filterParams.toString() ? `${basePath}?${filterParams.toString()}` : basePath;
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved
+		goto(newUrl);
+	}
 
 	// Status editing state
 	let editingEntryId = $state<string | null>(null);
@@ -172,6 +198,15 @@
 			<p class="text-gray-600 mt-1">{stats.cohortName}</p>
 		{/if}
 	</header>
+
+	<!-- Attendance Filters -->
+	<div class="mb-6">
+		<AttendanceFiltersComponent
+			{terms}
+			filters={currentFilters}
+			onFiltersChange={handleFiltersChange}
+		/>
+	</div>
 
 	<!-- Stats Card -->
 	<div class="mb-8">
