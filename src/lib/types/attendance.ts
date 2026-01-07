@@ -86,6 +86,7 @@ export interface AttendanceHistoryEntry {
 	eventId: string;
 	eventName: string;
 	eventDateTime: string;
-	status: AttendanceStatus | 'Missed'; // Missed = no attendance record
+	status: AttendanceStatus;
 	checkinTime: string | null;
+	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Absent')
 }

@@ -402,13 +402,20 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 	/**
 	 * Calculate base attendance stats from attendance records
+	 * Missing events (no attendance record) are counted as 'Absent'
 	 */
 	function calculateStats(attendanceRecords: Attendance[], totalEvents: number): AttendanceStats {
 		const present = attendanceRecords.filter(a => a.status === 'Present').length;
 		const late = attendanceRecords.filter(a => a.status === 'Late').length;
-		const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
+		const explicitAbsent = attendanceRecords.filter(a => a.status === 'Absent').length;
 		const excused = attendanceRecords.filter(a => a.status === 'Excused').length;
 		const notComing = attendanceRecords.filter(a => a.status === 'Not Coming').length;
+
+		// Count missing attendance records as 'Absent'
+		const recordedEvents = attendanceRecords.length;
+		const missingEvents = totalEvents - recordedEvents;
+		const absent = explicitAbsent + missingEvents;
+
 		const attended = present + late;
 
 		const attendanceRate = totalEvents > 0
@@ -921,8 +928,9 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 					eventId: event.id,
 					eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
 					eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
-					status: attendance ? attendance.status : 'Missed',
+					status: attendance ? attendance.status : 'Absent',
 					checkinTime: attendance?.checkinTime ?? null,
+					attendanceId: attendance?.id ?? null,
 				};
 			});
 

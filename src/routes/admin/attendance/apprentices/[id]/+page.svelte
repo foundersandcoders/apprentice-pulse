@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
-	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
+	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
+	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
 	import { format } from 'date-fns';
 
 	let { data } = $props();
 
 	const stats = $derived(data.stats as ApprenticeAttendanceStats);
-	const history = $derived(data.history as AttendanceHistoryEntry[]);
+	let history = $state(data.history as AttendanceHistoryEntry[]);
+
+	// Status editing state
+	let editingEntryId = $state<string | null>(null);
+	let editingStatus = $state<AttendanceStatus>('Present');
+	let editingCheckinTime = $state<string>('');
+	let statusUpdateLoading = $state(false);
 
 	function getStatusColor(status: string): string {
 		switch (status) {
@@ -16,7 +23,6 @@
 			case 'Absent': return 'bg-red-100 text-red-800';
 			case 'Excused': return 'bg-blue-100 text-blue-800';
 			case 'Not Coming': return 'bg-orange-100 text-orange-800';
-			case 'Missed': return 'bg-gray-100 text-gray-600';
 			default: return 'bg-gray-100 text-gray-600';
 		}
 	}
@@ -37,6 +43,123 @@
 		}
 		catch {
 			return checkinTime;
+		}
+	}
+
+	function startEditingStatus(entry: AttendanceHistoryEntry) {
+		editingEntryId = entry.eventId;
+		editingStatus = entry.status;
+
+		// Set default checkin time to event start time or current time
+		if (editingStatus === 'Present' || editingStatus === 'Late') {
+			if (entry.checkinTime) {
+				// Use existing checkin time
+				editingCheckinTime = new Date(entry.checkinTime).toISOString().slice(0, 16);
+			} else {
+				// Use event start time as default
+				editingCheckinTime = new Date(entry.eventDateTime).toISOString().slice(0, 16);
+			}
+		} else {
+			editingCheckinTime = '';
+		}
+	}
+
+	function cancelEditing() {
+		editingEntryId = null;
+		editingStatus = 'Present';
+		editingCheckinTime = '';
+	}
+
+	async function saveStatusChange() {
+		if (!editingEntryId) return;
+
+		const entry = history.find(h => h.eventId === editingEntryId);
+		if (!entry) return;
+
+		const hasExistingRecord = !!entry.attendanceId;
+		const needsRecord = editingStatus !== 'Absent';
+		const countsAsAttendance = editingStatus === 'Present' || editingStatus === 'Late';
+
+		// Case: No record and changing to Absent - just update local UI
+		if (!hasExistingRecord && !needsRecord) {
+			history = history.map(h =>
+				h.eventId === entry.eventId
+					? { ...h, status: editingStatus, checkinTime: null, attendanceId: null }
+					: h
+			);
+			editingEntryId = null;
+			return;
+		}
+
+		statusUpdateLoading = true;
+		try {
+			const checkinTime = (editingStatus === 'Present' || editingStatus === 'Late')
+				? new Date(editingCheckinTime).toISOString()
+				: undefined;
+
+			let result;
+
+			console.log('Updating status:', {
+				hasExistingRecord,
+				eventId: entry.eventId,
+				apprenticeId: stats.apprenticeId,
+				status: editingStatus,
+				checkinTime,
+				attendanceId: entry.attendanceId
+			});
+
+			if (hasExistingRecord) {
+				// Update existing record
+				const response = await fetch(`/api/attendance/${entry.attendanceId}`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						status: editingStatus,
+						checkinTime,
+					}),
+				});
+				result = await response.json();
+			} else {
+				// Create new record
+				const response = await fetch('/api/attendance', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						eventId: entry.eventId,
+						apprenticeId: stats.apprenticeId,
+						status: editingStatus,
+						checkinTime,
+					}),
+				});
+				result = await response.json();
+			}
+
+			if (result.success) {
+				// Update local state
+				history = history.map(h =>
+					h.eventId === entry.eventId
+						? {
+							...h,
+							status: editingStatus,
+							checkinTime: checkinTime || null,
+							attendanceId: result.attendance.id
+						}
+						: h
+				);
+			} else {
+				console.error('Failed to update status:', result);
+				alert('Failed to update status: ' + result.error);
+			}
+		} catch (error) {
+			console.error('Error updating status:', error);
+			alert('Failed to update status. Please try again.');
+		} finally {
+			statusUpdateLoading = false;
+			editingEntryId = null;
 		}
 	}
 </script>
@@ -71,7 +194,8 @@
 							<th class="text-left p-3 border-b">Event</th>
 							<th class="text-left p-3 border-b">Date & Time</th>
 							<th class="text-center p-3 border-b">Status</th>
-							<th class="text-right p-3 border-b">Check-in Time</th>
+							<th class="text-center p-3 border-b">Check-in Time</th>
+							<th class="text-center p-3 border-b">Actions</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -84,12 +208,65 @@
 									{formatDateTime(entry.eventDateTime)}
 								</td>
 								<td class="p-3 text-center">
-									<span class="px-2 py-1 rounded-full text-sm {getStatusColor(entry.status)}">
-										{entry.status}
-									</span>
+									{#if editingEntryId === entry.eventId}
+										<select
+											bind:value={editingStatus}
+											class="border rounded px-1 py-0.5 text-xs"
+											onclick={e => e.stopPropagation()}
+										>
+											{#each ATTENDANCE_STATUSES as status (status)}
+												<option value={status}>{status}</option>
+											{/each}
+										</select>
+									{:else}
+										<button
+											onclick={() => startEditingStatus(entry)}
+											class="px-2 py-1 rounded-full text-sm {getStatusColor(entry.status)} hover:opacity-80"
+										>
+											{entry.status}
+										</button>
+									{/if}
 								</td>
-								<td class="p-3 text-right text-gray-600">
-									{formatCheckinTime(entry.checkinTime)}
+								<td class="p-3 text-center">
+									{#if editingEntryId === entry.eventId && (editingStatus === 'Present' || editingStatus === 'Late')}
+										<input
+											type="datetime-local"
+											bind:value={editingCheckinTime}
+											class="border rounded px-1 py-0.5 text-xs"
+											onclick={e => e.stopPropagation()}
+										/>
+									{:else if entry.checkinTime}
+										<span class="text-gray-500 text-xs">{formatCheckinTime(entry.checkinTime)}</span>
+									{:else}
+										<span class="text-gray-400 text-xs">—</span>
+									{/if}
+								</td>
+								<td class="p-3 text-center">
+									{#if editingEntryId === entry.eventId}
+										<div class="flex gap-1 justify-center">
+											<button
+												onclick={saveStatusChange}
+												disabled={statusUpdateLoading}
+												class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
+											>
+												{statusUpdateLoading ? '...' : '✓'}
+											</button>
+											<button
+												onclick={cancelEditing}
+												disabled={statusUpdateLoading}
+												class="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 disabled:opacity-50"
+											>
+												✕
+											</button>
+										</div>
+									{:else}
+										<button
+											onclick={() => startEditingStatus(entry)}
+											class="px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
+										>
+											Edit
+										</button>
+									{/if}
 								</td>
 							</tr>
 						{/each}

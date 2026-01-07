@@ -6,7 +6,13 @@ status naming:
   Absent -> Not Check-in
   Not Coming -> Absent
 
-Apprentice attendance. Show it per term. terms are on Airtable
+
+
+
+Individual learner page, make it clearer, Attended is Present+late and equivalent for the opposite
+cahnge status there
+same filters as cohort
+Review navigation
 
 Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
 
@@ -18,7 +24,7 @@ Login page pretty
 Staff - Apprentice pulse, now has the student email. Use this for checkin as a student, not as an external
 
 
-
+survey URL is OK?
 
 
 
@@ -33,3 +39,4 @@ Integration with LUMA
 
 
 On readme how give permissions
+
