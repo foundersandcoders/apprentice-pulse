@@ -31,7 +31,7 @@
 			</div>
 		</a>
 		<a
-			href={resolve('/admin/attendance/apprentices')}
+			href={resolve('/admin/attendance')}
 			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-green-300 transition-all"
 		>
 			<div class="flex items-start gap-4">

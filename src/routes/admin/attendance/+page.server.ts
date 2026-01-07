@@ -96,7 +96,7 @@ export const load: PageServerLoad = async ({ url }) => {
 				}
 			}
 			catch (err) {
-				console.error(`[attendance/apprentices] Error fetching stats for ${apprenticeId}:`, err);
+				console.error(`[attendance] Error fetching stats for ${apprenticeId}:`, err);
 			}
 		}
 
@@ -113,7 +113,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		};
 	}
 	catch (err) {
-		console.error('[attendance/apprentices] Error loading data:', err);
+		console.error('[attendance] Error loading data:', err);
 		return {
 			apprentices: [],
 			cohorts: [],

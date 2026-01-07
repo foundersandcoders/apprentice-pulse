@@ -29,7 +29,7 @@
 
 	// Handle filter changes
 	function handleFiltersChange(newFilters: AttendanceFilters) {
-		const basePath = resolve(`/admin/attendance/apprentices/${stats.apprenticeId}`);
+		const basePath = resolve(`/admin/attendance/${stats.apprenticeId}`);
 		const filterParams = filtersToParams(newFilters);
 		const newUrl = filterParams.toString() ? `${basePath}?${filterParams.toString()}` : basePath;
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved
@@ -201,7 +201,7 @@
 
 <div class="p-6 max-w-4xl mx-auto">
 	<header class="mb-6">
-		<a href={resolve('/admin/attendance/apprentices')} class="text-blue-600 hover:underline text-sm">← Back to Apprentices</a>
+		<a href={resolve('/admin/attendance')} class="text-blue-600 hover:underline text-sm">← Back to Attendance</a>
 		<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName}</h1>
 		{#if stats.cohortName}
 			<p class="text-gray-600 mt-1">{stats.cohortName}</p>

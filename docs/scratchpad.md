@@ -1,4 +1,3 @@
-Review navigation
 
 survey send email
 
@@ -9,11 +8,6 @@ Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
 Absent reason.
 
 Events view, list of people, show link to apprentices to go to personalised
-
-
-
-Login page pretty
-
 
 
 

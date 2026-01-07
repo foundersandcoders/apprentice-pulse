@@ -79,7 +79,6 @@
 	// Local state for cohort selection - need $state for reassignment in $effect to work
 	// eslint-disable-next-line svelte/no-unnecessary-state-wrap, svelte/prefer-writable-derived
 	let localSelectedCohorts = $state(new SvelteSet());
-	let showAllWarning = $state(false);
 
 	// Sorting state
 	type SortColumn = 'name' | 'attendanceRate' | 'cohort';
@@ -88,7 +87,7 @@
 	let sortDirection = $state<SortDirection>('asc');
 
 	// Loading state
-	const isLoading = $derived(navigating.to?.url.pathname === '/admin/attendance/apprentices');
+	const isLoading = $derived(navigating.to?.url.pathname === '/admin/attendance');
 
 	// Reset local cohort selection when data changes
 	$effect(() => {
@@ -168,28 +167,27 @@
 	function loadSelectedCohorts() {
 		if (localSelectedCohorts.size === 0) return;
 		const cohortIds = [...localSelectedCohorts].join(',');
-		const basePath = resolve('/admin/attendance/apprentices');
+		const basePath = resolve('/admin/attendance');
 		const filterParams = filtersToParams(currentFilters);
 		filterParams.set('cohorts', cohortIds);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved, adding query params
 		goto(`${basePath}?${filterParams.toString()}`);
 	}
 
-	function confirmShowAll() {
-		showAllWarning = true;
+	const allCohortsSelected = $derived(cohorts.length > 0 && localSelectedCohorts.size === cohorts.length);
+
+	function selectAllCohorts() {
+		for (const cohort of cohorts) {
+			localSelectedCohorts.add(cohort.id);
+		}
 	}
 
-	function loadAll() {
-		showAllWarning = false;
-		const basePath = resolve('/admin/attendance/apprentices');
-		const filterParams = filtersToParams(currentFilters);
-		filterParams.set('all', 'true');
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved, adding query params
-		goto(`${basePath}?${filterParams.toString()}`);
+	function deselectAllCohorts() {
+		localSelectedCohorts.clear();
 	}
 
 	function clearSelection() {
-		const basePath = resolve('/admin/attendance/apprentices');
+		const basePath = resolve('/admin/attendance');
 		const filterParams = filtersToParams(currentFilters);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- basePath is already resolved
 		goto(filterParams.toString() ? `${basePath}?${filterParams.toString()}` : basePath);
@@ -223,7 +221,7 @@
 
 	// Handle filter changes from the AttendanceFilters component
 	function handleFiltersChange(newFilters: AttendanceFilters) {
-		const basePath = resolve('/admin/attendance/apprentices');
+		const basePath = resolve('/admin/attendance');
 		const currentParams = new URLSearchParams(page.url.search);
 
 		// Preserve cohort selection
@@ -245,8 +243,7 @@
 <div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6">
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
-		<h1 class="text-2xl font-bold mt-2">Apprentice Attendance</h1>
-		<p class="text-gray-600 mt-1">Track individual apprentice attendance history and rates</p>
+		<h1 class="text-2xl font-bold mt-2">Attendance</h1>
 	</header>
 
 	<!-- Loading Overlay -->
@@ -263,10 +260,26 @@
 	<!-- Cohort Selection (shown when no data loaded) -->
 	{#if needsSelection}
 		<div class="bg-white border rounded-lg p-6 shadow-sm">
-			<h2 class="text-lg font-semibold mb-4">Select Cohorts</h2>
-			<p class="text-gray-600 mb-4">Choose one or more cohorts to view apprentice attendance data.</p>
+			<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+				<h2 class="text-lg font-semibold">Select Cohorts</h2>
+				<div class="flex flex-wrap gap-3">
+					<button
+						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+						disabled={localSelectedCohorts.size === 0}
+						onclick={loadSelectedCohorts}
+					>
+						Load Selected ({localSelectedCohorts.size})
+					</button>
+					<button
+						class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+						onclick={allCohortsSelected ? deselectAllCohorts : selectAllCohorts}
+					>
+						{allCohortsSelected ? 'Select None' : 'Select All'}
+					</button>
+				</div>
+			</div>
 
-			<div class="space-y-4 mb-6">
+			<div class="space-y-4">
 				{#each groupedCohorts as group (group.prefix)}
 					<div>
 						<button
@@ -306,48 +319,6 @@
 				{/each}
 			</div>
 
-			<div class="flex flex-wrap gap-3">
-				<button
-					class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-					disabled={localSelectedCohorts.size === 0}
-					onclick={loadSelectedCohorts}
-				>
-					Load Selected ({localSelectedCohorts.size})
-				</button>
-
-				<button
-					class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-					onclick={confirmShowAll}
-				>
-					Show All Apprentices
-				</button>
-			</div>
-
-			<!-- Show All Warning Modal -->
-			{#if showAllWarning}
-				<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-					<div class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-						<h3 class="text-lg font-semibold mb-2">Load All Apprentices?</h3>
-						<p class="text-gray-600 mb-4">
-							Loading attendance data for all cohorts may take 30 seconds or more depending on the number of apprentices.
-						</p>
-						<div class="flex gap-3 justify-end">
-							<button
-								class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-								onclick={() => showAllWarning = false}
-							>
-								Cancel
-							</button>
-							<button
-								class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-								onclick={loadAll}
-							>
-								Yes, Load All
-							</button>
-						</div>
-					</div>
-				</div>
-			{/if}
 		</div>
 	{:else}
 		<!-- Attendance Filter -->
@@ -446,7 +417,7 @@
 								</td>
 								<td class="p-3 text-right">
 									<a
-										href={resolve(`/admin/attendance/apprentices/${apprentice.apprenticeId}`)}
+										href={resolve(`/admin/attendance/${apprentice.apprenticeId}`)}
 										class="text-blue-600 hover:underline text-sm"
 									>
 										View Details
