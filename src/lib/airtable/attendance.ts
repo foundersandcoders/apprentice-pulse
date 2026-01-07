@@ -334,6 +334,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	/** Event data needed for stats calculations */
 	interface EventForStats {
 		id: string;
+		name: string;
 		dateTime: string;
 		cohortIds: string[];
 	}
@@ -377,6 +378,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			const cohortIds = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
 			return {
 				id: record.id,
+				name: (record.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 				cohortIds: cohortIds ?? [],
 			};
@@ -990,9 +992,16 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 	/**
 	 * Get attendance history for a specific apprentice
-	 * Returns a list of events with their attendance status
+	 *
+	 * Key behavior:
+	 * - Only shows events assigned to the apprentice's cohort
+	 * - Events with no attendance record are shown as 'Absent' (implicit)
+	 * - Optionally filters by date range
 	 */
-	async function getApprenticeAttendanceHistory(apprenticeId: string): Promise<AttendanceHistoryEntry[]> {
+	async function getApprenticeAttendanceHistory(
+		apprenticeId: string,
+		options?: { startDate?: Date; endDate?: Date }
+	): Promise<AttendanceHistoryEntry[]> {
 		const apprenticesTable = base(TABLES.APPRENTICES);
 
 		// Get apprentice info to find their cohort
@@ -1012,84 +1021,36 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
 		const cohortId = cohortLink?.[0] ?? null;
 
-		// Get all events for this apprentice's cohort
-		const allEvents = await eventsTable
-			.select({
-				returnFieldsByFieldId: true,
-			})
-			.all();
+		// Get events for this cohort (with optional date filter)
+		const allEvents = await getAllEvents();
+		const relevantEvents = getEventsForCohort(allEvents, cohortId, options);
+		const relevantEventIds = new Set(relevantEvents.map(e => e.id));
 
-		// Get all attendance records and filter by apprentice ID in JavaScript
-		// (filterByFormula with linked fields matches display value, not record ID)
-		const allAttendanceRecords = await attendanceTable
-			.select({
-				returnFieldsByFieldId: true,
-			})
-			.all();
-
-		// Filter to only records for this apprentice
-		const attendanceRecords = allAttendanceRecords.filter((record) => {
-			const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
-			return apprenticeLink?.includes(apprenticeId);
-		});
+		// Get attendance for this apprentice, filtered to cohort events only
+		const allAttendance = await getAllAttendance();
+		const apprenticeAttendance = filterAttendanceToEvents(
+			allAttendance.filter(a => a.apprenticeId === apprenticeId),
+			relevantEventIds
+		);
 
 		// Create a map of eventId -> attendance record
 		const attendanceMap = new Map<string, Attendance>();
-		for (const record of attendanceRecords) {
-			const eventLink = record.get(ATTENDANCE_FIELDS.EVENT) as string[] | undefined;
-			const eventId = eventLink?.[0];
-			if (eventId) {
-				attendanceMap.set(eventId, {
-					id: record.id,
-					eventId,
-					apprenticeId,
-					checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
-					status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
-				});
-			}
+		for (const attendance of apprenticeAttendance) {
+			attendanceMap.set(attendance.eventId, attendance);
 		}
 
-		// Include events that are either:
-		// 1. For the apprentice's cohort (expected events - show as Missed if no attendance)
-		// 2. Have an attendance record (apprentice checked in, even if not their cohort)
-		// 3. All events if apprentice has no cohort
-		const relevantEventIds = new Set<string>();
-
-		if (cohortId) {
-			// Add cohort events
-			for (const event of allEvents) {
-				const cohortIds = event.get(EVENT_FIELDS.COHORT) as string[] | undefined;
-				if (cohortIds?.includes(cohortId)) {
-					relevantEventIds.add(event.id);
-				}
-			}
-		}
-		else {
-			// No cohort - include all events
-			for (const event of allEvents) {
-				relevantEventIds.add(event.id);
-			}
-		}
-
-		// Add any events the apprentice has attendance for (regardless of cohort)
-		for (const eventId of attendanceMap.keys()) {
-			relevantEventIds.add(eventId);
-		}
-
-		// Build the history entries
-		const history: AttendanceHistoryEntry[] = allEvents
-			.filter(event => relevantEventIds.has(event.id))
-			.map((event) => {
-				const attendance = attendanceMap.get(event.id);
-				return {
-					eventId: event.id,
-					eventName: (event.get(EVENT_FIELDS.NAME) as string) || 'Unnamed Event',
-					eventDateTime: event.get(EVENT_FIELDS.DATE_TIME) as string,
-					status: attendance ? attendance.status : 'Absent',
-					checkinTime: attendance?.checkinTime ?? null,
-					attendanceId: attendance?.id ?? null,
-				};
-			});
+		// Build the history entries - one for each relevant event
+		const history: AttendanceHistoryEntry[] = relevantEvents.map((event) => {
+			const attendance = attendanceMap.get(event.id);
+			return {
+				eventId: event.id,
+				eventName: event.name,
+				eventDateTime: event.dateTime,
+				status: attendance ? attendance.status : 'Absent',
+				checkinTime: attendance?.checkinTime ?? null,
+				attendanceId: attendance?.id ?? null,
+			};
+		});
 
 		// Sort by date (most recent first)
 		history.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
