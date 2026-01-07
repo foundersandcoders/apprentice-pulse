@@ -10,9 +10,6 @@ Absent reason.
 Events view, list of people, show link to apprentices to go to personalised
 
 
-Attendace
-Latenes on grpah
-
 
 survey URL is OK?
 

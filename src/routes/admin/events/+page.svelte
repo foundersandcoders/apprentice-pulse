@@ -994,10 +994,10 @@
 		{#if events.length === 0}
 			<p class="text-gray-500">No events found.</p>
 		{:else}
-			<div bind:this={tableContainer} class="overflow-auto max-h-140 border border-gray-200 rounded-lg">
+			<div bind:this={tableContainer} class="overflow-auto max-h-140 bg-white border border-gray-200 rounded-xl shadow-sm">
 				<table class="w-full border-collapse">
 					<thead class="sticky top-0 z-10">
-						<tr class="bg-gray-100 text-left">
+						<tr class="bg-gray-50 text-left">
 							<th class="p-2 border-b font-semibold">
 								<button
 									onclick={() => toggleSort('name')}
@@ -1479,7 +1479,7 @@
 								<!-- Normal display row -->
 								<tr
 									data-event-id={event.id}
-									class="border-b hover:bg-gray-100"
+									class="border-b hover:bg-gray-50 transition-colors"
 									class:cursor-pointer={hasRoster && !isAddingEvent}
 									class:bg-blue-50={isExpanded}
 									class:bg-stone-100={isPast && !isExpanded}
@@ -1972,7 +1972,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="ec-calendar-wrapper border border-gray-200 rounded-lg p-4 bg-white" class:series-mode={isCreatingSeries}>
+			<div class="ec-calendar-wrapper bg-white border border-gray-200 rounded-xl shadow-sm p-4" class:series-mode={isCreatingSeries}>
 				<Calendar plugins={calendarPlugins} options={calendarOptions} />
 			</div>
 		</section>
