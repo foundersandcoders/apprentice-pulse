@@ -1,205 +1,204 @@
-# Attendance System Refactor Plan
+# Plan: Staff-as-Apprentice Check-in
 
-## Goal
+## Overview
 
-Simplify attendance tracking to focus on what matters: **apprentices attending events assigned to their cohort**.
+Enable staff members who are also apprentices to check in using their apprentice profile instead of being treated as external guests.
 
-## Core Principles
+## Current Behavior
 
-1. An apprentice's attendance stats should ONLY include events where their cohort was assigned
-2. No attendance record = implicit Not Check-in (staff don't manually mark absences)
-3. Same filtering options (term/date) available on both list and detail pages
-4. No duplicated code - reusable filter logic
+1. Staff logs in with their staff email
+2. `getApprenticeByEmail(staffEmail)` finds no match (apprentice uses learner email)
+3. `checkInMethod = 'external'`
+4. No "Absent" button, attendance not tracked against apprentice record
+
+## Desired Behavior
+
+1. Staff logs in with their staff email
+2. Look up Staff record → get linked Apprentice → get learner email
+3. Use learner email to find apprentice record
+4. `checkInMethod = 'apprentice'`
+5. Full apprentice experience: Absent button, proper attendance tracking
+
+## Airtable Schema Changes (Already Done)
+
+**Table:** Learners / Staff - Apprentice pulse (`tblJjn62ExE1LVjmx`)
+
+| Field | ID | Type |
+|-------|-----|------|
+| Id | `fldbTKP32s3Soev91` | autoNumber |
+| Staff Member | `fldHEHhQInmSdipn8` | singleCollaborator |
+| Apprentice Link | `fldAMwe9jOOdwIyBY` | multipleRecordLinks |
+| Learner email (from Apprentice Link) | `fldPjDZTSySzbefXz` | multipleLookupValues |
 
 ---
 
-## Page Names (for clarity)
+## Implementation Steps
 
-| URL | Name | Purpose |
-|-----|------|---------|
-| `/admin/attendance/apprentices` | **Apprentice List** | List of apprentices with stats, cohort/term/date filters |
-| `/admin/attendance/apprentices/[id]` | **Apprentice Detail** | Single apprentice's stats + history table |
+### Step 1: Update Schema Documentation
 
----
+**File:** `docs/schema.md`
 
-## Current Problems
+Update the Staff - Apprentice Pulse section to include the new fields:
+- Rename table to "Learners / Staff - Apprentice pulse"
+- Add `Apprentice Link` field
+- Add `Learner email (from Apprentice Link)` field
 
-1. **Two nearly-identical functions** (`getApprenticeAttendanceStats` and `getApprenticeAttendanceStatsWithDateFilter`) with inconsistent filtering logic
-2. **Attendance not filtered to cohort events** - causes negative absent counts when apprentice attended non-cohort events
-3. **History includes non-cohort events** - confusing, doesn't match stats
-4. **Multiple places determine "relevant events"** - logic is duplicated and inconsistent
-5. **Detail page ignores filters** - no term/date filtering, inconsistent with list page
-6. **Filter UI is duplicated** - if we add filters to detail page, we'd duplicate the filter components
+### Step 2: Update Airtable Config
 
----
+**File:** `src/lib/airtable/config.ts`
 
-## Proposed Changes
-
-### Phase 1: Simplify Core Logic
-
-#### 1.1 Single function for apprentice stats
-
-Replace both `getApprenticeAttendanceStats()` and `getApprenticeAttendanceStatsWithDateFilter()` with one:
-
+Add new field constants:
 ```typescript
-async function getApprenticeStats(
-  apprenticeId: string,
-  options?: { startDate?: Date; endDate?: Date }
-): Promise<ApprenticeAttendanceStats | null>
+export const STAFF_FIELDS = {
+  ID: 'fldbTKP32s3Soev91',
+  STAFF_NAME: 'fldHEHhQInmSdipn8',  // existing
+  APPRENTICE_LINK: 'fldAMwe9jOOdwIyBY',  // new
+  LEARNER_EMAIL: 'fldPjDZTSySzbefXz',  // new (lookup)
+};
 ```
 
-- Always filters events by cohort
-- Always filters attendance to cohort events
-- Date filtering is optional
+### Step 3: Update Staff Type Definition
 
-#### 1.2 Extract "get relevant events for apprentice" helper
+**File:** `src/lib/types/staff.ts` (or wherever Staff type is defined)
 
+Add new optional field:
 ```typescript
-function getEventsForApprentice(
-  allEvents: EventForStats[],
-  cohortId: string | null,
-  options?: { startDate?: Date; endDate?: Date }
-): EventForStats[]
-```
-
-Single source of truth for which events count toward an apprentice's stats.
-
-#### 1.3 Extract "get attendance for events" helper
-
-```typescript
-function filterAttendanceToEvents(
-  attendance: Attendance[],
-  eventIds: Set<string>
-): Attendance[]
-```
-
-Ensures attendance records always match the relevant events.
-
-### Phase 2: Simplify History
-
-#### 2.1 History only shows cohort events
-
-Change `getApprenticeAttendanceHistory()` to only return events for the apprentice's cohort. This makes history consistent with stats.
-
-If no attendance record exists for a cohort event → show as "Not Check-in" (implicit).
-
-#### 2.2 Remove "add attendance from other cohorts" logic
-
-Delete this block from `getApprenticeAttendanceHistory()`:
-```typescript
-// Add any events the apprentice has attendance for (regardless of cohort)
-for (const eventId of attendanceMap.keys()) {
-    relevantEventIds.add(eventId);
+interface Staff {
+  id: string;
+  name: string;
+  email: string;
+  learnerEmail?: string;  // new - apprentice email if staff is also apprentice
 }
 ```
 
-### Phase 3: Reusable Filter System
+### Step 4: Update Staff Lookup Function
 
-#### 3.1 Create shared filter types
+**File:** `src/lib/airtable/staff.ts`
 
+Modify `getStaffByEmail()` to return the learner email:
 ```typescript
-// src/lib/types/filters.ts
-export interface AttendanceFilters {
-  termIds?: string[];
-  startDate?: Date;
-  endDate?: Date;
+export async function getStaffByEmail(email: string): Promise<Staff | null> {
+  // ... existing lookup logic ...
+
+  return {
+    id: record.id,
+    name: record.fields[STAFF_FIELDS.STAFF_NAME].name,
+    email: record.fields[STAFF_FIELDS.STAFF_NAME].email,
+    learnerEmail: record.fields[STAFF_FIELDS.LEARNER_EMAIL]?.[0] || null,
+  };
 }
 ```
 
-#### 3.2 Create reusable filter component
+### Step 5: Update Check-in Page Server
 
-```
-src/lib/components/AttendanceFilters.svelte
-```
+**File:** `src/routes/checkin/+page.server.ts`
 
-- Term multi-select dropdown
-- Custom date range inputs
-- Mutually exclusive (terms OR date range)
-- Emits filter changes via callback or URL params
-
-Used by both **Apprentice List** and **Apprentice Detail** pages.
-
-#### 3.3 Filter state via URL params
-
-Both pages read filters from URL:
-- `?terms=id1,id2` - term filtering
-- `?startDate=2024-01-01&endDate=2024-03-31` - date range filtering
-
-Detail page preserves filters when navigating from list:
-```
-/apprentices?terms=rec123 → /apprentices/recABC?terms=rec123
-```
-
-### Phase 4: Simplify calculateStats
-
-#### 4.1 Add guard against negative values
-
-Since we're filtering attendance to cohort events, this shouldn't happen, but add a safety net:
-
+Modify the apprentice lookup logic:
 ```typescript
-const missingEvents = Math.max(0, totalEvents - recordedEvents);
+export const load: PageServerLoad = async ({ locals }) => {
+  const user = locals.user;
+
+  if (!user) {
+    return { authenticated: false, ... };
+  }
+
+  // Try to find apprentice by user's email first
+  let apprentice = await getApprenticeByEmail(user.email);
+
+  // If not found and user is staff, check for linked learner email
+  if (!apprentice && user.role === 'staff') {
+    const staff = await getStaffByEmail(user.email);
+    if (staff?.learnerEmail) {
+      apprentice = await getApprenticeByEmail(staff.learnerEmail);
+    }
+  }
+
+  // ... rest of logic uses apprentice ...
+};
 ```
 
-### Phase 5: Clean Up
+### Step 6: Update Check-in API Endpoint
 
-#### 5.1 Remove dead code
+**File:** `src/routes/api/checkin/+server.ts`
 
-- Remove the old `getApprenticeAttendanceStats()` function
-- Remove any unused parameters
+Apply same logic to the check-in POST handler:
+```typescript
+// When creating attendance, use the linked apprentice if available
+let apprentice = await getApprenticeByEmail(session.email);
 
-#### 5.2 Update all call sites
+if (!apprentice) {
+  const staff = await getStaffByEmail(session.email);
+  if (staff?.learnerEmail) {
+    apprentice = await getApprenticeByEmail(staff.learnerEmail);
+  }
+}
+```
 
-- `apprentices/+page.server.ts` - use new unified function
-- `apprentices/[id]/+page.server.ts` - use new unified function + add filter support
+### Step 7: Update Absent API Endpoint
 
-#### 5.3 Update tests
+**File:** `src/routes/api/checkin/absent/+server.ts`
 
-- Update `attendance.spec.ts` for new function signatures
-- Add test case: apprentice with attendance outside their cohort (should be ignored)
+Apply same logic for marking absent.
 
----
+### Step 8: Add Helper Function (Optional)
 
-## Files to Change
+Consider creating a helper to DRY up the logic:
+```typescript
+// src/lib/airtable/apprentice.ts
+export async function getApprenticeForUser(email: string, role: UserRole): Promise<Apprentice | null> {
+  // Direct lookup first
+  let apprentice = await getApprenticeByEmail(email);
 
-| File | Changes |
-|------|---------|
-| `src/lib/types/filters.ts` | **NEW** - shared filter types |
-| `src/lib/airtable/attendance.ts` | Major refactor - merge functions, add helpers |
-| `src/lib/components/AttendanceFilters.svelte` | **NEW** - reusable filter component |
-| `src/routes/admin/attendance/apprentices/+page.svelte` | Extract filter UI to shared component |
-| `src/routes/admin/attendance/apprentices/+page.server.ts` | Use new unified function |
-| `src/routes/admin/attendance/apprentices/[id]/+page.svelte` | Add filter component, preserve filters from list |
-| `src/routes/admin/attendance/apprentices/[id]/+page.server.ts` | Add filter support, use new unified function |
-| `src/lib/airtable/attendance.spec.ts` | Update tests |
+  // Staff fallback: check linked learner email
+  if (!apprentice && role === 'staff') {
+    const staff = await getStaffByEmail(email);
+    if (staff?.learnerEmail) {
+      apprentice = await getApprenticeByEmail(staff.learnerEmail);
+    }
+  }
 
----
-
-## What Stays the Same
-
-- Event roster (`/api/events/[id]/roster`) - still shows everyone who checked in
-- Check-in flow - unchanged
-- Airtable schema - no changes needed
-- ApprenticeAttendanceCard component - no changes (just receives corrected data)
-
----
-
-## Decisions Made
-
-1. **Implicit absents** - Keep current behavior (no record = absent). Staff don't manually mark absences.
-2. **Date filtering on detail page** - Same filters as list page, passed via URL params.
-3. **Filter UI** - Extract to reusable component, used by both pages.
+  return apprentice;
+}
+```
 
 ---
 
-## Implementation Order
+## Testing
 
-1. [ ] Create `src/lib/types/filters.ts` with shared types
-2. [ ] Add helper functions to `attendance.ts` (non-breaking)
-3. [ ] Create new unified `getApprenticeStats()` function
-4. [ ] Update `getApprenticeAttendanceHistory()` to only show cohort events
-5. [ ] Create `AttendanceFilters.svelte` component (extract from list page)
-6. [ ] Update **Apprentice List** page to use new component + function
-7. [ ] Update **Apprentice Detail** page to support filters + use new function
-8. [ ] Remove old functions
-9. [ ] Update tests
-10. [ ] Manual testing
+1. Log in as staff member who is NOT an apprentice
+   - Should still work as external check-in
+   - No Absent button
+
+2. Log in as staff member who IS an apprentice (has Apprentice Link)
+   - Should see Absent button
+   - Attendance should be recorded against apprentice record
+   - Stats should update correctly
+
+3. Log in directly as apprentice (using learner email)
+   - Should work as before (no regression)
+
+---
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `docs/schema.md` | Update Staff table documentation |
+| `src/lib/airtable/config.ts` | Add new field IDs |
+| `src/lib/types/staff.ts` | Add learnerEmail to Staff type |
+| `src/lib/airtable/staff.ts` | Return learnerEmail from lookup |
+| `src/routes/checkin/+page.server.ts` | Add staff→apprentice fallback lookup |
+| `src/routes/api/checkin/+server.ts` | Add staff→apprentice fallback lookup |
+| `src/routes/api/checkin/absent/+server.ts` | Add staff→apprentice fallback lookup |
+
+---
+
+## Risks & Considerations
+
+1. **Multiple learner emails**: The lookup field is `multipleLookupValues` - handle case where array has multiple values (use first one)
+
+2. **Caching**: If staff data is cached, changes to Apprentice Link won't take effect immediately
+
+3. **Auth flow**: This doesn't affect authentication - staff still logs in with staff email, we just use the linked apprentice for attendance
+
+4. **Existing attendance**: Historical external attendance for staff-apprentices won't be linked to apprentice records (acceptable for MVP)

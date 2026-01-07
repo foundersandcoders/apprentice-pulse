@@ -30,6 +30,8 @@ export const APPRENTICE_FIELDS = {
 // Fields - Staff
 export const STAFF_FIELDS = {
 	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
+	APPRENTICE_LINK: 'fldAMwe9jOOdwIyBY', // multipleRecordLinks to Apprentices
+	LEARNER_EMAIL: 'fldPjDZTSySzbefXz', // multipleLookupValues from linked Apprentice
 } as const;
 
 // Fields - Events

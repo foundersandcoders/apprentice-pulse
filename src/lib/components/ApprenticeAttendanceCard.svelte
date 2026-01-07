@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
+	import { STATUS_STYLES } from '$lib/types/attendance';
 
 	interface Props {
 		apprentice: ApprenticeAttendanceStats;
@@ -68,24 +69,24 @@
 
 	<div class="grid grid-cols-5 gap-2 text-center text-sm">
 		<!-- Row 1: Present, Late, Excused, Not Check-in, Absent -->
-		<div class="bg-green-50 rounded p-2">
-			<div class="font-semibold text-green-600">{apprentice.present}</div>
+		<div class="{STATUS_STYLES['Present'].bg} rounded p-2">
+			<div class="font-semibold {STATUS_STYLES['Present'].text}">{apprentice.present}</div>
 			<div class="text-gray-500 text-xs">Present</div>
 		</div>
-		<div class="bg-yellow-50 rounded p-2">
-			<div class="font-semibold text-yellow-600">{apprentice.late}</div>
+		<div class="{STATUS_STYLES['Late'].bg} rounded p-2">
+			<div class="font-semibold {STATUS_STYLES['Late'].text}">{apprentice.late}</div>
 			<div class="text-gray-500 text-xs">Late</div>
 		</div>
-		<div class="bg-blue-50 rounded p-2">
-			<div class="font-semibold text-blue-600">{apprentice.excused}</div>
+		<div class="{STATUS_STYLES['Excused'].bg} rounded p-2">
+			<div class="font-semibold {STATUS_STYLES['Excused'].text}">{apprentice.excused}</div>
 			<div class="text-gray-500 text-xs">Excused</div>
 		</div>
-		<div class="bg-red-50 rounded p-2">
-			<div class="font-semibold text-red-600">{apprentice.absent}</div>
+		<div class="{STATUS_STYLES['Not Check-in'].bg} rounded p-2">
+			<div class="font-semibold {STATUS_STYLES['Not Check-in'].text}">{apprentice.absent}</div>
 			<div class="text-gray-500 text-xs">Not Check-in</div>
 		</div>
-		<div class="bg-orange-50 rounded p-2">
-			<div class="font-semibold text-orange-600">{apprentice.notComing}</div>
+		<div class="{STATUS_STYLES['Absent'].bg} rounded p-2">
+			<div class="font-semibold {STATUS_STYLES['Absent'].text}">{apprentice.notComing}</div>
 			<div class="text-gray-500 text-xs">Absent</div>
 		</div>
 		<!-- Row 2: Attended under Present + Late, Missed under Not Check-in + Absent -->

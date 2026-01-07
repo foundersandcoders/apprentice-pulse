@@ -5,7 +5,7 @@
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
-	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
+	import { ATTENDANCE_STATUSES, getStatusBadgeClass } from '$lib/types/attendance';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { parseFiltersFromParams, filtersToParams } from '$lib/types/filters';
 	import type { Term } from '$lib/airtable/sveltekit-wrapper';
@@ -51,17 +51,6 @@
 			}
 		}
 	});
-
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case 'Present': return 'bg-green-100 text-green-800';
-			case 'Late': return 'bg-yellow-100 text-yellow-800';
-			case 'Not Check-in': return 'bg-red-100 text-red-800';
-			case 'Excused': return 'bg-blue-100 text-blue-800';
-			case 'Absent': return 'bg-orange-100 text-orange-800';
-			default: return 'bg-gray-100 text-gray-600';
-		}
-	}
 
 	function formatDateTime(dateTime: string): string {
 		try {
@@ -275,7 +264,7 @@
 									{:else}
 										<button
 											onclick={() => startEditingStatus(entry)}
-											class="px-2 py-1 rounded-full text-sm {getStatusColor(entry.status)} hover:opacity-80"
+											class="px-2 py-1 rounded-full text-sm {getStatusBadgeClass(entry.status)} hover:opacity-80"
 										>
 											{entry.status}
 										</button>

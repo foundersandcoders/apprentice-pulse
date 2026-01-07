@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSession } from '$lib/server/session';
-import { getApprenticeByEmail, markNotComing } from '$lib/airtable/sveltekit-wrapper';
+import { getApprenticeByEmail, getStaffByEmail, markNotComing } from '$lib/airtable/sveltekit-wrapper';
 
 export const POST: RequestHandler = async ({ cookies, request }) => {
 	const session = getSession(cookies);
@@ -26,7 +26,16 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 
 	try {
 		// Only registered apprentices can mark "Absent"
-		const apprentice = await getApprenticeByEmail(session.email);
+		// First try direct email lookup
+		let apprentice = await getApprenticeByEmail(session.email);
+
+		// If not found, check if user is staff with linked learner email
+		if (!apprentice) {
+			const staff = await getStaffByEmail(session.email);
+			if (staff?.learnerEmail) {
+				apprentice = await getApprenticeByEmail(staff.learnerEmail);
+			}
+		}
 
 		if (!apprentice) {
 			return json({

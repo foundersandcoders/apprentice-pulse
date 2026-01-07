@@ -176,16 +176,18 @@ Intervention and support request tracking.
 
 ---
 
-## Staff - Apprentice Pulse
+## Learners / Staff - Apprentice Pulse
 
 **Table ID:** `tblJjn62ExE1LVjmx`
 
-Staff members for authentication. Uses Airtable collaborators for email lookup.
+Staff members for authentication. Uses Airtable collaborators for email lookup. Staff who are also apprentices can be linked to their apprentice record.
 
 | Field | ID | Type | Purpose |
 |-------|-----|------|---------|
 | Id | `fldbTKP32s3Soev91` | autoNumber | Record ID |
-| Staff Name | `fldHEHhQInmSdipn8` | singleCollaborator | Collaborator with id, email, name |
+| Staff Member | `fldHEHhQInmSdipn8` | singleCollaborator | Collaborator with id, email, name |
+| Apprentice Link | `fldAMwe9jOOdwIyBY` | multipleRecordLinks | Links to Apprentices table |
+| Learner email (from Apprentice Link) | `fldPjDZTSySzbefXz` | multipleLookupValues | Lookup of learner email from linked apprentice |
 
 ---
 

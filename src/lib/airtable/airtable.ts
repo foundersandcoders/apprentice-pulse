@@ -30,6 +30,13 @@ export interface Term {
 	endDate: string;
 }
 
+export interface StaffRecord {
+	id: string;
+	name: string;
+	email: string;
+	learnerEmail: string | null; // Email of linked apprentice, if staff is also an apprentice
+}
+
 export type UserType = 'staff' | 'student';
 
 export function createAirtableClient(apiKey: string, baseId: string) {
@@ -111,9 +118,9 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	}
 
 	/**
-	 * Check if email exists in Staff table
+	 * Get staff record by email, including linked learner email if staff is also an apprentice
 	 */
-	async function findStaffByEmail(email: string): Promise<boolean> {
+	async function getStaffByEmail(email: string): Promise<StaffRecord | null> {
 		const staffTable = base(TABLES.STAFF);
 
 		// singleCollaborator field cannot be filtered, must fetch all and iterate
@@ -124,13 +131,27 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			.all();
 
 		for (const record of staffRecords) {
-			const collaborator = record.get(STAFF_FIELDS.COLLABORATOR) as { email: string } | undefined;
+			const collaborator = record.get(STAFF_FIELDS.COLLABORATOR) as { id: string; email: string; name: string } | undefined;
 			if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
-				return true;
+				const learnerEmailLookup = record.get(STAFF_FIELDS.LEARNER_EMAIL) as string[] | undefined;
+				return {
+					id: record.id,
+					name: collaborator.name,
+					email: collaborator.email,
+					learnerEmail: learnerEmailLookup?.[0] ?? null,
+				};
 			}
 		}
 
-		return false;
+		return null;
+	}
+
+	/**
+	 * Check if email exists in Staff table
+	 */
+	async function findStaffByEmail(email: string): Promise<boolean> {
+		const staff = await getStaffByEmail(email);
+		return staff !== null;
 	}
 
 	/**
@@ -306,6 +327,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		getApprenticesByFacCohort,
 		findUserByEmail,
 		findStaffByEmail,
+		getStaffByEmail,
 		findApprenticeByEmail,
 		getApprenticeByEmail,
 		listCohorts,

@@ -5,7 +5,7 @@
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
-	import { ATTENDANCE_STATUSES } from '$lib/types/attendance';
+	import { ATTENDANCE_STATUSES, getStatusBadgeClass, type AttendanceStatus } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
 	import DatePicker from '$lib/components/DatePicker.svelte';
@@ -368,7 +368,6 @@
 	});
 
 	// Expandable row state
-	type AttendanceStatus = 'Present' | 'Not Check-in' | 'Late' | 'Excused' | 'Absent';
 	interface RosterEntry {
 		id: string; // Apprentice ID or external attendance ID
 		attendanceId?: string; // Attendance record ID (undefined if not checked in yet)
@@ -379,13 +378,6 @@
 		checkinTime?: string;
 	}
 
-	const statusStyles: Record<AttendanceStatus, string> = {
-		'Present': 'bg-green-100 text-green-700',
-		'Not Check-in': 'bg-red-100 text-red-700',
-		'Late': 'bg-yellow-100 text-yellow-700',
-		'Excused': 'bg-blue-100 text-blue-700',
-		'Absent': 'bg-orange-100 text-orange-700',
-	};
 	let expandedEventId = $state<string | null>(null);
 	let expandedEventDateTime = $state<string | null>(null);
 	let rosterData = $state<RosterEntry[]>([]);
@@ -1641,7 +1633,7 @@
 																			e.stopPropagation();
 																			startEditingStatus(person);
 																		}}
-																		class="{statusStyles[person.status]} px-2 py-0.5 rounded text-xs hover:ring-2 hover:ring-offset-1 hover:ring-gray-300"
+																		class="{getStatusBadgeClass(person.status)} px-2 py-0.5 rounded text-xs hover:ring-2 hover:ring-offset-1 hover:ring-gray-300"
 																		title="Click to change status"
 																	>
 																		{person.status}

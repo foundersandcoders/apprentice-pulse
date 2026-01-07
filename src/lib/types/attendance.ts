@@ -2,6 +2,20 @@
 export const ATTENDANCE_STATUSES = ['Present', 'Not Check-in', 'Late', 'Excused', 'Absent'] as const;
 export type AttendanceStatus = typeof ATTENDANCE_STATUSES[number];
 
+// Centralized status styling - single source of truth for colors
+export const STATUS_STYLES: Record<AttendanceStatus, { bg: string; text: string; badge: string }> = {
+	'Present': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-700' },
+	'Late': { bg: 'bg-yellow-50', text: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-700' },
+	'Excused': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
+	'Not Check-in': { bg: 'bg-red-50', text: 'text-red-600', badge: 'bg-red-100 text-red-700' },
+	'Absent': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-700' },
+};
+
+// Helper to get badge classes for a status
+export function getStatusBadgeClass(status: AttendanceStatus): string {
+	return STATUS_STYLES[status]?.badge ?? 'bg-gray-100 text-gray-700';
+}
+
 export interface Attendance {
 	id: string;
 	eventId: string;

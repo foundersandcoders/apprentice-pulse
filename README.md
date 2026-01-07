@@ -49,17 +49,42 @@ The app uses SvelteKit hooks (`src/hooks.server.ts`) for centralized route prote
 
 Both staff and students can access `/checkin`. The system determines check-in behavior based on apprentice record:
 
-| User | Has Apprentice Record? | Events Shown | Attendance Method |
-|------|------------------------|--------------|-------------------|
-| Student | Yes | Cohort + public | Linked to apprentice ID |
-| Staff | Yes (if also apprentice) | Cohort + public | Linked to apprentice ID |
-| Staff | No | Public only | External (uses session email) |
+| User | Apprentice Link? | Events Shown | Attendance Method | Absent Button |
+|------|------------------|--------------|-------------------|---------------|
+| Student | N/A (is apprentice) | Cohort + public | Linked to apprentice ID | Yes |
+| Staff | Yes (linked) | Cohort + public | Linked to apprentice ID | Yes |
+| Staff | No | Public only | External (uses session email) | No |
+
+See [Staff Who Are Also Apprentices](#staff-who-are-also-apprentices) for setup instructions.
 
 ### Adding Staff Members
 
 1. Add them as a **collaborator** in the Airtable workspace
 2. Add a record in the **Staff - Apprentice Pulse** table, selecting their collaborator profile
 3. They can now log in at `/admin/login` using their collaborator email
+
+### Staff Who Are Also Apprentices
+
+Some staff members may also be apprentices (e.g., apprentice coaches). These users need to:
+- Log in as **staff** to access admin features
+- Check in as an **apprentice** to have attendance tracked against their apprentice record
+
+The system supports this via the **Apprentice Link** field in the Staff table:
+
+1. In the **Staff - Apprentice Pulse** table, link the staff record to their **Apprentice** record using the `Apprentice Link` field
+2. The `Learner email` lookup field will automatically populate from the linked apprentice
+
+**How it works:**
+
+When a staff member accesses the check-in page:
+1. System first tries to find an apprentice record matching their staff email
+2. If not found, it checks if the staff record has a linked apprentice (via `Learner email` lookup)
+3. If a linked apprentice is found, the staff member gets the full apprentice check-in experience:
+   - Sees their cohort events (not just public events)
+   - Can mark themselves as "Absent"
+   - Attendance is recorded against their apprentice record
+
+This allows staff to maintain a single login (their staff email) while still being tracked as apprentices for attendance purposes.
 
 ## Development
 
