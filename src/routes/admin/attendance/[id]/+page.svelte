@@ -223,12 +223,14 @@
 		</div>
 	{/if}
 
-	<header class="mb-6">
-		<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
-		<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName}</h1>
-		{#if stats.cohortName}
-			<p class="text-gray-600 mt-1">{stats.cohortName}</p>
-		{/if}
+	<header class="mb-6 flex justify-between items-start">
+		<div>
+			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
+			<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName} - Attendance</h1>
+			{#if stats.cohortName}
+				<p class="text-gray-600 mt-1">{stats.cohortName}</p>
+			{/if}
+		</div>
 	</header>
 
 	<!-- Attendance Filters -->
@@ -246,7 +248,7 @@
 	</div>
 
 	<!-- Attendance History -->
-	<section>
+	<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
 		<h2 class="text-xl font-semibold mb-4">Attendance History</h2>
 
 		{#if history.length === 0}
@@ -254,20 +256,20 @@
 				<p>No events found for this apprentice</p>
 			</div>
 		{:else}
-			<div class="overflow-x-auto">
+			<div class="overflow-x-auto -mx-6">
 				<table class="w-full border-collapse">
 					<thead>
 						<tr class="bg-gray-50">
-							<th class="text-left p-3 border-b">Event</th>
+							<th class="text-left p-3 pl-6 border-b">Event</th>
 							<th class="text-left p-3 border-b">Date & Time</th>
 							<th class="text-center p-3 border-b">Status</th>
-							<th class="text-center p-3 border-b">Check-in Time</th>
+							<th class="text-center p-3 pr-6 border-b">Check-in Time</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each history as entry (entry.eventId)}
-							<tr class="border-b hover:bg-gray-50">
-								<td class="p-3">
+							<tr class="border-b hover:bg-gray-50 transition-colors">
+								<td class="p-3 pl-6">
 									<div class="font-medium">{entry.eventName}</div>
 								</td>
 								<td class="p-3 text-gray-600">
@@ -277,7 +279,7 @@
 									{#if editingEntryId === entry.eventId}
 										<select
 											bind:value={editingStatus}
-											class="border rounded px-1 py-0.5 text-xs"
+											class="border border-gray-300 rounded-lg px-2 py-1 text-xs"
 											onclick={e => e.stopPropagation()}
 										>
 											{#each ATTENDANCE_STATUSES as status (status)}
@@ -287,36 +289,34 @@
 									{:else}
 										<button
 											onclick={() => startEditingStatus(entry)}
-											class="px-2 py-1 rounded-full text-sm {getStatusBadgeClass(entry.status)} hover:opacity-80"
+											class="px-2 py-1 rounded-full text-sm cursor-pointer {getStatusBadgeClass(entry.status)} hover:opacity-80 transition-opacity"
 										>
 											{entry.status}
 										</button>
 									{/if}
 								</td>
-								<td class="p-3 text-center">
+								<td class="p-3 pr-6 text-center">
 									{#if editingEntryId === entry.eventId}
 										<div class="flex items-center justify-center gap-2">
 											{#if editingStatus === 'Present' || editingStatus === 'Late'}
 												<input
 													type="datetime-local"
 													bind:value={editingCheckinTime}
-													class="border rounded px-1 py-0.5 text-xs"
+													class="border border-gray-300 rounded-lg px-2 py-1 text-xs"
 													onclick={e => e.stopPropagation()}
 												/>
-											{:else}
-												<span class="text-gray-400 text-xs">—</span>
 											{/if}
 											<button
 												onclick={saveStatusChange}
 												disabled={statusUpdateLoading}
-												class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
+												class="px-2 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
 											>
 												{statusUpdateLoading ? '...' : '✓'}
 											</button>
 											<button
 												onclick={cancelEditing}
 												disabled={statusUpdateLoading}
-												class="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 disabled:opacity-50"
+												class="px-2 py-1 bg-gray-500 text-white text-xs rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
 											>
 												✕
 											</button>
@@ -333,5 +333,5 @@
 				</table>
 			</div>
 		{/if}
-	</section>
+	</div>
 </div>
