@@ -27,12 +27,12 @@
 	const appliedStartDate = $derived(
 		filters.dateRange?.startDate
 			? filters.dateRange.startDate.toISOString().split('T')[0]
-			: ''
+			: '',
 	);
 	const appliedEndDate = $derived(
 		filters.dateRange?.endDate
 			? filters.dateRange.endDate.toISOString().split('T')[0]
-			: ''
+			: '',
 	);
 
 	// Track if staged values differ from applied
@@ -182,7 +182,10 @@
 			<div class="relative" data-dropdown="terms">
 				<button
 					type="button"
-					onclick={(e) => { e.stopPropagation(); termDropdownOpen = !termDropdownOpen; }}
+					onclick={(e) => {
+						e.stopPropagation();
+						termDropdownOpen = !termDropdownOpen;
+					}}
 					class="w-full text-left border rounded px-3 py-2 text-sm bg-white hover:border-blue-300 flex justify-between items-center"
 				>
 					<span class="truncate">

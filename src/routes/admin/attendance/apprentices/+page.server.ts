@@ -3,8 +3,7 @@ import {
 	listCohorts,
 	listTerms,
 	getApprenticesByCohortId,
-	getApprenticeAttendanceStats,
-	getApprenticeAttendanceStatsWithDateFilter,
+	getApprenticeStats,
 } from '$lib/airtable/sveltekit-wrapper';
 import type { ApprenticeAttendanceStats } from '$lib/types/attendance';
 
@@ -69,7 +68,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			// Custom date range takes priority
 			filterStartDate = new Date(startDateParam);
 			filterEndDate = new Date(endDateParam);
-		} else if (selectedTermIds.length > 0) {
+		}
+		else if (selectedTermIds.length > 0) {
 			// Fall back to term-based filtering
 			const selectedTerms = terms.filter(t => selectedTermIds.includes(t.id));
 			if (selectedTerms.length > 0) {
@@ -84,9 +84,13 @@ export const load: PageServerLoad = async ({ url }) => {
 
 		// Fetch attendance stats for each apprentice
 		const apprenticeStats: ApprenticeAttendanceStats[] = [];
+		const dateOptions = filterStartDate && filterEndDate
+			? { startDate: filterStartDate, endDate: filterEndDate }
+			: undefined;
+
 		for (const apprenticeId of apprenticeIds) {
 			try {
-				const stats = await getApprenticeAttendanceStatsWithDateFilter(apprenticeId, filterStartDate, filterEndDate);
+				const stats = await getApprenticeStats(apprenticeId, dateOptions);
 				if (stats) {
 					apprenticeStats.push(stats);
 				}
