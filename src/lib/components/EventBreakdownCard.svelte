@@ -33,11 +33,11 @@
 					<tr class="bg-gray-50">
 						<th class="text-left p-3 pl-6 border-b">Event</th>
 						<th class="text-left p-3 border-b">Date</th>
-						<th class="text-center p-3 border-b {STATUS_STYLES['Present'].text}">Present</th>
-						<th class="text-center p-3 border-b {STATUS_STYLES['Late'].text}">Late</th>
-						<th class="text-center p-3 border-b {STATUS_STYLES['Excused'].text}">Excused</th>
-						<th class="text-center p-3 border-b {STATUS_STYLES['Not Check-in'].text}">Not Check-in</th>
-						<th class="text-center p-3 pr-6 border-b {STATUS_STYLES['Absent'].text}">Absent</th>
+						<th class="text-center p-3 border-b">Present</th>
+						<th class="text-center p-3 border-b">Late</th>
+						<th class="text-center p-3 border-b">Excused</th>
+						<th class="text-center p-3 border-b">Not Check-in</th>
+						<th class="text-center p-3 pr-6 border-b">Absent</th>
 					</tr>
 				</thead>
 				<tbody>
