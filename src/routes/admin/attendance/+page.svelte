@@ -241,9 +241,15 @@
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
-	<header class="mb-6">
-		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
-		<h1 class="text-2xl font-bold mt-2">Attendance</h1>
+	<header class="mb-6 flex justify-between items-start">
+		<div>
+			<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
+			{#if needsSelection}
+				<h1 class="text-2xl font-bold mt-2">Attendance</h1>
+			{:else}
+				<h1 class="text-2xl font-bold mt-2">Cohort Attendance</h1>
+			{/if}
+		</div>
 	</header>
 
 	<!-- Loading Overlay -->
@@ -259,19 +265,19 @@
 
 	<!-- Cohort Selection (shown when no data loaded) -->
 	{#if needsSelection}
-		<div class="bg-white border rounded-lg p-6 shadow-sm">
+		<div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
 			<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
 				<h2 class="text-lg font-semibold">Select Cohorts</h2>
 				<div class="flex flex-wrap gap-3">
 					<button
-						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 						disabled={localSelectedCohorts.size === 0}
 						onclick={loadSelectedCohorts}
 					>
 						Load Selected ({localSelectedCohorts.size})
 					</button>
 					<button
-						class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+						class="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
 						onclick={allCohortsSelected ? deselectAllCohorts : selectAllCohorts}
 					>
 						{allCohortsSelected ? 'Select None' : 'Select All'}
@@ -298,13 +304,12 @@
 							{:else}
 								<span class="text-gray-400">○</span>
 							{/if}
-							{group.prefix}
-							<span class="text-xs opacity-75">({group.cohorts.length} cohort{group.cohorts.length !== 1 ? 's' : ''})</span>
+	{group.prefix}
 						</button>
 						<div class="flex flex-wrap gap-3">
 							{#each group.cohorts as cohort (cohort.id)}
 								<button
-									class="p-3 border rounded-lg text-left transition-colors"
+									class="p-3 border border-gray-200 rounded-xl text-left transition-all hover:shadow-md"
 									class:bg-blue-50={localSelectedCohorts.has(cohort.id)}
 									class:border-blue-500={localSelectedCohorts.has(cohort.id)}
 									class:hover:bg-gray-50={!localSelectedCohorts.has(cohort.id)}
@@ -330,104 +335,106 @@
 			/>
 		</div>
 
-		<!-- Filters & Controls -->
-		<div class="mb-6 flex flex-wrap gap-4 items-center">
-			<div class="flex flex-wrap gap-2 items-center">
-				<span class="text-sm text-gray-600">Showing:</span>
-				{#if showAll}
-					<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">All Cohorts</span>
-				{:else}
-					{#each selectedCohortIds as cohortId (cohortId)}
-						{@const cohort = cohorts.find(c => c.id === cohortId)}
-						{#if cohort}
-							<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">{cohort.name}</span>
-						{/if}
-					{/each}
-				{/if}
-				<button
-					class="text-blue-600 hover:underline text-sm"
-					onclick={clearSelection}
-				>
-					Change selection
-				</button>
-			</div>
-
-			<div class="text-sm text-gray-500 ml-auto">
-				{sortedApprentices.length} apprentice{sortedApprentices.length !== 1 ? 's' : ''}
-			</div>
-		</div>
-
-		<!-- Apprentices Table -->
-		{#if sortedApprentices.length === 0}
-			<div class="text-center py-12 text-gray-500">
-				<p>No apprentices found</p>
-			</div>
-		{:else}
-			<div class="overflow-x-auto">
-				<table class="w-full border-collapse">
-					<thead>
-						<tr class="bg-gray-50">
-							<th
-								class="text-left p-3 border-b cursor-pointer hover:bg-gray-100"
-								onclick={() => toggleSort('name')}
-							>
-								Name{getSortIndicator('name')}
-							</th>
-							<th
-								class="text-left p-3 border-b cursor-pointer hover:bg-gray-100"
-								onclick={() => toggleSort('cohort')}
-							>
-								Cohort{getSortIndicator('cohort')}
-							</th>
-							<th
-								class="text-right p-3 border-b cursor-pointer hover:bg-gray-100"
-								onclick={() => toggleSort('attendanceRate')}
-							>
-								Attendance Rate{getSortIndicator('attendanceRate')}
-							</th>
-							<th class="text-right p-3 border-b">Attended</th>
-							<th class="text-right p-3 border-b">Trend</th>
-							<th class="text-right p-3 border-b">Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each sortedApprentices as apprentice (apprentice.apprenticeId)}
-							<tr class="border-b hover:bg-gray-50" class:bg-red-50={isLowAttendance(apprentice.attendanceRate)}>
-								<td class="p-3">
-									<div class="font-medium">{apprentice.apprenticeName}</div>
-								</td>
-								<td class="p-3 text-gray-600">
-									{apprentice.cohortName || '—'}
-								</td>
-								<td class="p-3 text-right">
-									<span class="font-semibold {getAttendanceColor(apprentice.attendanceRate)}">
-										{apprentice.attendanceRate.toFixed(0)}%
-									</span>
-									{#if isLowAttendance(apprentice.attendanceRate)}
-										<span class="ml-1 text-red-500" title="Low attendance">⚠</span>
-									{/if}
-								</td>
-								<td class="p-3 text-right text-gray-600">
-									{apprentice.attended}/{apprentice.totalEvents}
-								</td>
-								<td class="p-3 text-right">
-									<span class={getTrendColor(apprentice.trend.direction)} title="{apprentice.trend.change > 0 ? '+' : ''}{apprentice.trend.change.toFixed(1)}%">
-										{getTrendIcon(apprentice.trend.direction)}
-									</span>
-								</td>
-								<td class="p-3 text-right">
-									<a
-										href={resolve(`/admin/attendance/${apprentice.apprenticeId}`)}
-										class="text-blue-600 hover:underline text-sm"
-									>
-										View Details
-									</a>
-								</td>
-							</tr>
+		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+			<!-- Filters & Controls -->
+			<div class="mb-6 flex flex-wrap gap-4 items-center">
+				<div class="flex flex-wrap gap-2 items-center">
+					<span class="text-sm text-gray-600">Showing:</span>
+					{#if showAll}
+						<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">All Cohorts</span>
+					{:else}
+						{#each selectedCohortIds as cohortId (cohortId)}
+							{@const cohort = cohorts.find(c => c.id === cohortId)}
+							{#if cohort}
+								<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">{cohort.name}</span>
+							{/if}
 						{/each}
-					</tbody>
-				</table>
+					{/if}
+					<button
+						class="text-blue-600 hover:underline text-sm transition-colors"
+						onclick={clearSelection}
+					>
+						Change selection
+					</button>
+				</div>
+
+				<div class="text-sm text-gray-500 ml-auto">
+					{sortedApprentices.length} apprentice{sortedApprentices.length !== 1 ? 's' : ''}
+				</div>
 			</div>
-		{/if}
+
+			<!-- Apprentices Table -->
+			{#if sortedApprentices.length === 0}
+				<div class="text-center py-12 text-gray-500">
+					<p>No apprentices found</p>
+				</div>
+			{:else}
+				<div class="overflow-x-auto -mx-6">
+					<table class="w-full border-collapse">
+						<thead>
+							<tr class="bg-gray-50">
+								<th
+									class="text-left p-3 pl-6 border-b cursor-pointer hover:bg-gray-100 transition-colors"
+									onclick={() => toggleSort('name')}
+								>
+									Name{getSortIndicator('name')}
+								</th>
+								<th
+									class="text-left p-3 border-b cursor-pointer hover:bg-gray-100 transition-colors"
+									onclick={() => toggleSort('cohort')}
+								>
+									Cohort{getSortIndicator('cohort')}
+								</th>
+								<th
+									class="text-right p-3 border-b cursor-pointer hover:bg-gray-100 transition-colors"
+									onclick={() => toggleSort('attendanceRate')}
+								>
+									Attendance Rate{getSortIndicator('attendanceRate')}
+								</th>
+								<th class="text-right p-3 border-b">Attended</th>
+								<th class="text-right p-3 border-b">Trend</th>
+								<th class="text-right p-3 pr-6 border-b">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each sortedApprentices as apprentice (apprentice.apprenticeId)}
+								<tr class="border-b hover:bg-gray-50 transition-colors" class:bg-red-50={isLowAttendance(apprentice.attendanceRate)}>
+									<td class="p-3 pl-6">
+										<div class="font-medium">{apprentice.apprenticeName}</div>
+									</td>
+									<td class="p-3 text-gray-600">
+										{apprentice.cohortName || '—'}
+									</td>
+									<td class="p-3 text-right">
+										<span class="font-semibold {getAttendanceColor(apprentice.attendanceRate)}">
+											{apprentice.attendanceRate.toFixed(0)}%
+										</span>
+										{#if isLowAttendance(apprentice.attendanceRate)}
+											<span class="ml-1 text-red-500" title="Low attendance">⚠</span>
+										{/if}
+									</td>
+									<td class="p-3 text-right text-gray-600">
+										{apprentice.attended}/{apprentice.totalEvents}
+									</td>
+									<td class="p-3 text-right">
+										<span class={getTrendColor(apprentice.trend.direction)} title="{apprentice.trend.change > 0 ? '+' : ''}{apprentice.trend.change.toFixed(1)}%">
+											{getTrendIcon(apprentice.trend.direction)}
+										</span>
+									</td>
+									<td class="p-3 pr-6 text-right">
+										<a
+											href={resolve(`/admin/attendance/${apprentice.apprenticeId}`)}
+											class="text-blue-600 hover:underline text-sm"
+										>
+											View Details
+										</a>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>
