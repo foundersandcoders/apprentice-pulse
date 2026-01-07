@@ -162,6 +162,70 @@ export interface AttendanceHistoryEntry {
 	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
 }
 
+/** Event breakdown stats for cohort view */
+export interface EventBreakdownEntry {
+	eventId: string;
+	eventName: string;
+	eventDateTime: string;
+	present: number;
+	late: number;
+	excused: number;
+	notCheckin: number;
+	absent: number;
+	total: number;
+}
+
+/**
+ * Calculate event breakdown from attendance history
+ * Groups by event and counts each status type
+ */
+export function calculateEventBreakdown(history: AttendanceHistoryEntry[]): EventBreakdownEntry[] {
+	if (history.length === 0) return [];
+
+	const eventMap = new Map<string, EventBreakdownEntry>();
+
+	for (const entry of history) {
+		if (!eventMap.has(entry.eventId)) {
+			eventMap.set(entry.eventId, {
+				eventId: entry.eventId,
+				eventName: entry.eventName,
+				eventDateTime: entry.eventDateTime,
+				present: 0,
+				late: 0,
+				excused: 0,
+				notCheckin: 0,
+				absent: 0,
+				total: 0,
+			});
+		}
+
+		const event = eventMap.get(entry.eventId)!;
+		event.total++;
+
+		switch (entry.status) {
+			case 'Present':
+				event.present++;
+				break;
+			case 'Late':
+				event.late++;
+				break;
+			case 'Excused':
+				event.excused++;
+				break;
+			case 'Not Check-in':
+				event.notCheckin++;
+				break;
+			case 'Absent':
+				event.absent++;
+				break;
+		}
+	}
+
+	// Sort by date (newest first)
+	return Array.from(eventMap.values())
+		.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
+}
+
 /** Monthly attendance data point for charts */
 export interface MonthlyAttendancePoint {
 	month: string; // Display format: "Jan 2025"

@@ -4,13 +4,14 @@
 	import { navigating, page } from '$app/state';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
-	import { calculateMonthlyAttendance, calculateCohortOverview } from '$lib/types/attendance';
+	import { calculateMonthlyAttendance, calculateCohortOverview, calculateEventBreakdown } from '$lib/types/attendance';
 	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import CohortOverviewCard from '$lib/components/CohortOverviewCard.svelte';
+	import EventBreakdownCard from '$lib/components/EventBreakdownCard.svelte';
 
 	let { data } = $props();
 
@@ -29,6 +30,9 @@
 
 	// Calculate cohort overview stats
 	const cohortOverview = $derived(calculateCohortOverview(apprentices));
+
+	// Calculate event breakdown
+	const eventBreakdown = $derived(calculateEventBreakdown(combinedHistory));
 
 	// Current filters from URL params
 	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
@@ -329,9 +333,14 @@
 			/>
 		</div>
 
-		<!-- Cohort Overview Card -->
+		<!-- Attendance Stats Card -->
 		<div class="mb-6">
 			<CohortOverviewCard stats={cohortOverview} />
+		</div>
+
+		<!-- Event Breakdown -->
+		<div class="mb-6">
+			<EventBreakdownCard events={eventBreakdown} />
 		</div>
 
 		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
