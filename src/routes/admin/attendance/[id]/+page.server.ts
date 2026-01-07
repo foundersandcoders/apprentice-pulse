@@ -10,6 +10,9 @@ import { parseFiltersFromParams } from '$lib/types/filters';
 export const load: PageServerLoad = async ({ params, url }) => {
 	const { id } = params;
 
+	// Get cohorts param to preserve for back navigation
+	const cohortsParam = url.searchParams.get('cohorts') || '';
+
 	// Parse filters from URL params
 	const filters = parseFiltersFromParams(url.searchParams);
 
@@ -53,5 +56,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		stats,
 		history,
 		terms,
+		cohortsParam,
 	};
 };

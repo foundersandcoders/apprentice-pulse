@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
 	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
@@ -15,6 +15,18 @@
 
 	const stats = $derived(data.stats as ApprenticeAttendanceStats);
 	const terms = $derived(data.terms as Term[]);
+	const cohortsParam = $derived(data.cohortsParam as string);
+
+	// Build back link preserving cohort selection
+	const backLink = $derived(
+		cohortsParam
+			? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
+			: resolve('/admin/attendance')
+	);
+
+	// Loading state - show when navigating back to cohort attendance list
+	const isLoading = $derived(navigating.to?.url.pathname === '/admin/attendance');
+
 	// History is mutable (user can edit status inline), so we need $state + $effect
 	// eslint-disable-next-line svelte/prefer-writable-derived
 	let history = $state<AttendanceHistoryEntry[]>([]);
@@ -200,8 +212,19 @@
 </script>
 
 <div class="p-6 max-w-4xl mx-auto">
+	<!-- Loading Overlay -->
+	{#if isLoading}
+		<div class="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+			<div class="text-center">
+				<div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
+				<p class="text-gray-600 font-medium">Loading attendance data...</p>
+				<p class="text-gray-500 text-sm mt-1">This may take a moment</p>
+			</div>
+		</div>
+	{/if}
+
 	<header class="mb-6">
-		<a href={resolve('/admin/attendance')} class="text-blue-600 hover:underline text-sm">← Back to Attendance</a>
+		<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
 		<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName}</h1>
 		{#if stats.cohortName}
 			<p class="text-gray-600 mt-1">{stats.cohortName}</p>

@@ -203,22 +203,6 @@
 		return 'text-red-600';
 	}
 
-	function getTrendIcon(direction: 'up' | 'down' | 'stable'): string {
-		switch (direction) {
-			case 'up': return '↗';
-			case 'down': return '↘';
-			case 'stable': return '→';
-		}
-	}
-
-	function getTrendColor(direction: 'up' | 'down' | 'stable'): string {
-		switch (direction) {
-			case 'up': return 'text-green-600';
-			case 'down': return 'text-red-600';
-			case 'stable': return 'text-gray-500';
-		}
-	}
-
 	// Handle filter changes from the AttendanceFilters component
 	function handleFiltersChange(newFilters: AttendanceFilters) {
 		const basePath = resolve('/admin/attendance');
@@ -392,7 +376,6 @@
 									Attendance Rate{getSortIndicator('attendanceRate')}
 								</th>
 								<th class="text-right p-3 border-b">Attended</th>
-								<th class="text-right p-3 border-b">Trend</th>
 								<th class="text-right p-3 pr-6 border-b">Actions</th>
 							</tr>
 						</thead>
@@ -416,14 +399,9 @@
 									<td class="p-3 text-right text-gray-600">
 										{apprentice.attended}/{apprentice.totalEvents}
 									</td>
-									<td class="p-3 text-right">
-										<span class={getTrendColor(apprentice.trend.direction)} title="{apprentice.trend.change > 0 ? '+' : ''}{apprentice.trend.change.toFixed(1)}%">
-											{getTrendIcon(apprentice.trend.direction)}
-										</span>
-									</td>
 									<td class="p-3 pr-6 text-right">
 										<a
-											href={resolve(`/admin/attendance/${apprentice.apprenticeId}`)}
+											href="{resolve(`/admin/attendance/${apprentice.apprenticeId}`)}?cohorts={selectedCohortIds.join(',')}"
 											class="text-blue-600 hover:underline text-sm"
 										>
 											View Details
