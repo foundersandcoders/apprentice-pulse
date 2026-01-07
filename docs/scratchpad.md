@@ -6,6 +6,9 @@ status naming:
   Absent -> Not Check-in
   Not Coming -> Absent
 
+ON Details. Why actions column?
+
+pressing esc stops editing
 
 
 
@@ -17,6 +20,10 @@ Review navigation
 Per week email to Jess. Absent, not survey, whoever nmarked "In need of support"
 
 Absent reason.
+
+Events view, list of people, show link to apprentices to go to personalised
+
+
 
 Login page pretty
 
