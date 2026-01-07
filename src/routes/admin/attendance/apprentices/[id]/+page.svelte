@@ -245,7 +245,6 @@
 							<th class="text-left p-3 border-b">Date & Time</th>
 							<th class="text-center p-3 border-b">Status</th>
 							<th class="text-center p-3 border-b">Check-in Time</th>
-							<th class="text-center p-3 border-b">Actions</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -278,22 +277,18 @@
 									{/if}
 								</td>
 								<td class="p-3 text-center">
-									{#if editingEntryId === entry.eventId && (editingStatus === 'Present' || editingStatus === 'Late')}
-										<input
-											type="datetime-local"
-											bind:value={editingCheckinTime}
-											class="border rounded px-1 py-0.5 text-xs"
-											onclick={e => e.stopPropagation()}
-										/>
-									{:else if entry.checkinTime}
-										<span class="text-gray-500 text-xs">{formatCheckinTime(entry.checkinTime)}</span>
-									{:else}
-										<span class="text-gray-400 text-xs">—</span>
-									{/if}
-								</td>
-								<td class="p-3 text-center">
 									{#if editingEntryId === entry.eventId}
-										<div class="flex gap-1 justify-center">
+										<div class="flex items-center justify-center gap-2">
+											{#if editingStatus === 'Present' || editingStatus === 'Late'}
+												<input
+													type="datetime-local"
+													bind:value={editingCheckinTime}
+													class="border rounded px-1 py-0.5 text-xs"
+													onclick={e => e.stopPropagation()}
+												/>
+											{:else}
+												<span class="text-gray-400 text-xs">—</span>
+											{/if}
 											<button
 												onclick={saveStatusChange}
 												disabled={statusUpdateLoading}
@@ -309,13 +304,10 @@
 												✕
 											</button>
 										</div>
+									{:else if entry.checkinTime}
+										<span class="text-gray-500 text-xs">{formatCheckinTime(entry.checkinTime)}</span>
 									{:else}
-										<button
-											onclick={() => startEditingStatus(entry)}
-											class="px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
-										>
-											Edit
-										</button>
+										<span class="text-gray-400 text-xs">—</span>
 									{/if}
 								</td>
 							</tr>
