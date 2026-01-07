@@ -254,7 +254,10 @@
 
 	<!-- Attendance History -->
 	<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-		<h2 class="text-xl font-semibold mb-4">Attendance History</h2>
+		<div class="flex justify-between items-center mb-4">
+			<h2 class="text-xl font-semibold">Attendance History</h2>
+			<span class="text-sm text-gray-500">{history.length} event{history.length !== 1 ? 's' : ''}</span>
+		</div>
 
 		{#if history.length === 0}
 			<div class="text-center py-8 text-gray-500">

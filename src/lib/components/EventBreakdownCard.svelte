@@ -20,7 +20,10 @@
 </script>
 
 <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-	<h2 class="text-lg font-semibold mb-4">Event Breakdown</h2>
+	<div class="flex justify-between items-center mb-4">
+		<h2 class="text-lg font-semibold">Event Breakdown</h2>
+		<span class="text-sm text-gray-500">{events.length} event{events.length !== 1 ? 's' : ''}</span>
+	</div>
 
 	{#if events.length === 0}
 		<div class="text-center py-8 text-gray-500">
