@@ -9,6 +9,7 @@ export const TABLES = {
 	APPRENTICES: 'tbl0HJM700Jmd5Oob',
 	STAFF: 'tblJjn62ExE1LVjmx',
 	EVENTS: 'tblkbskw4fuTq0E9p',
+	EVENT_TYPES: 'tblr9z9uU0wdsTL1Q',
 	ATTENDANCE: 'tblkDbhJcuT9TTwFc',
 	TERMS: 'tbl4gkcG92Bc8gFU7',
 } as const;
@@ -40,7 +41,7 @@ export const EVENT_FIELDS = {
 	COHORT: 'fldcXDEDkeHvWTnxE', // multipleRecordLinks to Cohorts
 	DATE_TIME: 'fld8AkM3EanzZa5QX', // dateTime (start time)
 	END_DATE_TIME: 'fldpBorZFMxhgNhNR', // dateTime (end time)
-	EVENT_TYPE: 'fldo7fwAsFhkA1icC', // singleSelect (Regular Class, Workshop, Hackathon)
+	EVENT_TYPE: 'fldo7fwAsFhkA1icC', // multipleRecordLinks to Event Types
 	SURVEY: 'fld9XBHnCWBtZiZah', // url (optional survey form)
 	ATTENDANCE: 'fldcPf53fVfStFZsa', // multipleRecordLinks to Attendance (reverse link)
 	NAME_DATE: 'fld7POykodV0LGsg1', // formula (display name)
@@ -58,6 +59,12 @@ export const ATTENDANCE_FIELDS = {
 	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
 	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
 	REASON: 'fldmJtM87FmcnTTfK', // multilineText (reason for absence)
+} as const;
+
+// Fields - Event Types
+export const EVENT_TYPE_FIELDS = {
+	NAME: 'fldDKZF5NI280rIQb', // singleLineText
+	EVENTS: 'fldyhEXD7CEWFVneJ', // multipleRecordLinks to Events
 } as const;
 
 // Fields - Terms

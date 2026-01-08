@@ -4,7 +4,7 @@
 	import { tick } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
+	import { type EventType, type Event as AppEvent } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES, getStatusBadgeClass, type AttendanceStatus } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
@@ -12,6 +12,16 @@
 	import TimePicker from '$lib/components/TimePicker.svelte';
 
 	let { data } = $props();
+
+	// Extract event types from server data
+	const eventTypes = $derived(data.eventTypes);
+	const eventTypeColors = $derived(() => {
+		const colorMap: Record<string, { main: string; tailwind: string }> = {};
+		eventTypes.forEach((type) => {
+			colorMap[type.name] = { main: type.color, tailwind: type.tailwindClass };
+		});
+		return colorMap;
+	});
 
 	// Sorting state
 	type SortColumn = 'name' | 'dateTime' | 'eventType' | 'cohort' | 'attendance';
@@ -164,7 +174,7 @@
 				title: event.name || '(Untitled)',
 				start: start.toISOString().slice(0, 16).replace('T', ' '),
 				end: end.toISOString().slice(0, 16).replace('T', ' '),
-				color: EVENT_TYPE_COLORS[event.eventType]?.main || '#3b82f6',
+				color: eventTypeColors()[event.eventType]?.main || '#3b82f6',
 			};
 		});
 
@@ -263,7 +273,7 @@
 		startTime: '10:00',
 		endTime: '14:00',
 		cohortIds: [] as string[],
-		eventType: EVENT_TYPES[0] as EventType,
+		eventType: eventTypes[0]?.name || '',
 		isPublic: false,
 		checkInCode: '' as string | number,
 		surveyUrl: data.defaultSurveyUrl,
@@ -303,7 +313,7 @@
 		startTime: '',
 		endTime: '',
 		cohortIds: [] as string[],
-		eventType: EVENT_TYPES[0] as EventType,
+		eventType: eventTypes[0]?.name || '',
 		isPublic: false,
 		checkInCode: '' as string | number,
 		surveyUrl: '',
@@ -349,7 +359,7 @@
 	let seriesTime = $state('10:00');
 	let seriesEndTime = $state('11:00');
 	let seriesCohortIds = $state<string[]>([]);
-	let seriesEventType = $state<EventType>(EVENT_TYPES[0]);
+	let seriesEventType = $state<EventType>(eventTypes[0]?.name || '');
 	let seriesIsPublic = $state(false);
 	let seriesCheckInCode = $state<string | number>('');
 	// svelte-ignore state_referenced_locally
@@ -608,7 +618,7 @@
 			startTime: '10:00',
 			endTime: '14:00',
 			cohortIds: [],
-			eventType: EVENT_TYPES[0],
+			eventType: eventTypes[0]?.name || '',
 			isPublic: false,
 			checkInCode: '' as string | number,
 			surveyUrl: data.defaultSurveyUrl,
@@ -622,7 +632,7 @@
 		seriesTime = '10:00';
 		seriesEndTime = '11:00';
 		seriesCohortIds = [];
-		seriesEventType = EVENT_TYPES[0];
+		seriesEventType = eventTypes[0]?.name || '';
 		seriesIsPublic = false;
 		seriesCheckInCode = '';
 		seriesSurveyUrl = data.defaultSurveyUrl;
@@ -912,7 +922,7 @@
 	}
 </script>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6">
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 		<h1 class="text-2xl font-bold mt-2">Events</h1>
@@ -1144,8 +1154,8 @@
 										bind:value={newEvent.eventType}
 										class="w-full border rounded px-2 py-1 text-sm"
 									>
-										{#each EVENT_TYPES as type (type)}
-											<option value={type}>{type}</option>
+										{#each eventTypes as type (type.name)}
+											<option value={type.name}>{type.name}</option>
 										{/each}
 									</select>
 								</td>
@@ -1317,8 +1327,8 @@
 											class="w-full border rounded px-2 py-1 text-sm"
 											onclick={e => e.stopPropagation()}
 										>
-											{#each EVENT_TYPES as type (type)}
-												<option value={type}>{type}</option>
+											{#each eventTypes as type (type.name)}
+												<option value={type.name}>{type.name}</option>
 											{/each}
 										</select>
 									</td>
@@ -1517,7 +1527,7 @@
 								</td>
 								<td class="p-2">
 									{#if event.eventType}
-										<span class="{EVENT_TYPE_COLORS[event.eventType].tailwind} font-medium">
+										<span class="{eventTypeColors()[event.eventType]?.tailwind || 'text-gray-600'} font-medium">
 											{event.eventType}
 										</span>
 									{:else}
@@ -1794,8 +1804,8 @@
 									required
 									class="w-full border rounded px-3 py-2"
 								>
-									{#each EVENT_TYPES as type (type)}
-										<option value={type}>{type}</option>
+									{#each eventTypes as type (type.name)}
+										<option value={type.name}>{type.name}</option>
 									{/each}
 								</select>
 							</div>
@@ -1956,13 +1966,13 @@
 
 			<!-- Legend -->
 			<div class="flex flex-wrap gap-4 mb-4 text-sm">
-				{#each EVENT_TYPES as type (type)}
+				{#each eventTypes as type (type.name)}
 					<div class="flex items-center gap-2">
 						<span
 							class="w-3 h-3 rounded-full"
-							style="background-color: {EVENT_TYPE_COLORS[type].main}"
+							style="background-color: {type.color}"
 						></span>
-						<span class="{EVENT_TYPE_COLORS[type].tailwind}">{type}</span>
+						<span class="{type.tailwindClass}">{type.name}</span>
 					</div>
 				{/each}
 				{#if isCreatingSeries}

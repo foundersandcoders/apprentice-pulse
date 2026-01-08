@@ -182,14 +182,14 @@ The generated schema file can be used to update `src/lib/airtable/config.ts` wit
 
 ### Event Types
 
-Event types are defined as a single source of truth in `src/lib/types/event.ts`:
+Event types are now managed dynamically through Airtable's "Event types - Apprentice Pulse" table. This provides:
 
-```typescript
-export const EVENT_TYPES = ['Regular Class', 'Workshop', 'Online Class'] as const;
-export type EventType = typeof EVENT_TYPES[number];
-```
+- **Single source of truth**: Event types defined in Airtable only
+- **No code deployments**: Add/remove event types without touching code
+- **Flexible management**: Administrators can manage types directly in Airtable
+- **Automatic validation**: API endpoints validate against current Airtable data
 
-To add a new event type, update the `EVENT_TYPES` array - all forms and validation will automatically use the new values.
+Event types are cached for performance (5-minute cache) and include automatic color assignment for UI consistency.
 
 ### Default Values
 

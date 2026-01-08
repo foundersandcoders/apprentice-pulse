@@ -16,9 +16,13 @@ Apprentices (tbl0HJM700Jmd5Oob) - primary learner record
   ├── Learner Touchpoint Log (tbl2O3QcYpss1SaP4)
   └── Cohorts (tbllAnSw8VPYFAa1a)
         └── Events - Apprentice Pulse (tblkbskw4fuTq0E9p)
+              └── Event Type → Event types - Apprentice Pulse (tblr9z9uU0wdsTL1Q)
 
 Progress Reviews (Employer Feedback) (tblwdSYGgGMXJ1DX7)
   └── Apprentice record → links to Apprentices
+
+Event types - Apprentice Pulse (tblr9z9uU0wdsTL1Q) - lookup table for event types
+  └── Events - Apprentice Pulse (tblkbskw4fuTq0E9p)
 ```
 
 ---
@@ -211,6 +215,19 @@ Cohort reference for filtering and grouping.
 
 ---
 
+## Event types - Apprentice Pulse
+
+**Table ID:** `tblr9z9uU0wdsTL1Q`
+
+Event type definitions used by events.
+
+| Field | ID | Type | Purpose |
+|-------|-----|------|---------|
+| Name | `fldDKZF5NI280rIQb` | singleLineText | Event type name (Regular Class, Workshop, Online Class) |
+| Events - Apprentice Pulse | `fldyhEXD7CEWFVneJ` | multipleRecordLinks | Links to Events using this type |
+
+---
+
 ## Events - Apprentice Pulse
 
 **Table ID:** `tblkbskw4fuTq0E9p`
@@ -222,12 +239,13 @@ Scheduled events/sessions for attendance tracking.
 | Name | `fldMCZijN6TJeUdFR` | singleLineText | Event name |
 | FAC Cohort | `fldcXDEDkeHvWTnxE` | multipleRecordLinks | Links to Cohorts |
 | Date Time | `fld8AkM3EanzZa5QX` | dateTime | Event start date and time |
-| Event Type | `fldo7fwAsFhkA1icC` | singleSelect | Regular Class, Workshop, Online Class |
+| End Date Time | `fldpBorZFMxhgNhNR` | dateTime | Event end date and time |
+| Event Type | `fldo7fwAsFhkA1icC` | multipleRecordLinks | Links to Event types |
 | Survey | `fld9XBHnCWBtZiZah` | url | Optional survey form URL |
 | Attendance | `fldcPf53fVfStFZsa` | multipleRecordLinks | Linked attendance records |
 | Name - Date | `fld7POykodV0LGsg1` | formula | Display name with date |
 | Public | `fldatQzdAo8evWlNc` | checkbox | Visible on public check-in page |
-| Check-in Code | `fldKMWSFmYONkvYMK` | number | 4-digit code for external attendees |
+| Number | `fldKMWSFmYONkvYMK` | number | 4-digit check-in code for external attendees |
 
 ---
 
