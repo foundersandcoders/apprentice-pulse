@@ -286,6 +286,10 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			fields[ATTENDANCE_FIELDS.CHECKIN_TIME] = input.checkinTime;
 		}
 
+		if (input.reason !== undefined) {
+			fields[ATTENDANCE_FIELDS.REASON] = input.reason || undefined;
+		}
+
 		const record = await attendanceTable.update(attendanceId, fields);
 
 		const apprenticeLink = record.get(ATTENDANCE_FIELDS.APPRENTICE) as string[] | undefined;
@@ -299,6 +303,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			externalEmail: record.get(ATTENDANCE_FIELDS.EXTERNAL_EMAIL) as string | undefined,
 			checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
 			status: record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status'],
+			reason: record.get(ATTENDANCE_FIELDS.REASON) as string | undefined,
 		};
 	}
 
@@ -361,6 +366,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 				externalEmail: record.get(ATTENDANCE_FIELDS.EXTERNAL_EMAIL) as string | undefined,
 				checkinTime: record.get(ATTENDANCE_FIELDS.CHECKIN_TIME) as string,
 				status: (record.get(ATTENDANCE_FIELDS.STATUS) as Attendance['status']) ?? 'Present',
+				reason: record.get(ATTENDANCE_FIELDS.REASON) as string | undefined,
 			};
 		});
 	}
@@ -851,6 +857,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 				status: attendance ? attendance.status : 'Not Check-in',
 				checkinTime: attendance?.checkinTime ?? null,
 				attendanceId: attendance?.id ?? null,
+				reason: attendance?.reason ?? null,
 			};
 		});
 

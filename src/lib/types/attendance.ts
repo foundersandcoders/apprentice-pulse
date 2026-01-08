@@ -26,6 +26,7 @@ export interface Attendance {
 	externalEmail?: string; // For unregistered users
 	checkinTime: string; // ISO datetime
 	status: AttendanceStatus;
+	reason?: string; // Reason for absence/excuse
 }
 
 export interface CreateAttendanceInput {
@@ -43,6 +44,7 @@ export interface CreateExternalAttendanceInput {
 export interface UpdateAttendanceInput {
 	status: AttendanceStatus;
 	checkinTime?: string; // ISO datetime, required when setting to Present
+	reason?: string; // Reason for absence/excuse
 }
 
 // Attendance statistics types
@@ -161,6 +163,7 @@ export interface AttendanceHistoryEntry {
 	status: AttendanceStatus;
 	checkinTime: string | null;
 	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
+	reason: string | null; // Reason for absence/excuse
 }
 
 /** Event breakdown stats for cohort view */

@@ -58,6 +58,10 @@
 	let editingCheckinTime = $state<string>('');
 	let statusUpdateLoading = $state(false);
 
+	// Reason editing state (separate from status editing)
+	let editingReasonFor = $state<string | null>(null);
+	let reasonInput = $state<string>('');
+
 	// When status changes to Present/Late and no check-in time is set, populate with event start time
 	$effect(() => {
 		if (editingEntryId && (editingStatus === 'Present' || editingStatus === 'Late') && !editingCheckinTime) {
@@ -111,6 +115,60 @@
 		editingEntryId = null;
 		editingStatus = 'Present';
 		editingCheckinTime = '';
+	}
+
+	// Start editing reason only (separate from status editing)
+	function startEditingReason(entry: AttendanceHistoryEntry) {
+		editingReasonFor = entry.eventId;
+		reasonInput = entry.reason || '';
+	}
+
+	// Save reason only
+	async function saveReasonChange() {
+		if (!editingReasonFor) return;
+
+		const entry = history.find(h => h.eventId === editingReasonFor);
+		if (!entry || !entry.attendanceId) return;
+
+		statusUpdateLoading = true;
+		try {
+			const response = await fetch(`/api/attendance/${entry.attendanceId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					status: entry.status,
+					reason: reasonInput.trim() || null,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// Update the history entry
+				history = history.map(entry =>
+					entry.eventId === editingReasonFor
+						? { ...entry, reason: reasonInput.trim() || null }
+						: entry,
+				);
+				cancelReasonEditing();
+			}
+			else {
+				console.error('Failed to update reason:', result.error);
+				// Could add error handling here
+			}
+		}
+		catch (error) {
+			console.error('Network error updating reason:', error);
+		}
+		finally {
+			statusUpdateLoading = false;
+		}
+	}
+
+	// Cancel reason editing
+	function cancelReasonEditing() {
+		editingReasonFor = null;
+		reasonInput = '';
 	}
 
 	// Handle Escape key to cancel editing
@@ -271,7 +329,8 @@
 							<th class="text-left p-3 pl-6 border-b">Event</th>
 							<th class="text-left p-3 border-b">Date & Time</th>
 							<th class="text-center p-3 border-b">Status</th>
-							<th class="text-center p-3 pr-6 border-b">Check-in Time</th>
+							<th class="text-center p-3 border-b">Check-in Time</th>
+							<th class="text-center p-3 pr-6 border-b">Reason</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -303,7 +362,7 @@
 										</button>
 									{/if}
 								</td>
-								<td class="p-3 pr-6 text-center">
+								<td class="p-3 text-center">
 									{#if editingEntryId === entry.eventId}
 										<div class="flex items-center justify-center gap-2">
 											{#if editingStatus === 'Present' || editingStatus === 'Late'}
@@ -331,6 +390,46 @@
 										</div>
 									{:else if entry.checkinTime}
 										<span class="text-gray-500 text-xs">{formatCheckinTime(entry.checkinTime)}</span>
+									{:else}
+										<span class="text-gray-400 text-xs">—</span>
+									{/if}
+								</td>
+								<td class="p-3 pr-6 text-center">
+									{#if entry.status === 'Absent' || entry.status === 'Excused'}
+										{#if editingReasonFor === entry.eventId}
+											<div class="flex flex-col gap-2 min-w-64">
+												<textarea
+													bind:value={reasonInput}
+													placeholder="Add reason..."
+													rows="3"
+													class="border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+													onclick={e => e.stopPropagation()}
+												></textarea>
+												<div class="flex justify-end gap-2">
+													<button
+														onclick={cancelReasonEditing}
+														disabled={statusUpdateLoading}
+														class="px-3 py-1 bg-gray-500 text-white text-xs rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
+													>
+														Cancel
+													</button>
+													<button
+														onclick={saveReasonChange}
+														disabled={statusUpdateLoading}
+														class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+													>
+														{statusUpdateLoading ? 'Saving...' : 'Save'}
+													</button>
+												</div>
+											</div>
+										{:else}
+											<button
+												onclick={() => startEditingReason(entry)}
+												class="text-gray-600 hover:text-blue-600 text-xs cursor-pointer transition-colors px-2 py-1 rounded hover:bg-gray-100"
+											>
+												{entry.reason ? entry.reason : 'Add reason...'}
+											</button>
+										{/if}
 									{:else}
 										<span class="text-gray-400 text-xs">—</span>
 									{/if}
