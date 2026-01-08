@@ -2,8 +2,8 @@
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { navigating, page } from '$app/state';
-	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
-	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import UnifiedAttendanceStatsCard from '$lib/components/UnifiedAttendanceStatsCard.svelte';
+	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
 	import { ATTENDANCE_STATUSES, getStatusBadgeClass, calculateMonthlyAttendance } from '$lib/types/attendance';
@@ -18,11 +18,14 @@
 	const terms = $derived(data.terms as Term[]);
 	const cohortsParam = $derived(data.cohortsParam as string);
 
-	// Build back link preserving cohort selection
+	// Build back link - check if we came from search or cohort view
+	const fromSearch = $derived(page.url.searchParams.get('from') === 'search');
 	const backLink = $derived(
-		cohortsParam
-			? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
-			: resolve('/admin/attendance'),
+		fromSearch
+			? resolve('/admin')
+			: cohortsParam
+				? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
+				: resolve('/admin/attendance'),
 	);
 
 	// Loading state - show when navigating back to cohort attendance list
@@ -57,6 +60,10 @@
 	let editingStatus = $state<AttendanceStatus>('Present');
 	let editingCheckinTime = $state<string>('');
 	let statusUpdateLoading = $state(false);
+
+	// Reason editing state (separate from status editing)
+	let editingReasonFor = $state<string | null>(null);
+	let reasonInput = $state<string>('');
 
 	// When status changes to Present/Late and no check-in time is set, populate with event start time
 	$effect(() => {
@@ -111,6 +118,60 @@
 		editingEntryId = null;
 		editingStatus = 'Present';
 		editingCheckinTime = '';
+	}
+
+	// Start editing reason only (separate from status editing)
+	function startEditingReason(entry: AttendanceHistoryEntry) {
+		editingReasonFor = entry.eventId;
+		reasonInput = entry.reason || '';
+	}
+
+	// Save reason only
+	async function saveReasonChange() {
+		if (!editingReasonFor) return;
+
+		const entry = history.find(h => h.eventId === editingReasonFor);
+		if (!entry || !entry.attendanceId) return;
+
+		statusUpdateLoading = true;
+		try {
+			const response = await fetch(`/api/attendance/${entry.attendanceId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					status: entry.status,
+					reason: reasonInput.trim() || null,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (response.ok && result.success) {
+				// Update the history entry
+				history = history.map(entry =>
+					entry.eventId === editingReasonFor
+						? { ...entry, reason: reasonInput.trim() || null }
+						: entry,
+				);
+				cancelReasonEditing();
+			}
+			else {
+				console.error('Failed to update reason:', result.error);
+				// Could add error handling here
+			}
+		}
+		catch (error) {
+			console.error('Network error updating reason:', error);
+		}
+		finally {
+			statusUpdateLoading = false;
+		}
+	}
+
+	// Cancel reason editing
+	function cancelReasonEditing() {
+		editingReasonFor = null;
+		reasonInput = '';
 	}
 
 	// Handle Escape key to cancel editing
@@ -215,7 +276,7 @@
 	}
 </script>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-6xl mx-auto">
 	<!-- Loading Overlay -->
 	{#if isLoading}
 		<div class="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
@@ -230,7 +291,7 @@
 	<header class="mb-6 flex justify-between items-start">
 		<div>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- backLink is already resolved -->
-			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
+			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to {fromSearch ? 'Admin Dashboard' : 'Cohort Attendance'}</a>
 			<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName} - Attendance</h1>
 			{#if stats.cohortName}
 				<p class="text-gray-600 mt-1">{stats.cohortName}</p>
@@ -240,7 +301,7 @@
 
 	<!-- Attendance Filters -->
 	<div class="mb-6">
-		<AttendanceFiltersComponent
+		<ExpandableAttendanceFilters
 			{terms}
 			filters={currentFilters}
 			onFiltersChange={handleFiltersChange}
@@ -249,12 +310,15 @@
 
 	<!-- Stats Card -->
 	<div class="mb-8">
-		<ApprenticeAttendanceCard apprentice={stats} />
+		<UnifiedAttendanceStatsCard stats={stats} showLowAttendanceWarning={true} />
 	</div>
 
 	<!-- Attendance History -->
 	<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-		<h2 class="text-xl font-semibold mb-4">Attendance History</h2>
+		<div class="flex justify-between items-center mb-4">
+			<h2 class="text-xl font-semibold">Attendance History</h2>
+			<span class="text-sm text-gray-500">{history.length} event{history.length !== 1 ? 's' : ''}</span>
+		</div>
 
 		{#if history.length === 0}
 			<div class="text-center py-8 text-gray-500">
@@ -268,7 +332,8 @@
 							<th class="text-left p-3 pl-6 border-b">Event</th>
 							<th class="text-left p-3 border-b">Date & Time</th>
 							<th class="text-center p-3 border-b">Status</th>
-							<th class="text-center p-3 pr-6 border-b">Check-in Time</th>
+							<th class="text-center p-3 border-b">Check-in Time</th>
+							<th class="text-center p-3 pr-6 border-b">Reason</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -300,7 +365,7 @@
 										</button>
 									{/if}
 								</td>
-								<td class="p-3 pr-6 text-center">
+								<td class="p-3 text-center">
 									{#if editingEntryId === entry.eventId}
 										<div class="flex items-center justify-center gap-2">
 											{#if editingStatus === 'Present' || editingStatus === 'Late'}
@@ -328,6 +393,46 @@
 										</div>
 									{:else if entry.checkinTime}
 										<span class="text-gray-500 text-xs">{formatCheckinTime(entry.checkinTime)}</span>
+									{:else}
+										<span class="text-gray-400 text-xs">—</span>
+									{/if}
+								</td>
+								<td class="p-3 pr-6 text-center">
+									{#if entry.status === 'Absent' || entry.status === 'Excused'}
+										{#if editingReasonFor === entry.eventId}
+											<div class="flex flex-col gap-2 min-w-64">
+												<textarea
+													bind:value={reasonInput}
+													placeholder="Add reason..."
+													rows="3"
+													class="border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+													onclick={e => e.stopPropagation()}
+												></textarea>
+												<div class="flex justify-end gap-2">
+													<button
+														onclick={cancelReasonEditing}
+														disabled={statusUpdateLoading}
+														class="px-3 py-1 bg-gray-500 text-white text-xs rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
+													>
+														Cancel
+													</button>
+													<button
+														onclick={saveReasonChange}
+														disabled={statusUpdateLoading}
+														class="px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+													>
+														{statusUpdateLoading ? 'Saving...' : 'Save'}
+													</button>
+												</div>
+											</div>
+										{:else}
+											<button
+												onclick={() => startEditingReason(entry)}
+												class="text-gray-600 hover:text-blue-600 text-xs cursor-pointer transition-colors px-2 py-1 rounded hover:bg-gray-100"
+											>
+												{entry.reason ? entry.reason : 'Add reason...'}
+											</button>
+										{/if}
 									{:else}
 										<span class="text-gray-400 text-xs">—</span>
 									{/if}

@@ -20,6 +20,10 @@
 	let markingNotComing = $state<string | null>(null);
 	let checkInError = $state<string | null>(null);
 
+	// Absence reason state
+	let showingReasonFor = $state<string | null>(null);
+	let absenceReason = $state('');
+
 	// Guest check-in state
 	let guestStep = $state<'code' | 'events' | 'details' | 'success'>('code');
 	let guestCode = $state('');
@@ -125,8 +129,21 @@
 		}
 	}
 
+	// Show absence reason input
+	function showReasonInput(eventId: string) {
+		showingReasonFor = eventId;
+		absenceReason = '';
+		checkInError = null;
+	}
+
+	// Hide absence reason input
+	function hideReasonInput() {
+		showingReasonFor = null;
+		absenceReason = '';
+	}
+
 	// Authenticated user mark as absent
-	async function handleNotComing(eventId: string) {
+	async function handleNotComing(eventId: string, reason?: string) {
 		// Prevent double-clicking by checking if already processing this event
 		if (markingNotComing === eventId || checkingIn === eventId) {
 			return;
@@ -139,7 +156,7 @@
 			const response = await fetch('/api/checkin/absent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ eventId }),
+				body: JSON.stringify({ eventId, reason }),
 			});
 
 			const result = await response.json();
@@ -167,6 +184,7 @@
 		}
 		finally {
 			markingNotComing = null;
+			hideReasonInput();
 		}
 	}
 
@@ -268,111 +286,153 @@
 	<title>Check In - Apprentice Pulse</title>
 </svelte:head>
 
-<main>
+<div class="p-6 max-w-2xl mx-auto">
 	{#if data.authenticated}
 		<!-- Authenticated user view -->
-		<header class="page-header">
-			<div class="header-content">
-				<h1>Check In</h1>
-				<p class="welcome-text">Welcome back!</p>
+		<header class="mb-6 flex justify-between items-start">
+			<div>
+				<h1 class="text-2xl font-bold">Check In</h1>
+				<p class="text-gray-600 mt-1">Welcome back{data.user?.name ? `, ${data.user.name}` : ''}!</p>
 			</div>
-			<div class="user-info">
-				{#if data.user?.name}
-					<span class="user-name">{data.user.name}</span>
-				{/if}
-				<span class="user-email">{data.user?.email}</span>
-				<div class="nav-links">
+			<div class="flex flex-col items-end gap-1">
+				<span class="text-sm text-gray-500">{data.user?.email}</span>
+				<div class="flex gap-4 text-sm">
 					{#if data.user?.type === 'staff'}
-						<a href={resolve('/admin')} class="nav-link">Admin</a>
+						<a href={resolve('/admin')} class="text-blue-600 hover:underline">Admin</a>
 					{/if}
-					<a href={resolve('/api/auth/logout')} class="nav-link">Logout</a>
+					<a href={resolve('/api/auth/logout')} class="text-gray-500 hover:text-gray-700">Logout</a>
 				</div>
 			</div>
 		</header>
 
 		{#if events.length === 0}
-			<div class="empty-state">
+			<div class="text-center py-12 text-gray-500">
 				<p>No events available for check-in right now.</p>
 			</div>
 		{:else}
-			<div class="events-list">
+			<div class="space-y-4">
 				{#each events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
-					<div class="event-card" class:checked-in={event.attendanceStatus === 'checked-in'} class:absent={event.attendanceStatus === 'absent'}>
-						<div class="event-info">
-							<h2>{event.name}</h2>
-							<p class="event-time">{formatDate(event.dateTime)}</p>
-							<div class="event-meta">
-								<span class="event-type">{event.eventType}</span>
-								{#if event.expectedCount > 0}
-									<span class="attendance-badge">
-										{event.attendanceCount}/{event.expectedCount}
-									</span>
-								{:else if event.attendanceCount > 0}
-									<span class="attendance-badge">
-										{event.attendanceCount} checked in
+					<div class="bg-white border rounded-xl p-6 shadow-sm transition-all"
+						class:border-green-300={event.attendanceStatus === 'checked-in'}
+						class:bg-green-50={event.attendanceStatus === 'checked-in'}
+						class:border-orange-300={event.attendanceStatus === 'absent'}
+						class:bg-orange-50={event.attendanceStatus === 'absent'}
+						class:border-gray-200={event.attendanceStatus === 'none'}>
+						<div class="flex justify-between items-start gap-4">
+							<div class="flex-1">
+								<h2 class="text-lg font-semibold mb-1">{event.name}</h2>
+								<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
+								<div class="flex items-center gap-3 mb-2">
+									<span class="text-xs text-gray-500 uppercase tracking-wide">{event.eventType}</span>
+									{#if event.expectedCount > 0}
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+											{event.attendanceCount}/{event.expectedCount}
+										</span>
+									{:else if event.attendanceCount > 0}
+										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+											{event.attendanceCount} checked in
+										</span>
+									{/if}
+								</div>
+								{#if event.attendanceStatus === 'none'}
+									<span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium"
+										class:bg-red-100={timeStatus.isLate}
+										class:text-red-800={timeStatus.isLate}
+										class:bg-orange-100={timeStatus.isStartingSoon && !timeStatus.isLate}
+										class:text-orange-800={timeStatus.isStartingSoon && !timeStatus.isLate}
+										class:bg-blue-100={!timeStatus.isLate && !timeStatus.isStartingSoon}
+										class:text-blue-800={!timeStatus.isLate && !timeStatus.isStartingSoon}>
+										{timeStatus.text}
 									</span>
 								{/if}
 							</div>
-							{#if event.attendanceStatus === 'none'}
-								<p
-									class="countdown"
-									class:late={timeStatus.isLate}
-									class:starting-soon={timeStatus.isStartingSoon}
-								>
-									{timeStatus.text}
-								</p>
-							{/if}
-						</div>
-						<div class="event-action">
-							{#if event.attendanceStatus === 'checked-in'}
-								<span class="btn-base btn-success">Checked In</span>
-							{:else if event.attendanceStatus === 'absent'}
-								<span class="btn-base btn-warning">Absent</span>
-								{#if timeStatus.canCheckIn}
-									<button class="btn-base btn-clickable btn-primary change-mind-btn" onclick={() => handleCheckIn(event.id)} disabled={checkingIn === event.id}>
-										{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
+							<div class="flex flex-col gap-2">
+								{#if event.attendanceStatus === 'checked-in'}
+									<span class="px-4 py-2 bg-green-600 text-white rounded-lg text-center font-medium">✓ Checked In</span>
+								{:else if event.attendanceStatus === 'absent'}
+									<span class="px-4 py-2 bg-orange-600 text-white rounded-lg text-center font-medium">Absent</span>
+									{#if timeStatus.canCheckIn}
+										<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+											onclick={() => handleCheckIn(event.id)}
+											disabled={checkingIn === event.id}>
+											{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
+										</button>
+									{/if}
+								{:else if checkingIn === event.id || markingNotComing === event.id}
+									<button class="px-4 py-2 bg-blue-600 text-white rounded-lg opacity-50 cursor-not-allowed" disabled>
+										{checkingIn === event.id ? 'Checking in...' : 'Marking absent...'}
 									</button>
-								{/if}
-							{:else if checkingIn === event.id || markingNotComing === event.id}
-								<button class="btn-base btn-clickable btn-primary" disabled>{checkingIn === event.id ? 'Checking in...' : 'Marking absent...'}</button>
-							{:else if !timeStatus.canCheckIn}
-								<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
-									Check In
-								</button>
-							{:else}
-								<div class="action-buttons">
-									<button class="btn-base btn-clickable btn-primary" onclick={() => handleCheckIn(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+								{:else if !timeStatus.canCheckIn}
+									<button class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+										disabled
+										title="Check-in opens on the day of the event">
+										Check In
+									</button>
+								{:else if showingReasonFor === event.id}
+									<!-- Absence reason form -->
+									<div class="space-y-3">
+										<label for="reason-{event.id}" class="block text-sm font-medium text-gray-700">
+											Reason for absence (optional):
+										</label>
+										<textarea
+											id="reason-{event.id}"
+											bind:value={absenceReason}
+											placeholder="Brief reason for absence..."
+											class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+											rows="2"
+										></textarea>
+										<div class="flex gap-2">
+											<button class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+												onclick={() => handleNotComing(event.id, absenceReason)}
+												disabled={markingNotComing === event.id}>
+												{markingNotComing === event.id ? 'Marking absent...' : 'Mark Absent'}
+											</button>
+											<button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+												onclick={hideReasonInput}
+												disabled={markingNotComing === event.id}>
+												Cancel
+											</button>
+										</div>
+									</div>
+								{:else}
+									<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+										onclick={() => handleCheckIn(event.id)}
+										disabled={checkingIn !== null || markingNotComing !== null}>
 										Check In
 									</button>
 									{#if data.checkInMethod === 'apprentice'}
-										<button class="btn-base btn-clickable btn-danger" onclick={() => handleNotComing(event.id)} disabled={checkingIn !== null || markingNotComing !== null}>
+										<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+											onclick={() => showReasonInput(event.id)}
+											disabled={checkingIn !== null || markingNotComing !== null}>
 											Absent
 										</button>
 									{/if}
-								</div>
-							{/if}
+								{/if}
+							</div>
 						</div>
 					</div>
 				{/each}
 			</div>
 
 			{#if checkInError}
-				<p class="error">{checkInError}</p>
+				<div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+					{checkInError}
+				</div>
 			{/if}
 		{/if}
 
 	{:else}
 		<!-- Guest check-in view -->
-		<header class="page-header guest">
-			<h1>Guest Check In</h1>
-			<p class="welcome-text">Check in to an event as a guest</p>
-		</header>
-		<div class="guest-checkin">
+		<div class="mb-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-xl text-center">
+			<h1 class="text-2xl font-bold mb-2">Guest Check In</h1>
+			<p class="opacity-90">Check in to an event as a guest</p>
+		</div>
+		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
 			{#if guestStep === 'code'}
-				<p class="instructions">Enter the 4-digit event code displayed at the venue.</p>
-				<form onsubmit={handleCodeSubmit}>
-					<label for="code">Event Code</label>
+				<p class="text-gray-600 text-center mb-6">Enter the 4-digit event code displayed at the venue.</p>
+				<form onsubmit={handleCodeSubmit} class="max-w-sm mx-auto">
+					<label for="code" class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
 					<input
 						type="text"
 						id="code"
@@ -382,508 +442,163 @@
 						inputmode="numeric"
 						autocomplete="off"
 						disabled={guestLoading}
+						class="w-full px-4 py-3 text-2xl text-center tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
 					/>
-					<button type="submit" disabled={guestLoading || guestCode.length !== 4}>
+					<button
+						type="submit"
+						disabled={guestLoading || guestCode.length !== 4}
+						class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
 						{guestLoading ? 'Validating...' : 'Continue'}
 					</button>
 				</form>
 
 				{#if guestError}
-					<p class="error">{guestError}</p>
+					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+						{guestError}
+					</div>
 				{/if}
 
-				<p class="login-prompt">
+				<p class="text-center mt-6 text-sm text-gray-600">
 					Have an account?
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
-					<button class="link-button" onclick={() => goto('/login?redirect=/checkin')}>
+					<button class="text-blue-600 hover:underline font-medium" onclick={() => goto('/login?redirect=/checkin')}>
 						Log in
 					</button>
 					for easier check-in.
 				</p>
 
 			{:else if guestStep === 'events'}
-				<p class="instructions">Select the event you want to check in to:</p>
+				<p class="text-gray-600 text-center mb-6">Select the event you want to check in to:</p>
 
-				<div class="events-list">
+				<div class="space-y-4">
 					{#each guestEvents as event (event.id)}
 						{@const timeStatus = getTimeStatus(event.dateTime)}
-						<div class="event-card">
-							<div class="event-info">
-								<h2>{event.name}</h2>
-								<p class="event-time">{formatDate(event.dateTime)}</p>
-								<div class="event-meta">
-									<span class="event-type">{event.eventType}</span>
-									{#if event.attendanceCount > 0}
-										<span class="attendance-badge">
-											{event.attendanceCount} checked in
-										</span>
+						<div class="border border-gray-200 rounded-xl p-4">
+							<div class="flex justify-between items-start gap-4">
+								<div class="flex-1">
+									<h3 class="font-semibold mb-1">{event.name}</h3>
+									<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
+									<div class="flex items-center gap-3 mb-2">
+										<span class="text-xs text-gray-500 uppercase tracking-wide">{event.eventType}</span>
+										{#if event.attendanceCount > 0}
+											<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+												{event.attendanceCount} checked in
+											</span>
+										{/if}
+									</div>
+									<span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium"
+										class:bg-red-100={timeStatus.isLate}
+										class:text-red-800={timeStatus.isLate}
+										class:bg-orange-100={timeStatus.isStartingSoon && !timeStatus.isLate}
+										class:text-orange-800={timeStatus.isStartingSoon && !timeStatus.isLate}
+										class:bg-blue-100={!timeStatus.isLate && !timeStatus.isStartingSoon}
+										class:text-blue-800={!timeStatus.isLate && !timeStatus.isStartingSoon}>
+										{timeStatus.text}
+									</span>
+								</div>
+								<div>
+									{#if !timeStatus.canCheckIn}
+										<button
+											class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+											disabled
+											title="Check-in opens on the day of the event">
+											Check In
+										</button>
+									{:else}
+										<button
+											class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+											onclick={() => selectGuestEvent(event)}>
+											Check In
+										</button>
 									{/if}
 								</div>
-								<p
-									class="countdown"
-									class:late={timeStatus.isLate}
-									class:starting-soon={timeStatus.isStartingSoon}
-								>
-									{timeStatus.text}
-								</p>
-							</div>
-							<div class="event-action">
-								{#if !timeStatus.canCheckIn}
-									<button class="btn-base btn-clickable btn-disabled" disabled title="Check-in opens on the day of the event">
-										Check In
-									</button>
-								{:else}
-									<button class="btn-base btn-clickable btn-primary" onclick={() => selectGuestEvent(event)}>
-										Check In
-									</button>
-								{/if}
 							</div>
 						</div>
 					{/each}
 				</div>
 
-				<button class="link-button" onclick={resetGuestForm}>
-					Use a different code
-				</button>
+				<div class="text-center mt-6">
+					<button class="text-blue-600 hover:underline text-sm" onclick={resetGuestForm}>
+						Use a different code
+					</button>
+				</div>
 
 			{:else if guestStep === 'details'}
 				{@const guestTimeStatus = guestSelectedEvent ? getTimeStatus(guestSelectedEvent.dateTime) : null}
-				<div class="event-preview">
-					<h2>{guestSelectedEvent?.name}</h2>
-					<p>{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
+				<div class="bg-gray-50 rounded-xl p-4 mb-6">
+					<h3 class="font-semibold mb-1">{guestSelectedEvent?.name}</h3>
+					<p class="text-gray-600 text-sm">{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
 					{#if guestTimeStatus}
-						<p
-							class="countdown"
-							class:late={guestTimeStatus.isLate}
-							class:starting-soon={guestTimeStatus.isStartingSoon}
-						>
+						<span class="inline-flex items-center mt-2 px-3 py-1 rounded-lg text-sm font-medium"
+							class:bg-red-100={guestTimeStatus.isLate}
+							class:text-red-800={guestTimeStatus.isLate}
+							class:bg-orange-100={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+							class:text-orange-800={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+							class:bg-blue-100={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}
+							class:text-blue-800={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}>
 							{guestTimeStatus.text}
-						</p>
+						</span>
 					{/if}
 				</div>
 
-				<form onsubmit={handleGuestCheckIn}>
-					<label for="name">Your Name</label>
-					<input
-						type="text"
-						id="name"
-						bind:value={guestName}
-						placeholder="Full name"
-						required
-						disabled={guestLoading}
-					/>
+				<form onsubmit={handleGuestCheckIn} class="max-w-sm mx-auto">
+					<div class="mb-4">
+						<label for="name" class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+						<input
+							type="text"
+							id="name"
+							bind:value={guestName}
+							placeholder="Full name"
+							required
+							disabled={guestLoading}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+						/>
+					</div>
 
-					<label for="email">Email Address</label>
-					<input
-						type="email"
-						id="email"
-						bind:value={guestEmail}
-						placeholder="you@example.com"
-						required
-						disabled={guestLoading}
-					/>
+					<div class="mb-6">
+						<label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+						<input
+							type="email"
+							id="email"
+							bind:value={guestEmail}
+							placeholder="you@example.com"
+							required
+							disabled={guestLoading}
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+						/>
+					</div>
 
-					<button type="submit" disabled={guestLoading}>
+					<button
+						type="submit"
+						disabled={guestLoading}
+						class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
 						{guestLoading ? 'Checking in...' : 'Check In'}
 					</button>
 				</form>
 
 				{#if guestError}
-					<p class="error">{guestError}</p>
+					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+						{guestError}
+					</div>
 				{/if}
 
-				<button class="link-button" onclick={backToEventSelection}>
-					Select a different event
-				</button>
+				<div class="text-center mt-6">
+					<button class="text-blue-600 hover:underline text-sm" onclick={backToEventSelection}>
+						Select a different event
+					</button>
+				</div>
 
 			{:else if guestStep === 'success'}
-				<div class="success">
-					<h2>You're checked in!</h2>
-					<p>Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
+				<div class="bg-green-50 border border-green-200 rounded-xl p-6 text-center mb-6">
+					<h2 class="text-xl font-semibold text-green-800 mb-2">✓ You're checked in!</h2>
+					<p class="text-gray-700">Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
 				</div>
-				<button onclick={resetGuestForm}>Check in to another event</button>
+				<button
+					onclick={resetGuestForm}
+					class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+					Check in to another event
+				</button>
 			{/if}
 		</div>
 	{/if}
-</main>
-
-<style>
-	main {
-		max-width: 600px;
-		margin: 0 auto;
-		padding: 1rem;
-	}
-
-	/* Page header styles */
-	.page-header {
-		background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
-		color: white;
-		padding: 1.5rem;
-		border-radius: 12px;
-		margin-bottom: 1.5rem;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
-	.page-header.guest {
-		display: block;
-		text-align: center;
-		background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
-	}
-
-	.page-header h1 {
-		margin: 0;
-		font-size: 1.5rem;
-		font-weight: 600;
-	}
-
-	.welcome-text {
-		margin: 0.25rem 0 0 0;
-		opacity: 0.9;
-		font-size: 0.9rem;
-	}
-
-	.user-info {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		text-align: right;
-	}
-
-	.user-name {
-		font-weight: 600;
-		font-size: 1rem;
-	}
-
-	.user-email {
-		font-size: 0.85rem;
-		opacity: 0.85;
-	}
-
-	.nav-links {
-		display: flex;
-		gap: 1rem;
-		margin-top: 0.5rem;
-	}
-
-	.nav-link {
-		font-size: 0.85rem;
-		color: #3b82f6;
-		text-decoration: none;
-	}
-
-	.nav-link:hover {
-		text-decoration: underline;
-	}
-
-	/* Event list styles */
-	.events-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.event-card {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem;
-		border: 1px solid #ddd;
-		border-radius: 8px;
-		background: white;
-	}
-
-	.event-card.checked-in {
-		background: #f0f9f0;
-		border-color: #34a853;
-	}
-
-	.event-card.absent {
-		background: #fff8f0;
-		border-color: #ff9800;
-	}
-
-	.event-info h2 {
-		margin: 0 0 0.25rem 0;
-		font-size: 1.1rem;
-	}
-
-	.event-time {
-		margin: 0;
-		color: #666;
-		font-size: 0.9rem;
-	}
-
-	.event-meta {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-	}
-
-	.event-type {
-		color: #888;
-		font-size: 0.8rem;
-	}
-
-	.attendance-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.15rem 0.5rem;
-		background: #f0f0f0;
-		color: #555;
-		font-size: 0.75rem;
-		font-weight: 500;
-		border-radius: 12px;
-	}
-
-	.countdown {
-		margin: 0.5rem 0 0 0;
-		padding: 0.25rem 0.5rem;
-		background: #e8f4fd;
-		color: #0066cc;
-		font-size: 0.85rem;
-		font-weight: 500;
-		border-radius: 4px;
-		display: inline-block;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.countdown.starting-soon {
-		background: #fff3e0;
-		color: #e65100;
-	}
-
-	.countdown.late {
-		background: #ffebee;
-		color: #c62828;
-	}
-
-	/* Base button/badge styles */
-	.btn-base {
-		padding: 0.75rem 1.5rem;
-		border: none;
-		border-radius: 4px;
-		font-size: 1rem;
-		min-width: 120px;
-		text-align: center;
-		display: inline-block;
-	}
-
-	.btn-base.btn-clickable {
-		cursor: pointer;
-	}
-
-	.btn-base.btn-clickable:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	/* Color variants */
-	.btn-primary {
-		background: #0066cc;
-		color: white;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: #0052a3;
-	}
-
-	.btn-danger {
-		background: #dc3545;
-		color: white;
-	}
-
-	.btn-danger:hover:not(:disabled) {
-		background: #c82333;
-	}
-
-	.btn-success {
-		background: #34a853;
-		color: white;
-	}
-
-	.btn-warning {
-		background: #ff9800;
-		color: white;
-	}
-
-	.btn-disabled {
-		background: #ccc;
-		color: #666;
-		opacity: 1;
-	}
-
-	/* Layout helpers */
-	.action-buttons {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.change-mind-btn {
-		margin-top: 0.5rem;
-	}
-
-	/* Guest check-in styles */
-	.guest-checkin {
-		width: 100%;
-	}
-
-	.guest-checkin form {
-		max-width: 400px;
-		margin: 0 auto;
-	}
-
-	.guest-checkin .event-preview {
-		max-width: 400px;
-		margin: 0 auto 1.5rem auto;
-	}
-
-	.guest-checkin .success {
-		max-width: 400px;
-		margin: 0 auto 1rem auto;
-	}
-
-	.guest-checkin > button:not(.link-button) {
-		display: block;
-		max-width: 400px;
-		width: 100%;
-		margin: 0 auto;
-	}
-
-	.instructions {
-		margin-bottom: 1.5rem;
-		color: #666;
-		text-align: center;
-	}
-
-	form {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	label {
-		font-weight: 500;
-	}
-
-	input {
-		padding: 0.75rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		font-size: 1rem;
-	}
-
-	input:focus {
-		outline: 2px solid #0066cc;
-		outline-offset: 1px;
-	}
-
-	input#code {
-		font-size: 1.5rem;
-		text-align: center;
-		letter-spacing: 0.5rem;
-	}
-
-	button[type="submit"] {
-		padding: 0.75rem 1.5rem;
-		background: #0066cc;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 1rem;
-		cursor: pointer;
-	}
-
-	button[type="submit"]:hover:not(:disabled) {
-		background: #0052a3;
-	}
-
-	button[type="submit"]:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.link-button {
-		background: none;
-		border: none;
-		color: #0066cc;
-		cursor: pointer;
-		padding: 0.5rem;
-		margin-top: 1rem;
-	}
-
-	.guest-checkin > .link-button {
-		display: block;
-		text-align: center;
-		width: 100%;
-	}
-
-	.link-button:hover {
-		text-decoration: underline;
-	}
-
-	.event-preview {
-		background: #f5f5f5;
-		padding: 1rem;
-		border-radius: 8px;
-		margin-bottom: 1.5rem;
-	}
-
-	.event-preview h2 {
-		margin: 0 0 0.25rem 0;
-	}
-
-	.event-preview p {
-		margin: 0;
-		color: #666;
-	}
-
-	/* States */
-	.empty-state {
-		text-align: center;
-		padding: 2rem;
-		color: #666;
-	}
-
-	.error {
-		color: #cc0000;
-		margin-top: 1rem;
-	}
-
-	.success {
-		background: #e6f4ea;
-		border: 1px solid #34a853;
-		padding: 1.5rem;
-		border-radius: 8px;
-		text-align: center;
-		margin-bottom: 1rem;
-	}
-
-	.success h2 {
-		margin: 0 0 0.5rem 0;
-		color: #1e7e34;
-	}
-
-	.success p {
-		margin: 0;
-	}
-
-	.login-prompt {
-		margin-top: 2rem;
-		color: #666;
-		font-size: 0.9rem;
-		text-align: center;
-	}
-
-	.login-prompt .link-button {
-		display: inline;
-		padding: 0;
-		margin: 0;
-		font-size: inherit;
-	}
-</style>
+</div>

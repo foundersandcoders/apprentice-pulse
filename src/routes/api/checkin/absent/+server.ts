@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	let body: { eventId?: string };
+	let body: { eventId?: string; reason?: string };
 	try {
 		body = await request.json();
 	}
@@ -18,7 +18,7 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 		return json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
 	}
 
-	const { eventId } = body;
+	const { eventId, reason } = body;
 
 	if (!eventId) {
 		return json({ success: false, error: 'eventId is required' }, { status: 400 });
@@ -47,6 +47,7 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 		const attendance = await markNotComing({
 			eventId,
 			apprenticeId: apprentice.id,
+			reason,
 		});
 
 		return json({

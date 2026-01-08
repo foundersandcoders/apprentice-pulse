@@ -30,6 +30,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		const attendance = await updateAttendance(id, {
 			status: body.status,
 			checkinTime: body.checkinTime,
+			reason: body.reason,
 		});
 
 		return json({ success: true, attendance });

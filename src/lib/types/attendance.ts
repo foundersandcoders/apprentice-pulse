@@ -26,11 +26,13 @@ export interface Attendance {
 	externalEmail?: string; // For unregistered users
 	checkinTime: string; // ISO datetime
 	status: AttendanceStatus;
+	reason?: string; // Reason for absence/excuse
 }
 
 export interface CreateAttendanceInput {
 	eventId: string;
 	apprenticeId: string;
+	reason?: string;
 }
 
 export interface CreateExternalAttendanceInput {
@@ -42,6 +44,7 @@ export interface CreateExternalAttendanceInput {
 export interface UpdateAttendanceInput {
 	status: AttendanceStatus;
 	checkinTime?: string; // ISO datetime, required when setting to Present
+	reason?: string; // Reason for absence/excuse
 }
 
 // Attendance statistics types
@@ -86,6 +89,63 @@ export interface CohortAttendanceStats extends AttendanceStats {
 	trend: AttendanceTrend;
 }
 
+/** Aggregated cohort overview stats for the summary card */
+export interface CohortOverviewStats extends AttendanceStats {
+	apprenticeCount: number;
+	apprenticesAtRisk: number; // Count of apprentices below 80% attendance
+}
+
+const LOW_ATTENDANCE_THRESHOLD = 80;
+
+/**
+ * Calculate aggregated cohort overview stats from an array of apprentice stats
+ */
+export function calculateCohortOverview(apprentices: ApprenticeAttendanceStats[]): CohortOverviewStats {
+	if (apprentices.length === 0) {
+		return {
+			totalEvents: 0,
+			attended: 0,
+			present: 0,
+			late: 0,
+			absent: 0,
+			excused: 0,
+			notComing: 0,
+			attendanceRate: 0,
+			apprenticeCount: 0,
+			apprenticesAtRisk: 0,
+		};
+	}
+
+	// Aggregate all stats
+	const totals = apprentices.reduce(
+		(acc, a) => ({
+			totalEvents: acc.totalEvents + a.totalEvents,
+			attended: acc.attended + a.attended,
+			present: acc.present + a.present,
+			late: acc.late + a.late,
+			absent: acc.absent + a.absent,
+			excused: acc.excused + a.excused,
+			notComing: acc.notComing + a.notComing,
+		}),
+		{ totalEvents: 0, attended: 0, present: 0, late: 0, absent: 0, excused: 0, notComing: 0 },
+	);
+
+	// Count apprentices at risk (below threshold)
+	const apprenticesAtRisk = apprentices.filter(a => a.attendanceRate < LOW_ATTENDANCE_THRESHOLD).length;
+
+	// Calculate overall attendance rate
+	const attendanceRate = totals.totalEvents > 0
+		? (totals.attended / totals.totalEvents) * 100
+		: 0;
+
+	return {
+		...totals,
+		attendanceRate,
+		apprenticeCount: apprentices.length,
+		apprenticesAtRisk,
+	};
+}
+
 /** Overall attendance summary for dashboard */
 export interface AttendanceSummary {
 	overall: AttendanceStats;
@@ -103,6 +163,71 @@ export interface AttendanceHistoryEntry {
 	status: AttendanceStatus;
 	checkinTime: string | null;
 	attendanceId: string | null; // Null when no attendance record exists (defaults to 'Not Check-in')
+	reason: string | null; // Reason for absence/excuse
+}
+
+/** Event breakdown stats for cohort view */
+export interface EventBreakdownEntry {
+	eventId: string;
+	eventName: string;
+	eventDateTime: string;
+	present: number;
+	late: number;
+	excused: number;
+	notCheckin: number;
+	absent: number;
+	total: number;
+}
+
+/**
+ * Calculate event breakdown from attendance history
+ * Groups by event and counts each status type
+ */
+export function calculateEventBreakdown(history: AttendanceHistoryEntry[]): EventBreakdownEntry[] {
+	if (history.length === 0) return [];
+
+	const eventMap = new Map<string, EventBreakdownEntry>();
+
+	for (const entry of history) {
+		if (!eventMap.has(entry.eventId)) {
+			eventMap.set(entry.eventId, {
+				eventId: entry.eventId,
+				eventName: entry.eventName,
+				eventDateTime: entry.eventDateTime,
+				present: 0,
+				late: 0,
+				excused: 0,
+				notCheckin: 0,
+				absent: 0,
+				total: 0,
+			});
+		}
+
+		const event = eventMap.get(entry.eventId)!;
+		event.total++;
+
+		switch (entry.status) {
+			case 'Present':
+				event.present++;
+				break;
+			case 'Late':
+				event.late++;
+				break;
+			case 'Excused':
+				event.excused++;
+				break;
+			case 'Not Check-in':
+				event.notCheckin++;
+				break;
+			case 'Absent':
+				event.absent++;
+				break;
+		}
+	}
+
+	// Sort by date (newest first)
+	return Array.from(eventMap.values())
+		.sort((a, b) => new Date(b.eventDateTime).getTime() - new Date(a.eventDateTime).getTime());
 }
 
 /** Monthly attendance data point for charts */

@@ -4,7 +4,7 @@
 	import { tick } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { EVENT_TYPES, EVENT_TYPE_COLORS, type EventType, type Event as AppEvent } from '$lib/types/event';
+	import { type EventType, type Event as AppEvent } from '$lib/types/event';
 	import { ATTENDANCE_STATUSES, getStatusBadgeClass, type AttendanceStatus } from '$lib/types/attendance';
 	import { Calendar, DayGrid, Interaction } from '@event-calendar/core';
 	import '@event-calendar/core/index.css';
@@ -12,6 +12,23 @@
 	import TimePicker from '$lib/components/TimePicker.svelte';
 
 	let { data } = $props();
+
+	// Extract event types from server data
+	const eventTypes = $derived(data.eventTypes);
+	const eventTypeColors = $derived(() => {
+		const colorMap: Record<string, { main: string; tailwind: string }> = {};
+		eventTypes.forEach((type) => {
+			colorMap[type.name] = { main: type.color, tailwind: type.tailwindClass };
+		});
+		return colorMap;
+	});
+
+	// Helper function to get default survey URL for an event type
+	function getDefaultSurveyUrl(eventTypeName: string): string {
+		if (!eventTypeName) return '';
+		const type = eventTypes.find(t => t.name === eventTypeName);
+		return type?.defaultSurveyUrl || data.defaultSurveyUrl;
+	}
 
 	// Sorting state
 	type SortColumn = 'name' | 'dateTime' | 'eventType' | 'cohort' | 'attendance';
@@ -164,7 +181,7 @@
 				title: event.name || '(Untitled)',
 				start: start.toISOString().slice(0, 16).replace('T', ' '),
 				end: end.toISOString().slice(0, 16).replace('T', ' '),
-				color: EVENT_TYPE_COLORS[event.eventType]?.main || '#3b82f6',
+				color: eventTypeColors()[event.eventType]?.main || '#3b82f6',
 			};
 		});
 
@@ -256,17 +273,16 @@
 	// Inline event creation state
 	let isAddingEvent = $state(false);
 	let tableContainer = $state<HTMLDivElement | null>(null);
-	// svelte-ignore state_referenced_locally
 	let newEvent = $state({
 		name: '',
 		date: '',
 		startTime: '10:00',
 		endTime: '14:00',
 		cohortIds: [] as string[],
-		eventType: EVENT_TYPES[0] as EventType,
+		eventType: '',
 		isPublic: false,
 		checkInCode: '' as string | number,
-		surveyUrl: data.defaultSurveyUrl,
+		surveyUrl: '',
 	});
 	let addEventError = $state('');
 	let addEventSubmitting = $state(false);
@@ -280,6 +296,32 @@
 				newEvent.endTime = calculateDefaultEndTime(newEvent.startTime);
 			}
 			prevNewEventStartTime = newEvent.startTime;
+		}
+	});
+
+	// Auto-populate survey URL when event type changes for regular event
+	$effect(() => {
+		if (newEvent.eventType) {
+			newEvent.surveyUrl = getDefaultSurveyUrl(newEvent.eventType);
+		}
+	});
+
+	// ESC key handler for canceling forms
+	$effect(() => {
+		function handleKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') {
+				if (isAddingEvent) {
+					cancelAddEvent();
+				}
+				else if (isCreatingSeries) {
+					cancelSeriesForm();
+				}
+			}
+		}
+
+		if (isAddingEvent || isCreatingSeries) {
+			document.addEventListener('keydown', handleKeydown);
+			return () => document.removeEventListener('keydown', handleKeydown);
 		}
 	});
 
@@ -303,7 +345,7 @@
 		startTime: '',
 		endTime: '',
 		cohortIds: [] as string[],
-		eventType: EVENT_TYPES[0] as EventType,
+		eventType: eventTypes[0]?.name || '',
 		isPublic: false,
 		checkInCode: '' as string | number,
 		surveyUrl: '',
@@ -349,11 +391,17 @@
 	let seriesTime = $state('10:00');
 	let seriesEndTime = $state('11:00');
 	let seriesCohortIds = $state<string[]>([]);
-	let seriesEventType = $state<EventType>(EVENT_TYPES[0]);
+	let seriesEventType = $state<EventType>('');
 	let seriesIsPublic = $state(false);
 	let seriesCheckInCode = $state<string | number>('');
-	// svelte-ignore state_referenced_locally
-	let seriesSurveyUrl = $state(data.defaultSurveyUrl);
+	let seriesSurveyUrl = $state('');
+
+	// Auto-populate survey URL when event type changes for series
+	$effect(() => {
+		if (seriesEventType) {
+			seriesSurveyUrl = getDefaultSurveyUrl(seriesEventType);
+		}
+	});
 	let seriesError = $state('');
 	let seriesSubmitting = $state(false);
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);
@@ -608,7 +656,7 @@
 			startTime: '10:00',
 			endTime: '14:00',
 			cohortIds: [],
-			eventType: EVENT_TYPES[0],
+			eventType: eventTypes[0]?.name || '',
 			isPublic: false,
 			checkInCode: '' as string | number,
 			surveyUrl: data.defaultSurveyUrl,
@@ -622,10 +670,10 @@
 		seriesTime = '10:00';
 		seriesEndTime = '11:00';
 		seriesCohortIds = [];
-		seriesEventType = EVENT_TYPES[0];
+		seriesEventType = '';
 		seriesIsPublic = false;
 		seriesCheckInCode = '';
-		seriesSurveyUrl = data.defaultSurveyUrl;
+		seriesSurveyUrl = '';
 		selectedDates = [];
 		seriesError = '';
 		seriesProgress = null;
@@ -912,7 +960,7 @@
 	}
 </script>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6">
 		<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 		<h1 class="text-2xl font-bold mt-2">Events</h1>
@@ -959,7 +1007,8 @@
 						await tick();
 						tableContainer?.scrollTo({ top: 0, behavior: 'smooth' });
 					}}
-					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+					disabled={isCreatingSeries}
+					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
 				>
 					+ Add Event
 				</button>
@@ -1144,8 +1193,9 @@
 										bind:value={newEvent.eventType}
 										class="w-full border rounded px-2 py-1 text-sm"
 									>
-										{#each EVENT_TYPES as type (type)}
-											<option value={type}>{type}</option>
+										<option value="" disabled>Select event type...</option>
+										{#each eventTypes as type (type.name)}
+											<option value={type.name}>{type.name}</option>
 										{/each}
 									</select>
 								</td>
@@ -1233,20 +1283,29 @@
 											</svg>
 										</button>
 										{#if showNewEventSurvey}
-											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
-												<input
-													type="url"
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+												<textarea
 													bind:value={newEvent.surveyUrl}
 													placeholder="Paste survey URL..."
-													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-												/>
-												<button
-													type="button"
-													onclick={() => showNewEventSurvey = false}
-													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
-												>
-													Done
-												</button>
+													class="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none"
+													rows="3"
+												></textarea>
+												<div class="flex gap-2 mt-3">
+													<button
+														type="button"
+														onclick={() => showNewEventSurvey = false}
+														class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+													>
+														Done
+													</button>
+													<button
+														type="button"
+														onclick={() => newEvent.surveyUrl = ''}
+														class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+													>
+														Clear
+													</button>
+												</div>
 											</div>
 										{/if}
 									</div>
@@ -1317,8 +1376,8 @@
 											class="w-full border rounded px-2 py-1 text-sm"
 											onclick={e => e.stopPropagation()}
 										>
-											{#each EVENT_TYPES as type (type)}
-												<option value={type}>{type}</option>
+											{#each eventTypes as type (type.name)}
+												<option value={type.name}>{type.name}</option>
 											{/each}
 										</select>
 									</td>
@@ -1418,24 +1477,36 @@
 											</svg>
 										</button>
 										{#if showEditEventSurvey}
-											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
-												<input
-													type="url"
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+												<textarea
 													bind:value={editEvent.surveyUrl}
 													placeholder="Paste survey URL..."
-													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+													class="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none"
+													rows="3"
 													onclick={e => e.stopPropagation()}
-												/>
-												<button
-													type="button"
-													onclick={(e) => {
-														e.stopPropagation();
-														showEditEventSurvey = false;
-													}}
-													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
-												>
-													Done
-												</button>
+												></textarea>
+												<div class="flex gap-2 mt-3">
+													<button
+														type="button"
+														onclick={(e) => {
+															e.stopPropagation();
+															showEditEventSurvey = false;
+														}}
+														class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+													>
+														Done
+													</button>
+													<button
+														type="button"
+														onclick={(e) => {
+															e.stopPropagation();
+															editEvent.surveyUrl = '';
+														}}
+														class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+													>
+														Clear
+													</button>
+												</div>
 											</div>
 										{/if}
 									</div>
@@ -1517,7 +1588,7 @@
 								</td>
 								<td class="p-2">
 									{#if event.eventType}
-										<span class="{EVENT_TYPE_COLORS[event.eventType].tailwind} font-medium">
+										<span class="{eventTypeColors()[event.eventType]?.tailwind || 'text-gray-600'} font-medium">
 											{event.eventType}
 										</span>
 									{:else}
@@ -1717,7 +1788,8 @@
 					{#if !isCreatingSeries}
 						<button
 							onclick={() => { isCreatingSeries = true; }}
-							class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+							disabled={isAddingEvent}
+							class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
 						>
 							+ Create Series
 						</button>
@@ -1794,8 +1866,9 @@
 									required
 									class="w-full border rounded px-3 py-2"
 								>
-									{#each EVENT_TYPES as type (type)}
-										<option value={type}>{type}</option>
+									<option value="" disabled>Select event type...</option>
+									{#each eventTypes as type (type.name)}
+										<option value={type.name}>{type.name}</option>
 									{/each}
 								</select>
 							</div>
@@ -1863,13 +1936,24 @@
 								<label for="seriesSurveyUrl" class="block text-sm font-medium text-gray-700 mb-1">
 									Survey URL
 								</label>
-								<input
-									type="url"
-									id="seriesSurveyUrl"
-									bind:value={seriesSurveyUrl}
-									class="w-full border rounded px-3 py-2"
-									placeholder="https://..."
-								/>
+								<div class="space-y-2">
+									<textarea
+										id="seriesSurveyUrl"
+										bind:value={seriesSurveyUrl}
+										class="w-full border rounded px-3 py-2 resize-none"
+										placeholder="https://..."
+										rows="3"
+									></textarea>
+									{#if seriesSurveyUrl}
+										<button
+											type="button"
+											onclick={() => seriesSurveyUrl = ''}
+											class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+										>
+											Clear
+										</button>
+									{/if}
+								</div>
 							</div>
 
 							{#if seriesIsPublic}
@@ -1956,13 +2040,13 @@
 
 			<!-- Legend -->
 			<div class="flex flex-wrap gap-4 mb-4 text-sm">
-				{#each EVENT_TYPES as type (type)}
+				{#each eventTypes as type (type.name)}
 					<div class="flex items-center gap-2">
 						<span
 							class="w-3 h-3 rounded-full"
-							style="background-color: {EVENT_TYPE_COLORS[type].main}"
+							style="background-color: {type.color}"
 						></span>
-						<span class="{EVENT_TYPE_COLORS[type].tailwind}">{type}</span>
+						<span class="{type.tailwindClass}">{type.name}</span>
 					</div>
 				{/each}
 				{#if isCreatingSeries}

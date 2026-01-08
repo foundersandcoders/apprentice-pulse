@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createEvent, listEvents } from '$lib/airtable/sveltekit-wrapper';
-import { EVENT_TYPES } from '$lib/types/event';
+import { eventTypesService } from '$lib/services/event-types';
 
 export const GET: RequestHandler = async () => {
 	try {
@@ -29,12 +29,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Event type is required' }, { status: 400 });
 		}
 
-		// Case-insensitive event type matching - normalize to Airtable's exact value
-		const normalizedEventType = EVENT_TYPES.find(
-			t => t.toLowerCase() === body.eventType.toLowerCase(),
-		);
-		if (!normalizedEventType) {
-			return json({ success: false, error: 'Invalid event type' }, { status: 400 });
+		// Validate event type against Airtable data
+		const isValid = await eventTypesService.isValidEventType(body.eventType);
+		if (!isValid) {
+			const validTypes = await eventTypesService.getEventTypeNames();
+			return json({
+				success: false,
+				error: `Invalid event type. Must be one of: ${validTypes.join(', ')}`,
+			}, { status: 400 });
 		}
 
 		const event = await createEvent({
@@ -42,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			dateTime: body.dateTime,
 			endDateTime: body.endDateTime || undefined,
 			cohortIds: body.cohortIds || undefined,
-			eventType: normalizedEventType,
+			eventType: body.eventType,
 			surveyUrl: body.surveyUrl || undefined,
 			isPublic: body.isPublic ?? false,
 			checkInCode: body.checkInCode || undefined,

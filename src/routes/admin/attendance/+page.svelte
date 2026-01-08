@@ -4,12 +4,14 @@
 	import { navigating, page } from '$app/state';
 	import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry } from '$lib/types/attendance';
-	import { calculateMonthlyAttendance } from '$lib/types/attendance';
+	import { calculateMonthlyAttendance, calculateCohortOverview, calculateEventBreakdown } from '$lib/types/attendance';
 	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
-	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
+	import UnifiedAttendanceStatsCard from '$lib/components/UnifiedAttendanceStatsCard.svelte';
+	import EventBreakdownCard from '$lib/components/EventBreakdownCard.svelte';
 
 	let { data } = $props();
 
@@ -25,6 +27,12 @@
 	// Calculate monthly attendance data for chart
 	const monthlyChartData = $derived(calculateMonthlyAttendance(combinedHistory));
 	const showAll = $derived(data.showAll as boolean);
+
+	// Calculate cohort overview stats
+	const cohortOverview = $derived(calculateCohortOverview(apprentices));
+
+	// Calculate event breakdown
+	const eventBreakdown = $derived(calculateEventBreakdown(combinedHistory));
 
 	// Current filters from URL params
 	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
@@ -233,10 +241,11 @@
 <div class="p-6 max-w-6xl mx-auto">
 	<header class="mb-6 flex justify-between items-start">
 		<div>
-			<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 			{#if needsSelection}
+				<a href={resolve('/admin')} class="text-blue-600 hover:underline text-sm">← Back to Admin</a>
 				<h1 class="text-2xl font-bold mt-2">Attendance</h1>
 			{:else}
+				<button onclick={clearSelection} class="text-blue-600 hover:underline text-sm">← Change Cohorts</button>
 				<h1 class="text-2xl font-bold mt-2">Cohort Attendance</h1>
 			{/if}
 		</div>
@@ -316,41 +325,49 @@
 
 		</div>
 	{:else}
-		<!-- Attendance Filter -->
-		<div class="mb-6">
-			<AttendanceFiltersComponent
+		<!-- Filters Card -->
+		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6">
+			<h2 class="text-lg font-semibold mb-4">Filters</h2>
+
+			<!-- Cohorts Filter -->
+			<div class="flex flex-wrap items-center gap-2 pb-4 border-b border-gray-100">
+				<span class="text-sm font-medium text-gray-700">Cohorts:</span>
+				{#if showAll}
+					<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">All Cohorts</span>
+				{:else}
+					{#each selectedCohortIds as cohortId (cohortId)}
+						{@const cohort = cohorts.find(c => c.id === cohortId)}
+						{#if cohort}
+							<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">{cohort.name}</span>
+						{/if}
+					{/each}
+				{/if}
+			</div>
+
+			<!-- Time Period Filter -->
+			<ExpandableAttendanceFilters
 				{terms}
 				filters={currentFilters}
 				onFiltersChange={handleFiltersChange}
 			/>
 		</div>
 
-		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-			<!-- Filters & Controls -->
-			<div class="mb-6 flex flex-wrap gap-4 items-center">
-				<div class="flex flex-wrap gap-2 items-center">
-					<span class="text-sm text-gray-600">Showing:</span>
-					{#if showAll}
-						<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">All Cohorts</span>
-					{:else}
-						{#each selectedCohortIds as cohortId (cohortId)}
-							{@const cohort = cohorts.find(c => c.id === cohortId)}
-							{#if cohort}
-								<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">{cohort.name}</span>
-							{/if}
-						{/each}
-					{/if}
-					<button
-						class="text-blue-600 hover:underline text-sm transition-colors"
-						onclick={clearSelection}
-					>
-						Change selection
-					</button>
-				</div>
+		<!-- Attendance Stats Card -->
+		<div class="mb-6">
+			<UnifiedAttendanceStatsCard stats={cohortOverview} />
+		</div>
 
-				<div class="text-sm text-gray-500 ml-auto">
+		<!-- Event Breakdown -->
+		<div class="mb-6">
+			<EventBreakdownCard events={eventBreakdown} />
+		</div>
+
+		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+			<div class="flex justify-between items-center mb-4">
+				<h2 class="text-lg font-semibold">Individual Apprentices</h2>
+				<span class="text-sm text-gray-500">
 					{sortedApprentices.length} apprentice{sortedApprentices.length !== 1 ? 's' : ''}
-				</div>
+				</span>
 			</div>
 
 			<!-- Apprentices Table -->
@@ -381,7 +398,7 @@
 								>
 									Attendance Rate{getSortIndicator('attendanceRate')}
 								</th>
-								<th class="text-right p-3 border-b">Attended</th>
+								<th class="text-right p-3 border-b">Lateness Rate</th>
 								<th class="text-right p-3 pr-6 border-b">Actions</th>
 							</tr>
 						</thead>
@@ -398,12 +415,9 @@
 										<span class="font-semibold {getAttendanceColor(apprentice.attendanceRate)}">
 											{apprentice.attendanceRate.toFixed(0)}%
 										</span>
-										{#if isLowAttendance(apprentice.attendanceRate)}
-											<span class="ml-1 text-red-500" title="Low attendance">⚠</span>
-										{/if}
 									</td>
-									<td class="p-3 text-right text-gray-600">
-										{apprentice.attended}/{apprentice.totalEvents}
+									<td class="p-3 text-right text-yellow-600">
+										{apprentice.totalEvents > 0 ? ((apprentice.late / apprentice.totalEvents) * 100).toFixed(0) : 0}%
 									</td>
 									<td class="p-3 pr-6 text-right">
 										<a

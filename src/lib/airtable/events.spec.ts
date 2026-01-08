@@ -23,6 +23,19 @@ vi.mock('airtable', () => {
 	};
 });
 
+// Mock event types service
+vi.mock('./event-types', () => ({
+	createEventTypesClient: vi.fn(() => ({
+		getEventType: vi.fn().mockResolvedValue({ id: 'recEventType1', name: 'Regular Class' }),
+		findEventTypeByName: vi.fn((name: string) => {
+			if (name === 'Workshop') {
+				return Promise.resolve({ id: 'recEventTypeWorkshop', name: 'Workshop' });
+			}
+			return Promise.resolve({ id: 'recEventType1', name: 'Regular Class' });
+		}),
+	})),
+}));
+
 import Airtable from 'airtable';
 
 describe('events', () => {
@@ -70,8 +83,9 @@ describe('events', () => {
 				id: 'rec123',
 				name: 'Week 1 Monday',
 				dateTime: '2025-01-06T10:00:00.000Z',
+				endDateTime: undefined,
 				cohortIds: ['recCohort1'],
-				eventType: 'Regular class',
+				eventType: 'Regular Class',
 				surveyUrl: 'https://survey.example.com',
 				isPublic: false,
 				checkInCode: undefined,
@@ -106,8 +120,9 @@ describe('events', () => {
 				id: 'rec123',
 				name: 'Workshop',
 				dateTime: '2025-01-07T14:00:00.000Z',
+				endDateTime: undefined,
 				cohortIds: ['recCohort2'],
-				eventType: 'Workshop',
+				eventType: 'Regular Class',
 				surveyUrl: undefined,
 				isPublic: false,
 				checkInCode: undefined,
@@ -142,7 +157,12 @@ describe('events', () => {
 
 			expect(event).toEqual({
 				id: 'recNew123',
-				...input,
+				name: 'New Event',
+				dateTime: '2025-01-08T09:00:00.000Z',
+				endDateTime: undefined,
+				cohortIds: ['recCohort1'],
+				eventType: 'Workshop',
+				surveyUrl: 'https://survey.example.com',
 				isPublic: false,
 				checkInCode: undefined,
 			});

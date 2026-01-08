@@ -1,12 +1,34 @@
 import Airtable from 'airtable';
 
 import { TABLES, EVENT_FIELDS } from './config.ts';
+import { createEventTypesClient } from './event-types.ts';
 import type { Event, EventFilters, EventType, CreateEventInput, UpdateEventInput } from '../types/event.ts';
 
 export function createEventsClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });
 	const base = Airtable.base(baseId);
 	const eventsTable = base(TABLES.EVENTS);
+	const eventTypesClient = createEventTypesClient(apiKey, baseId);
+
+	/**
+	 * Helper function to resolve event type from record link
+	 */
+	async function resolveEventType(eventTypeLinks: string[] | undefined): Promise<EventType> {
+		if (!eventTypeLinks || eventTypeLinks.length === 0) {
+			return 'Regular Class'; // Default fallback
+		}
+
+		const eventType = await eventTypesClient.getEventType(eventTypeLinks[0]);
+		return (eventType?.name as EventType) ?? 'Regular Class';
+	}
+
+	/**
+	 * Helper function to find event type ID by name
+	 */
+	async function findEventTypeId(eventTypeName: EventType): Promise<string | null> {
+		const eventType = await eventTypesClient.findEventTypeByName(eventTypeName);
+		return eventType?.id ?? null;
+	}
 
 	/**
 	 * List events with optional filters
@@ -35,22 +57,25 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		return records.map((record) => {
+		return Promise.all(records.map(async (record) => {
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const eventTypeLinks = record.get(EVENT_FIELDS.EVENT_TYPE) as string[] | undefined;
 			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
+			const eventType = await resolveEventType(eventTypeLinks);
+
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 				cohortIds: cohortLookup ?? [],
-				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+				eventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
 				attendanceCount: attendanceLinks?.length ?? 0,
 			};
-		});
+		}));
 	}
 
 	/**
@@ -73,14 +98,17 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 			const record = records[0];
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const eventTypeLinks = record.get(EVENT_FIELDS.EVENT_TYPE) as string[] | undefined;
 			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
+			const eventType = await resolveEventType(eventTypeLinks);
+
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 				cohortIds: cohortLookup ?? [],
-				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+				eventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
@@ -96,10 +124,15 @@ export function createEventsClient(apiKey: string, baseId: string) {
 	 * Create a new event
 	 */
 	async function createEvent(data: CreateEventInput): Promise<Event> {
+		const eventTypeId = await findEventTypeId(data.eventType);
+		if (!eventTypeId) {
+			throw new Error(`Event type "${data.eventType}" not found`);
+		}
+
 		const fields: Airtable.FieldSet = {
 			[EVENT_FIELDS.NAME]: data.name,
 			[EVENT_FIELDS.DATE_TIME]: data.dateTime,
-			[EVENT_FIELDS.EVENT_TYPE]: data.eventType,
+			[EVENT_FIELDS.EVENT_TYPE]: [eventTypeId],
 		};
 
 		if (data.endDateTime) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
@@ -133,13 +166,21 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		if (data.dateTime !== undefined) fields[EVENT_FIELDS.DATE_TIME] = data.dateTime;
 		if (data.endDateTime !== undefined) fields[EVENT_FIELDS.END_DATE_TIME] = data.endDateTime;
 		if (data.cohortIds !== undefined) fields[EVENT_FIELDS.COHORT] = data.cohortIds;
-		if (data.eventType !== undefined) fields[EVENT_FIELDS.EVENT_TYPE] = data.eventType;
+		if (data.eventType !== undefined) {
+			const eventTypeId = await findEventTypeId(data.eventType);
+			if (!eventTypeId) {
+				throw new Error(`Event type "${data.eventType}" not found`);
+			}
+			fields[EVENT_FIELDS.EVENT_TYPE] = [eventTypeId];
+		}
 		if (data.surveyUrl !== undefined) fields[EVENT_FIELDS.SURVEY] = data.surveyUrl;
 		if (data.isPublic !== undefined) fields[EVENT_FIELDS.PUBLIC] = data.isPublic;
 		if (data.checkInCode !== undefined) fields[EVENT_FIELDS.CHECK_IN_CODE] = data.checkInCode;
 
 		const record = await eventsTable.update(id, fields);
 		const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+		const eventTypeLinks = record.get(EVENT_FIELDS.EVENT_TYPE) as string[] | undefined;
+		const eventType = await resolveEventType(eventTypeLinks);
 
 		return {
 			id: record.id,
@@ -147,7 +188,7 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 			cohortIds: cohortLookup ?? [],
-			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+			eventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 			isPublic: (record.get(EVENT_FIELDS.PUBLIC) as boolean) ?? false,
 			checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
@@ -180,13 +221,16 @@ export function createEventsClient(apiKey: string, baseId: string) {
 
 		const record = records[0];
 		const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+		const eventTypeLinks = record.get(EVENT_FIELDS.EVENT_TYPE) as string[] | undefined;
+		const eventType = await resolveEventType(eventTypeLinks);
+
 		return {
 			id: record.id,
 			name: record.get(EVENT_FIELDS.NAME) as string,
 			dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 			endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 			cohortIds: cohortLookup ?? [],
-			eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+			eventType,
 			surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 			isPublic: true,
 			checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
@@ -208,22 +252,25 @@ export function createEventsClient(apiKey: string, baseId: string) {
 			})
 			.all();
 
-		return records.map((record) => {
+		return Promise.all(records.map(async (record) => {
 			const cohortLookup = record.get(EVENT_FIELDS.COHORT) as string[] | undefined;
+			const eventTypeLinks = record.get(EVENT_FIELDS.EVENT_TYPE) as string[] | undefined;
 			const attendanceLinks = record.get(EVENT_FIELDS.ATTENDANCE) as string[] | undefined;
+			const eventType = await resolveEventType(eventTypeLinks);
+
 			return {
 				id: record.id,
 				name: record.get(EVENT_FIELDS.NAME) as string,
 				dateTime: record.get(EVENT_FIELDS.DATE_TIME) as string,
 				endDateTime: record.get(EVENT_FIELDS.END_DATE_TIME) as string | undefined,
 				cohortIds: cohortLookup ?? [],
-				eventType: record.get(EVENT_FIELDS.EVENT_TYPE) as EventType,
+				eventType,
 				surveyUrl: record.get(EVENT_FIELDS.SURVEY) as string | undefined,
 				isPublic: true,
 				checkInCode: record.get(EVENT_FIELDS.CHECK_IN_CODE) as number | undefined,
 				attendanceCount: attendanceLinks?.length ?? 0,
 			};
-		});
+		}));
 	}
 
 	return {
@@ -234,5 +281,6 @@ export function createEventsClient(apiKey: string, baseId: string) {
 		createEvent,
 		updateEvent,
 		deleteEvent,
+		eventTypesClient,
 	};
 }
