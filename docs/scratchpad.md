@@ -10,6 +10,8 @@ Absent reason.
 
 Events view, list of people, show link to apprentices to go to personalised
 
+add externals by email as staff
+
 
 
 survey URL is OK?
