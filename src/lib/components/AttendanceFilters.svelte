@@ -45,6 +45,20 @@
 		return stagedStartDate !== appliedStartDate || stagedEndDate !== appliedEndDate;
 	});
 
+	// Helper to add/subtract days from a date string (YYYY-MM-DD)
+	function addDays(dateStr: string, days: number): string {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- pure function, not reactive state
+		const date = new Date(dateStr);
+		date.setDate(date.getDate() + days);
+		return date.toISOString().split('T')[0];
+	}
+
+	// Calculate minimum end date (day after start date)
+	const minEndDate = $derived(stagedStartDate ? addDays(stagedStartDate, 1) : '');
+
+	// Calculate maximum start date (day before end date)
+	const maxStartDate = $derived(stagedEndDate ? addDays(stagedEndDate, -1) : '');
+
 	// Sync staged values when filters prop changes
 	$effect(() => {
 		stagedTermIds = [...appliedTermIds];
@@ -279,6 +293,7 @@
 						id="startDate"
 						type="date"
 						bind:value={stagedStartDate}
+						max={maxStartDate}
 						class="w-full border rounded px-3 py-2 text-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
 					/>
 				</div>
@@ -290,6 +305,7 @@
 						id="endDate"
 						type="date"
 						bind:value={stagedEndDate}
+						min={minEndDate}
 						class="w-full border rounded px-3 py-2 text-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
 					/>
 				</div>
