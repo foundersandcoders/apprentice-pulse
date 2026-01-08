@@ -35,7 +35,7 @@
    - [✅] 4.1 Extend login API to check external access fields alongside staff/student tables
    - [✅] 4.2 Update `src/routes/api/auth/login/+server.ts` to lookup external users
    - [✅] 4.3 Send magic links with external user type when found in attendance access
-   - [ ] 4.4 Test login flow handles external staff seamlessly
+   - [x] 4.4 Test login flow handles external staff seamlessly
 
 5. [✅] **Update Route Protection**
    - [✅] 5.1 Extend user type definitions in `src/hooks.server.ts`
@@ -52,7 +52,7 @@
 7. [✅] **Testing and Validation**
    - [✅] 7.1 Add unit tests for external access service functions
    - [✅] 7.2 Run linter and fix all code quality issues
-   - [ ] 7.3 Add end-to-end tests for external staff login flow
+   - [x] 7.3 Add end-to-end tests for external staff login flow
    - [ ] 7.4 Test external staff cannot escalate privileges or modify data
 
 ## Notes
