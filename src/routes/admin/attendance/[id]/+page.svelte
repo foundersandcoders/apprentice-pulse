@@ -18,8 +18,6 @@
 	const terms = $derived(data.terms as Term[]);
 	const cohortsParam = $derived(data.cohortsParam as string);
 
-	// Check if user is external (read-only access)
-	const isExternalUser = $derived(data.user?.type === 'external');
 
 	// Build back link - check if we came from search or cohort view
 	const fromSearch = $derived(page.url.searchParams.get('from') === 'search');
@@ -302,17 +300,6 @@
 		</div>
 	</header>
 
-	{#if isExternalUser}
-		<div class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-			<div class="flex items-center gap-2">
-				<span class="text-orange-600">👀</span>
-				<div class="flex-1">
-					<h3 class="text-orange-800 font-medium text-sm">Read-Only Access</h3>
-					<p class="text-orange-700 text-xs mt-1">You have view-only access to attendance data. Contact staff to make changes.</p>
-				</div>
-			</div>
-		</div>
-	{/if}
 
 	<!-- Attendance Filters -->
 	<div class="mb-6">
@@ -372,18 +359,12 @@
 											{/each}
 										</select>
 									{:else}
-										{#if isExternalUser}
-											<span class="px-2 py-1 rounded-full text-sm {getStatusBadgeClass(entry.status)}">
-												{entry.status}
-											</span>
-										{:else}
-											<button
-												onclick={() => startEditingStatus(entry)}
-												class="px-2 py-1 rounded-full text-sm cursor-pointer {getStatusBadgeClass(entry.status)} hover:opacity-80 transition-opacity"
-											>
-												{entry.status}
-											</button>
-										{/if}
+										<button
+											onclick={() => startEditingStatus(entry)}
+											class="px-2 py-1 rounded-full text-sm cursor-pointer {getStatusBadgeClass(entry.status)} hover:opacity-80 transition-opacity"
+										>
+											{entry.status}
+										</button>
 									{/if}
 								</td>
 								<td class="p-3 text-center">

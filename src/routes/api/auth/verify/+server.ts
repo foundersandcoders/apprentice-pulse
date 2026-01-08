@@ -29,11 +29,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	}
 
 	// Default redirect based on user type
-	if (payload.type === 'staff') {
+	if (payload.type === 'staff' || payload.type === 'external') {
 		redirect(303, '/admin');
-	}
-	if (payload.type === 'external') {
-		redirect(303, '/admin/attendance');
 	}
 	redirect(303, '/checkin');
 };

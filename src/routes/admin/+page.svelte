@@ -7,32 +7,26 @@
 <div class="p-6 max-w-4xl mx-auto">
 	<header class="mb-6 flex justify-between items-start">
 		<div>
-			<h1 class="text-2xl font-bold">
-				{data.user?.type === 'external' ? 'Attendance Dashboard' : 'Admin Dashboard'}
-			</h1>
+			<h1 class="text-2xl font-bold">Admin Dashboard</h1>
 			<div class="flex items-center gap-3 mt-1">
 				<p class="text-gray-600">Welcome, {data.user?.email}</p>
-				{#if data.user?.type === 'external'}
-					<span class="inline-block px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
-						External Access
-					</span>
-				{:else if data.user?.type === 'staff'}
+				{#if data.user?.type === 'staff'}
 					<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
 						Staff
 					</span>
-				{/if}
-			</div>
+				{:else if data.user?.type === 'external'}
+					<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+						External Staff
+					</span>
+					</div>
 		</div>
 		<div class="flex gap-4 text-sm">
-			{#if data.user?.type !== 'external'}
-				<a href={resolve('/checkin')} class="text-blue-600 hover:underline">Check In</a>
-			{/if}
+			<a href={resolve('/checkin')} class="text-blue-600 hover:underline">Check In</a>
 			<a href={resolve('/api/auth/logout')} class="text-gray-500 hover:text-gray-700">Logout</a>
 		</div>
 	</header>
 
 	<div class="grid gap-6 sm:grid-cols-2">
-		{#if data.user?.type !== 'external'}
 			<a
 				href={resolve('/admin/events')}
 				class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all"
@@ -47,7 +41,6 @@
 					</div>
 				</div>
 			</a>
-		{/if}
 		<a
 			href={resolve('/admin/attendance')}
 			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-green-300 transition-all"
