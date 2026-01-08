@@ -23,7 +23,7 @@
    - [✅] 2.1 Create `src/lib/airtable/external-access.ts` service module
    - [✅] 2.2 Implement `getExternalAccessByEmail()` function
    - [✅] 2.3 Implement `listExternalAccessUsers()` function for management
-   - [ ] 2.4 Add unit tests for external access service functions
+   - [x] 2.4 Add unit tests for external access service functions
 
 3. [✅] **Extend Authentication System**
    - [✅] 3.1 Add `'external'` user type to `src/lib/server/auth.ts`
