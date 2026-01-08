@@ -31,6 +31,7 @@ export interface Attendance {
 export interface CreateAttendanceInput {
 	eventId: string;
 	apprenticeId: string;
+	reason?: string;
 }
 
 export interface CreateExternalAttendanceInput {

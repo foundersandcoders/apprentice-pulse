@@ -151,6 +151,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			[ATTENDANCE_FIELDS.EVENT]: [input.eventId],
 			[ATTENDANCE_FIELDS.APPRENTICE]: [input.apprenticeId],
 			[ATTENDANCE_FIELDS.STATUS]: 'Absent',
+			...(input.reason && { [ATTENDANCE_FIELDS.REASON]: input.reason }),
 		};
 
 		const record = await attendanceTable.create(fields);

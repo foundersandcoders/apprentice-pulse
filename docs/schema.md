@@ -67,6 +67,7 @@ Attendance tracking using a junction table pattern (one record per apprentice pe
 | FAC Cohort (from Event) | `fldkc9zLJe7NZVAz1` | multipleLookupValues | Cohort lookup from Event |
 | External Name | `fldIhZnMxfjh9ps78` | singleLineText | Name for non-registered attendees |
 | External Email | `fldHREfpkx1bGv3K3` | email | Email for non-registered attendees |
+| Reason | `fldmJtM87FmcnTTfK` | multilineText | Reason for absence (optional) |
 
 ---
 

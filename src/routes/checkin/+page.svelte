@@ -20,6 +20,10 @@
 	let markingNotComing = $state<string | null>(null);
 	let checkInError = $state<string | null>(null);
 
+	// Absence reason state
+	let showingReasonFor = $state<string | null>(null);
+	let absenceReason = $state('');
+
 	// Guest check-in state
 	let guestStep = $state<'code' | 'events' | 'details' | 'success'>('code');
 	let guestCode = $state('');
@@ -125,8 +129,21 @@
 		}
 	}
 
+	// Show absence reason input
+	function showReasonInput(eventId: string) {
+		showingReasonFor = eventId;
+		absenceReason = '';
+		checkInError = null;
+	}
+
+	// Hide absence reason input
+	function hideReasonInput() {
+		showingReasonFor = null;
+		absenceReason = '';
+	}
+
 	// Authenticated user mark as absent
-	async function handleNotComing(eventId: string) {
+	async function handleNotComing(eventId: string, reason?: string) {
 		// Prevent double-clicking by checking if already processing this event
 		if (markingNotComing === eventId || checkingIn === eventId) {
 			return;
@@ -139,7 +156,7 @@
 			const response = await fetch('/api/checkin/absent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ eventId }),
+				body: JSON.stringify({ eventId, reason }),
 			});
 
 			const result = await response.json();
@@ -167,6 +184,7 @@
 		}
 		finally {
 			markingNotComing = null;
+			hideReasonInput();
 		}
 	}
 
@@ -351,6 +369,32 @@
 										title="Check-in opens on the day of the event">
 										Check In
 									</button>
+								{:else if showingReasonFor === event.id}
+									<!-- Absence reason form -->
+									<div class="space-y-3">
+										<label for="reason-{event.id}" class="block text-sm font-medium text-gray-700">
+											Reason for absence (optional):
+										</label>
+										<textarea
+											id="reason-{event.id}"
+											bind:value={absenceReason}
+											placeholder="Brief reason for absence..."
+											class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+											rows="2"
+										></textarea>
+										<div class="flex gap-2">
+											<button class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+												onclick={() => handleNotComing(event.id, absenceReason)}
+												disabled={markingNotComing === event.id}>
+												{markingNotComing === event.id ? 'Marking absent...' : 'Mark Absent'}
+											</button>
+											<button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+												onclick={hideReasonInput}
+												disabled={markingNotComing === event.id}>
+												Cancel
+											</button>
+										</div>
+									</div>
 								{:else}
 									<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 										onclick={() => handleCheckIn(event.id)}
@@ -359,7 +403,7 @@
 									</button>
 									{#if data.checkInMethod === 'apprentice'}
 										<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-											onclick={() => handleNotComing(event.id)}
+											onclick={() => showReasonInput(event.id)}
 											disabled={checkingIn !== null || markingNotComing !== null}>
 											Absent
 										</button>

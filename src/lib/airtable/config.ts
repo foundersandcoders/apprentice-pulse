@@ -57,6 +57,7 @@ export const ATTENDANCE_FIELDS = {
 	STATUS: 'fldew45fDGpgl1aRr', // singleSelect (Present/Not Check-in/Late/Excused/Absent)
 	EXTERNAL_NAME: 'fldIhZnMxfjh9ps78', // singleLineText (for non-registered attendees)
 	EXTERNAL_EMAIL: 'fldHREfpkx1bGv3K3', // email (for non-registered attendees)
+	REASON: 'fldmJtM87FmcnTTfK', // multilineText (reason for absence)
 } as const;
 
 // Fields - Terms
