@@ -82,25 +82,34 @@ IFS=$'\t' read -r REMAINING COMPLETED NEXT_TASK LAST_DONE TO_COMPLETE < <(
   }
 
   # Main task: incomplete (strict [ ])
-  match($0, /^([0-9]+)\.[[:space:]]*\[ \][[:space:]]*(.*)$/, m) {
-    n = m[1]
+  /^[0-9]+\.[[:space:]]*\[ \][[:space:]]*/ {
+    n = $0
+    sub(/\..*$/, "", n)
+    text = $0
+    sub(/^[0-9]+\.[[:space:]]*\[ \][[:space:]]*/, "", text)
     main_state[n] = "incomplete"
-    main_text[n] = trim(m[2])
+    main_text[n] = trim(text)
     next
   }
 
   # Main task: complete (strict [x])
-  match($0, /^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$/, m) {
-    n = m[1]
+  /^[0-9]+\.[[:space:]]*\[x\][[:space:]]*/ {
+    n = $0
+    sub(/\..*$/, "", n)
+    text = $0
+    sub(/^[0-9]+\.[[:space:]]*\[x\][[:space:]]*/, "", text)
     main_state[n] = "complete"
-    main_text[n] = trim(m[2])
+    main_text[n] = trim(text)
     next
   }
 
   # Subtask: strict [ ] or [x], and requires a leading main number like 1.1, 2.3 etc
-  match($0, /^[[:space:]]*-[[:space:]]*\[([ x])\][[:space:]]*([0-9]+)\.[0-9]+[[:space:]]*(.*)$/, m) {
-    status = m[1]
-    n = m[2]
+  /^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*[0-9]+\.[0-9]+[[:space:]]*/ {
+    status = ($0 ~ /^[[:space:]]*-[[:space:]]*\[x\]/) ? "x" : " "
+    tmp = $0
+    sub(/^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*/, "", tmp)
+    n = tmp
+    sub(/\..*$/, "", n)
     sub_any[n] = 1
 
     if (status == "x") {
@@ -168,11 +177,32 @@ if [[ -n "${TO_COMPLETE:-}" ]]; then
 
     BEGIN { remaining=0; completed=0; next_task=""; last_done="" }
 
-    match($0, /^([0-9]+)\.[[:space:]]*\[ \][[:space:]]*(.*)$/, m) { main_state[m[1]]="incomplete"; main_text[m[1]]=trim(m[2]); next }
-    match($0, /^([0-9]+)\.[[:space:]]*\[x\][[:space:]]*(.*)$/, m) { main_state[m[1]]="complete";   main_text[m[1]]=trim(m[2]); next }
+    /^[0-9]+\.[[:space:]]*\[ \][[:space:]]*/ {
+      n = $0
+      sub(/\..*$/, "", n)
+      text = $0
+      sub(/^[0-9]+\.[[:space:]]*\[ \][[:space:]]*/, "", text)
+      main_state[n]="incomplete"
+      main_text[n]=trim(text)
+      next
+    }
+    /^[0-9]+\.[[:space:]]*\[x\][[:space:]]*/ {
+      n = $0
+      sub(/\..*$/, "", n)
+      text = $0
+      sub(/^[0-9]+\.[[:space:]]*\[x\][[:space:]]*/, "", text)
+      main_state[n]="complete"
+      main_text[n]=trim(text)
+      next
+    }
 
-    match($0, /^[[:space:]]*-[[:space:]]*\[([ x])\][[:space:]]*([0-9]+)\.[0-9]+[[:space:]]*(.*)$/, m) {
-      status=m[1]; n=m[2]; sub_any[n]=1
+    /^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*[0-9]+\.[0-9]+[[:space:]]*/ {
+      status = ($0 ~ /^[[:space:]]*-[[:space:]]*\[x\]/) ? "x" : " "
+      tmp = $0
+      sub(/^[[:space:]]*-[[:space:]]*\[[ x]\][[:space:]]*/, "", tmp)
+      n = tmp
+      sub(/\..*$/, "", n)
+      sub_any[n]=1
       if (status=="x") { completed++; last_done=after_checkbox($0) }
       else { remaining++; if (next_task=="") next_task=after_checkbox($0) }
       next

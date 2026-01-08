@@ -35,6 +35,7 @@ const attendanceClient = createAttendanceClient(AIRTABLE_API_KEY, AIRTABLE_BASE_
 export const getApprenticesByFacCohort = client.getApprenticesByFacCohort;
 export const findStaffByEmail = client.findStaffByEmail;
 export const getStaffByEmail = client.getStaffByEmail;
+export const getExternalAccessByEmail = client.getExternalAccessByEmail;
 export const findApprenticeByEmail = client.findApprenticeByEmail;
 export const getApprenticeByEmail = client.getApprenticeByEmail;
 export const listCohorts = client.listCohorts;

@@ -4,6 +4,9 @@ import { getSession } from '$lib/server/session';
 // Routes that require staff access
 const ADMIN_ROUTES = ['/admin'];
 
+// Routes that allow external users (read-only access)
+const EXTERNAL_ALLOWED_ROUTES = ['/admin/attendance'];
+
 // Routes that require any authenticated user
 const PROTECTED_ROUTES: string[] = []; // /checkin now handles auth internally for guest support
 
@@ -27,12 +30,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	// Check admin routes - require staff
+	// Check admin routes - require staff or external (with restrictions)
 	if (isPathMatch(pathname, ADMIN_ROUTES)) {
 		if (!session) {
 			redirect(303, '/login?redirect=' + encodeURIComponent(pathname));
 		}
-		if (session.type !== 'staff') {
+
+		if (session.type === 'staff') {
+			// Staff have full access - continue
+		}
+		else if (session.type === 'external') {
+			// External users only have access to attendance routes
+			if (!isPathMatch(pathname, EXTERNAL_ALLOWED_ROUTES)) {
+				// Redirect external users to attendance page if trying to access restricted admin areas
+				redirect(303, '/admin/attendance');
+			}
+		}
+		else {
 			// Students trying to access admin get redirected to checkin
 			redirect(303, '/checkin');
 		}
@@ -47,7 +61,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Redirect authenticated users away from login page
 	if (isPathMatch(pathname, AUTH_ROUTES) && session) {
-		const redirectTo = session.type === 'staff' ? '/admin' : '/checkin';
+		let redirectTo = '/checkin'; // default for students
+		if (session.type === 'staff') {
+			redirectTo = '/admin';
+		}
+		else if (session.type === 'external') {
+			redirectTo = '/admin/attendance';
+		}
 		redirect(303, redirectTo);
 	}
 

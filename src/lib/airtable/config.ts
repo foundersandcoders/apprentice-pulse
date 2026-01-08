@@ -33,6 +33,8 @@ export const STAFF_FIELDS = {
 	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
 	APPRENTICE_LINK: 'fldAMwe9jOOdwIyBY', // multipleRecordLinks to Apprentices
 	LEARNER_EMAIL: 'fldPjDZTSySzbefXz', // multipleLookupValues from linked Apprentice
+	EXTERNAL_ACCESS_EMAIL: 'fldsR6gvnOsSEhfh9', // email (for external staff login access)
+	EXTERNAL_ACCESS_NAME: 'fld5Z9dl265e22TPQ', // singleLineText (display name for external staff)
 } as const;
 
 // Fields - Events
