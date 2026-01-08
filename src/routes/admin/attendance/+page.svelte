@@ -10,7 +10,7 @@
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
 	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
-	import CohortOverviewCard from '$lib/components/CohortOverviewCard.svelte';
+	import UnifiedAttendanceStatsCard from '$lib/components/UnifiedAttendanceStatsCard.svelte';
 	import EventBreakdownCard from '$lib/components/EventBreakdownCard.svelte';
 
 	let { data } = $props();
@@ -354,7 +354,7 @@
 
 		<!-- Attendance Stats Card -->
 		<div class="mb-6">
-			<CohortOverviewCard stats={cohortOverview} />
+			<UnifiedAttendanceStatsCard stats={cohortOverview} />
 		</div>
 
 		<!-- Event Breakdown -->

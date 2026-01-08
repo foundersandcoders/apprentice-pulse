@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { navigating, page } from '$app/state';
-	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
+	import UnifiedAttendanceStatsCard from '$lib/components/UnifiedAttendanceStatsCard.svelte';
 	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
@@ -307,7 +307,7 @@
 
 	<!-- Stats Card -->
 	<div class="mb-8">
-		<ApprenticeAttendanceCard apprentice={stats} />
+		<UnifiedAttendanceStatsCard stats={stats} showLowAttendanceWarning={true} />
 	</div>
 
 	<!-- Attendance History -->
