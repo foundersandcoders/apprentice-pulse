@@ -23,6 +23,12 @@
 		return colorMap;
 	});
 
+	// Helper function to get default survey URL for an event type
+	function getDefaultSurveyUrl(eventTypeName: string): string {
+		const type = eventTypes.find(t => t.name === eventTypeName);
+		return type?.defaultSurveyUrl || data.defaultSurveyUrl;
+	}
+
 	// Sorting state
 	type SortColumn = 'name' | 'dateTime' | 'eventType' | 'cohort' | 'attendance';
 	type SortDirection = 'asc' | 'desc';
@@ -293,6 +299,13 @@
 		}
 	});
 
+	// Auto-populate survey URL when event type changes for regular event
+	$effect(() => {
+		if (newEvent.eventType) {
+			newEvent.surveyUrl = getDefaultSurveyUrl(newEvent.eventType);
+		}
+	});
+
 	// Auto-generate check-in code when isPublic is checked, clear when unchecked
 	let prevNewEventIsPublic = $state(false);
 	$effect(() => {
@@ -364,6 +377,13 @@
 	let seriesCheckInCode = $state<string | number>('');
 	// svelte-ignore state_referenced_locally
 	let seriesSurveyUrl = $state(data.defaultSurveyUrl);
+
+	// Auto-populate survey URL when event type changes for series
+	$effect(() => {
+		if (seriesEventType) {
+			seriesSurveyUrl = getDefaultSurveyUrl(seriesEventType);
+		}
+	});
 	let seriesError = $state('');
 	let seriesSubmitting = $state(false);
 	let seriesProgress = $state<{ created: number; total: number } | null>(null);

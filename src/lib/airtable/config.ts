@@ -64,6 +64,7 @@ export const ATTENDANCE_FIELDS = {
 // Fields - Event Types
 export const EVENT_TYPE_FIELDS = {
 	NAME: 'fldDKZF5NI280rIQb', // singleLineText
+	DEFAULT_SURVEY: 'fldrLmYVz2ZE52Ewh', // url
 	EVENTS: 'fldyhEXD7CEWFVneJ', // multipleRecordLinks to Events
 } as const;
 

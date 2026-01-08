@@ -1,3 +1,5 @@
+TYpe shows always regular class even when airtable is right
+
 Search apprentice card
 
 Rebuild survey link to event

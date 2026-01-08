@@ -6,6 +6,7 @@ export interface EventTypeOption {
 	name: string;
 	color: string;
 	tailwindClass: string;
+	defaultSurveyUrl?: string;
 }
 
 // Default colors for known event types (fallback system)
@@ -54,6 +55,7 @@ class EventTypesService {
 					name: type.name,
 					color: colorConfig.main,
 					tailwindClass: colorConfig.tailwind,
+					defaultSurveyUrl: type.defaultSurveyUrl,
 				};
 			});
 
@@ -130,6 +132,15 @@ class EventTypesService {
 	async isValidEventType(eventTypeName: string): Promise<boolean> {
 		const names = await this.getEventTypeNames();
 		return names.includes(eventTypeName);
+	}
+
+	/**
+	 * Get default survey URL for a specific event type
+	 */
+	async getDefaultSurveyForEventType(eventTypeName: string): Promise<string | null> {
+		const types = await this.getEventTypes();
+		const type = types.find(t => t.name === eventTypeName);
+		return type?.defaultSurveyUrl || null;
 	}
 }
 

@@ -5,6 +5,7 @@ import { TABLES, EVENT_TYPE_FIELDS } from './config.ts';
 export interface EventTypeRecord {
 	id: string;
 	name: string;
+	defaultSurveyUrl?: string;
 }
 
 export function createEventTypesClient(apiKey: string, baseId: string) {
@@ -25,6 +26,7 @@ export function createEventTypesClient(apiKey: string, baseId: string) {
 		return records.map(record => ({
 			id: record.id,
 			name: record.get(EVENT_TYPE_FIELDS.NAME) as string,
+			defaultSurveyUrl: record.get(EVENT_TYPE_FIELDS.DEFAULT_SURVEY) as string | undefined,
 		}));
 	}
 
@@ -33,10 +35,24 @@ export function createEventTypesClient(apiKey: string, baseId: string) {
 	 */
 	async function getEventType(id: string): Promise<EventTypeRecord | null> {
 		try {
-			const record = await eventTypesTable.find(id);
+			// Use select() with RECORD_ID filter to get returnFieldsByFieldId support
+			const records = await eventTypesTable
+				.select({
+					filterByFormula: `RECORD_ID() = "${id}"`,
+					maxRecords: 1,
+					returnFieldsByFieldId: true,
+				})
+				.all();
+
+			if (records.length === 0) {
+				return null;
+			}
+
+			const record = records[0];
 			return {
 				id: record.id,
 				name: record.get(EVENT_TYPE_FIELDS.NAME) as string,
+				defaultSurveyUrl: record.get(EVENT_TYPE_FIELDS.DEFAULT_SURVEY) as string | undefined,
 			};
 		}
 		catch {
@@ -64,6 +80,7 @@ export function createEventTypesClient(apiKey: string, baseId: string) {
 		return {
 			id: record.id,
 			name: record.get(EVENT_TYPE_FIELDS.NAME) as string,
+			defaultSurveyUrl: record.get(EVENT_TYPE_FIELDS.DEFAULT_SURVEY) as string | undefined,
 		};
 	}
 
