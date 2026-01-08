@@ -18,7 +18,8 @@
 					<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
 						External Staff
 					</span>
-					</div>
+				{/if}
+			</div>
 		</div>
 		<div class="flex gap-4 text-sm">
 			<a href={resolve('/checkin')} class="text-blue-600 hover:underline">Check In</a>
