@@ -3,7 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { navigating, page } from '$app/state';
 	import ApprenticeAttendanceCard from '$lib/components/ApprenticeAttendanceCard.svelte';
-	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import type { ApprenticeAttendanceStats, AttendanceHistoryEntry, AttendanceStatus } from '$lib/types/attendance';
 	import { ATTENDANCE_STATUSES, getStatusBadgeClass, calculateMonthlyAttendance } from '$lib/types/attendance';
@@ -298,7 +298,7 @@
 
 	<!-- Attendance Filters -->
 	<div class="mb-6">
-		<AttendanceFiltersComponent
+		<ExpandableAttendanceFilters
 			{terms}
 			filters={currentFilters}
 			onFiltersChange={handleFiltersChange}

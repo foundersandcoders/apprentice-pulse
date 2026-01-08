@@ -8,7 +8,7 @@
 	import type { Cohort, Term } from '$lib/airtable/sveltekit-wrapper';
 	import type { AttendanceFilters } from '$lib/types/filters';
 	import { filtersToParams, parseFiltersFromParams } from '$lib/types/filters';
-	import AttendanceFiltersComponent from '$lib/components/AttendanceFilters.svelte';
+	import ExpandableAttendanceFilters from '$lib/components/ExpandableAttendanceFilters.svelte';
 	import AttendanceChart from '$lib/components/AttendanceChart.svelte';
 	import CohortOverviewCard from '$lib/components/CohortOverviewCard.svelte';
 	import EventBreakdownCard from '$lib/components/EventBreakdownCard.svelte';
@@ -36,28 +36,6 @@
 
 	// Current filters from URL params
 	const currentFilters = $derived<AttendanceFilters>(parseFiltersFromParams(page.url.searchParams));
-
-	// Time period filter expanded state
-	let timePeriodExpanded = $state(false);
-
-	// Format date for display
-	function formatDateDisplay(date: Date): string {
-		return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-	}
-
-	// Get display text for current time period filter
-	const timePeriodDisplay = $derived.by(() => {
-		if (currentFilters.dateRange) {
-			return `${formatDateDisplay(currentFilters.dateRange.startDate)} - ${formatDateDisplay(currentFilters.dateRange.endDate)}`;
-		}
-		if (currentFilters.termIds && currentFilters.termIds.length > 0) {
-			return terms
-				.filter(t => currentFilters.termIds!.includes(t.id))
-				.map(t => t.name)
-				.join(', ');
-		}
-		return 'All Time';
-	});
 
 	// Group cohorts by prefix and sort
 	const groupedCohorts = $derived.by(() => {
@@ -367,27 +345,11 @@
 			</div>
 
 			<!-- Time Period Filter -->
-			<div class="pt-4">
-				<div class="flex flex-wrap items-center gap-2">
-					<span class="text-sm font-medium text-gray-700">Time Period:</span>
-					<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-lg text-sm">{timePeriodDisplay}</span>
-					<button
-						class="text-blue-600 hover:underline text-sm transition-colors ml-2"
-						onclick={() => timePeriodExpanded = !timePeriodExpanded}
-					>
-						{timePeriodExpanded ? 'Hide options' : 'Change'}
-					</button>
-				</div>
-				{#if timePeriodExpanded}
-					<div class="mt-4 pt-4 border-t border-gray-100">
-						<AttendanceFiltersComponent
-							{terms}
-							filters={currentFilters}
-							onFiltersChange={handleFiltersChange}
-						/>
-					</div>
-				{/if}
-			</div>
+			<ExpandableAttendanceFilters
+				{terms}
+				filters={currentFilters}
+				onFiltersChange={handleFiltersChange}
+			/>
 		</div>
 
 		<!-- Attendance Stats Card -->
