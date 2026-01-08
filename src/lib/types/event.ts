@@ -1,6 +1,6 @@
 // Single source of truth for event types
 // Must match Airtable single-select options exactly (case-sensitive)
-export const EVENT_TYPES = ['Regular Class', 'Workshop', 'Hackathon'] as const;
+export const EVENT_TYPES = ['Regular Class', 'Workshop', 'Online Class'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 
 // Color configuration for each event type
@@ -25,7 +25,7 @@ export const EVENT_TYPE_COLORS: Record<EventType, EventTypeColor> = {
 		onContainer: '#065f46',
 		tailwind: 'text-emerald-600',
 	},
-	'Hackathon': {
+	'Online Class': {
 		main: '#f59e0b',
 		container: '#fef3c7',
 		onContainer: '#92400e',

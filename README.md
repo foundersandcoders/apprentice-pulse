@@ -185,7 +185,7 @@ The generated schema file can be used to update `src/lib/airtable/config.ts` wit
 Event types are defined as a single source of truth in `src/lib/types/event.ts`:
 
 ```typescript
-export const EVENT_TYPES = ['Regular class', 'Workshop', 'Hackathon'] as const;
+export const EVENT_TYPES = ['Regular Class', 'Workshop', 'Online Class'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 ```
 
