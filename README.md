@@ -227,10 +227,4 @@ Event types are cached for performance (5-minute cache) and include automatic co
 
 ### Default Values
 
-Default values used in forms are stored in `src/lib/airtable/config.ts` under `DEFAULTS`:
-
-| Key | Description |
-|-----|-------------|
-| `SURVEY_URL` | Default survey URL pre-filled when creating events |
-
-To change the default survey URL, update `DEFAULTS.SURVEY_URL` in the config file.
+Default values for event creation are now managed dynamically through Airtable's "Event types - Apprentice Pulse" table. Each event type can have its own default survey URL, providing more flexibility than hardcoded values.
