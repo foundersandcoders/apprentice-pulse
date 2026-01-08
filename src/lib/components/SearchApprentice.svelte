@@ -55,9 +55,9 @@
 		}, 300); // 300ms debounce
 	}
 
-	// Navigate to apprentice attendance detail
+	// Navigate to apprentice attendance detail with referrer
 	function selectApprentice(apprentice: SearchResult) {
-		goto(`/admin/attendance/${apprentice.id}`);
+		goto(`/admin/attendance/${apprentice.id}?from=search`);
 	}
 
 	// Keyboard navigation
@@ -94,19 +94,6 @@
 		}
 	}
 
-	// Get status color
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case 'Active':
-				return 'text-green-600';
-			case 'On Leave':
-				return 'text-yellow-600';
-			case 'Off-boarded':
-				return 'text-red-600';
-			default:
-				return 'text-gray-600';
-		}
-	}
 
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside);
@@ -130,7 +117,7 @@
 			onkeydown={handleKeydown}
 			onfocus={() => searchQuery.length >= 2 && (showResults = true)}
 			placeholder="Search apprentices..."
-			class="w-full px-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+			class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
 		/>
 		<svg
 			class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -164,22 +151,8 @@
 								class="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors
 									{selectedIndex === index ? 'bg-purple-50' : ''}"
 							>
-								<div class="flex items-center justify-between">
-									<div class="flex-1">
-										<div class="font-medium text-gray-900">{result.name}</div>
-										<div class="text-sm text-gray-500">{result.email}</div>
-									</div>
-									<div class="flex items-center gap-3 text-sm">
-										{#if result.cohortNumbers && result.cohortNumbers.length > 0}
-											<span class="text-gray-600">
-												Cohort {result.cohortNumbers.join(', ')}
-											</span>
-										{/if}
-										<span class="{getStatusColor(result.status)} font-medium">
-											{result.status}
-										</span>
-									</div>
-								</div>
+								<div class="font-medium text-gray-900">{result.name}</div>
+								<div class="text-sm text-gray-500">{result.email}</div>
 							</button>
 						</li>
 					{/each}

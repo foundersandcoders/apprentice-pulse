@@ -18,9 +18,12 @@
 	const terms = $derived(data.terms as Term[]);
 	const cohortsParam = $derived(data.cohortsParam as string);
 
-	// Build back link preserving cohort selection
+	// Build back link - check if we came from search or cohort view
+	const fromSearch = $derived(page.url.searchParams.get('from') === 'search');
 	const backLink = $derived(
-		cohortsParam
+		fromSearch
+			? resolve('/admin')
+			: cohortsParam
 			? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
 			: resolve('/admin/attendance'),
 	);
@@ -288,7 +291,7 @@
 	<header class="mb-6 flex justify-between items-start">
 		<div>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- backLink is already resolved -->
-			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to Cohort Attendance</a>
+			<a href={backLink} class="text-blue-600 hover:underline text-sm">← Back to {fromSearch ? 'Admin Dashboard' : 'Cohort Attendance'}</a>
 			<h1 class="text-2xl font-bold mt-2">{stats.apprenticeName} - Attendance</h1>
 			{#if stats.cohortName}
 				<p class="text-gray-600 mt-1">{stats.cohortName}</p>
