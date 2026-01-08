@@ -14,6 +14,8 @@ Absent reason.
 
 Events view, list of people, show link to apprentices to go to personalised
 
+Fix filters
+
 
 add externals by email as staff
 are we sure we want to give access to airtable?

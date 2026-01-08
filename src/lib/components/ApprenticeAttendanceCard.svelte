@@ -45,15 +45,24 @@
 				<div class="{STATUS_STYLES['Present'].bg} p-2">
 					<div class="font-semibold {STATUS_STYLES['Present'].text}">{apprentice.present}</div>
 					<div class="text-gray-500 text-xs">Present</div>
+					<div class="text-xs text-green-600 font-medium">
+						{apprentice.totalEvents > 0 ? ((apprentice.present / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+					</div>
 				</div>
 				<div class="{STATUS_STYLES['Late'].bg} p-2">
 					<div class="font-semibold {STATUS_STYLES['Late'].text}">{apprentice.late}</div>
 					<div class="text-gray-500 text-xs">Late</div>
+					<div class="text-xs text-yellow-600 font-medium">
+						{apprentice.totalEvents > 0 ? ((apprentice.late / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+					</div>
 				</div>
 			</div>
 			<div class="bg-indigo-100 p-2">
 				<div class="font-semibold text-indigo-600">{apprentice.attended}</div>
 				<div class="text-gray-500 text-xs">Attended</div>
+				<div class="text-xs text-indigo-600 font-medium">
+					{apprentice.totalEvents > 0 ? ((apprentice.attended / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+				</div>
 			</div>
 		</div>
 
@@ -61,6 +70,9 @@
 		<div class="{STATUS_STYLES['Excused'].bg} rounded-lg p-2 flex flex-col justify-center">
 			<div class="font-semibold {STATUS_STYLES['Excused'].text}">{apprentice.excused}</div>
 			<div class="text-gray-500 text-xs">Excused</div>
+			<div class="text-xs text-blue-600 font-medium">
+				{apprentice.totalEvents > 0 ? ((apprentice.excused / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+			</div>
 		</div>
 
 		<!-- Missed group: Not Check-in + Absent -->
@@ -69,15 +81,24 @@
 				<div class="{STATUS_STYLES['Not Check-in'].bg} p-2">
 					<div class="font-semibold {STATUS_STYLES['Not Check-in'].text}">{apprentice.absent}</div>
 					<div class="text-gray-500 text-xs">Not Check-in</div>
+					<div class="text-xs text-red-600 font-medium">
+						{apprentice.totalEvents > 0 ? ((apprentice.absent / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+					</div>
 				</div>
 				<div class="{STATUS_STYLES['Absent'].bg} p-2">
 					<div class="font-semibold {STATUS_STYLES['Absent'].text}">{apprentice.notComing}</div>
 					<div class="text-gray-500 text-xs">Absent</div>
+					<div class="text-xs text-orange-600 font-medium">
+						{apprentice.totalEvents > 0 ? ((apprentice.notComing / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+					</div>
 				</div>
 			</div>
 			<div class="bg-rose-100 p-2">
 				<div class="font-semibold text-rose-600">{apprentice.absent + apprentice.notComing}</div>
 				<div class="text-gray-500 text-xs">Missed</div>
+				<div class="text-xs text-rose-600 font-medium">
+					{apprentice.totalEvents > 0 ? (((apprentice.absent + apprentice.notComing) / apprentice.totalEvents) * 100).toFixed(0) : 0}%
+				</div>
 			</div>
 		</div>
 	</div>

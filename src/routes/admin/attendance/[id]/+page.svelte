@@ -215,7 +215,7 @@
 	}
 </script>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-6xl mx-auto">
 	<!-- Loading Overlay -->
 	{#if isLoading}
 		<div class="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
