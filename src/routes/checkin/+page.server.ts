@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getApprenticeByEmail, getStaffByEmail, listEvents, listCohorts, getUserAttendanceForEvent, hasExternalCheckedIn } from '$lib/airtable/sveltekit-wrapper';
+import { eventTypesService } from '$lib/services/event-types';
 
 export type AttendanceStatusUI = 'none' | 'checked-in' | 'absent';
 
@@ -17,6 +18,9 @@ export interface CheckinEvent {
 export const load: PageServerLoad = async ({ locals }) => {
 	const user = locals.user;
 
+	// Load event types for colors
+	const eventTypes = await eventTypesService.getEventTypes();
+
 	// Not authenticated - return minimal data for guest mode
 	if (!user) {
 		return {
@@ -24,6 +28,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			events: [] as CheckinEvent[],
 			checkInMethod: null,
 			user: null,
+			eventTypes,
 		};
 	}
 
@@ -111,5 +116,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			email: user.email,
 			type: user.type,
 		},
+		eventTypes,
 	};
 };

@@ -53,7 +53,7 @@
    - [✅] 7.1 Add unit tests for external access service functions
    - [✅] 7.2 Run linter and fix all code quality issues
    - [x] 7.3 Add end-to-end tests for external staff login flow
-   - [ ] 7.4 Test external staff cannot escalate privileges or modify data
+   - [✅] 7.4 Test external staff cannot escalate privileges or modify data
 
 ## Notes
 
