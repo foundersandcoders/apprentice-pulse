@@ -1,16 +1,10 @@
-TYpe shows always regular class even when airtable is right
 
 Search apprentice card
 
-Rebuild survey link to event
-  Create survey linking table
-
-Add type: Online Class
 
 
 add externals by email as staff
 are we sure we want to give access to airtable?
-
 
 
 

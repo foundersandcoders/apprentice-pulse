@@ -25,6 +25,7 @@
 
 	// Helper function to get default survey URL for an event type
 	function getDefaultSurveyUrl(eventTypeName: string): string {
+		if (!eventTypeName) return '';
 		const type = eventTypes.find(t => t.name === eventTypeName);
 		return type?.defaultSurveyUrl || data.defaultSurveyUrl;
 	}
@@ -279,10 +280,10 @@
 		startTime: '10:00',
 		endTime: '14:00',
 		cohortIds: [] as string[],
-		eventType: eventTypes[0]?.name || '',
+		eventType: '',
 		isPublic: false,
 		checkInCode: '' as string | number,
-		surveyUrl: data.defaultSurveyUrl,
+		surveyUrl: '',
 	});
 	let addEventError = $state('');
 	let addEventSubmitting = $state(false);
@@ -372,11 +373,11 @@
 	let seriesTime = $state('10:00');
 	let seriesEndTime = $state('11:00');
 	let seriesCohortIds = $state<string[]>([]);
-	let seriesEventType = $state<EventType>(eventTypes[0]?.name || '');
+	let seriesEventType = $state<EventType>('');
 	let seriesIsPublic = $state(false);
 	let seriesCheckInCode = $state<string | number>('');
 	// svelte-ignore state_referenced_locally
-	let seriesSurveyUrl = $state(data.defaultSurveyUrl);
+	let seriesSurveyUrl = $state('');
 
 	// Auto-populate survey URL when event type changes for series
 	$effect(() => {
@@ -1174,6 +1175,7 @@
 										bind:value={newEvent.eventType}
 										class="w-full border rounded px-2 py-1 text-sm"
 									>
+										<option value="" disabled>Select event type...</option>
 										{#each eventTypes as type (type.name)}
 											<option value={type.name}>{type.name}</option>
 										{/each}
@@ -1263,20 +1265,29 @@
 											</svg>
 										</button>
 										{#if showNewEventSurvey}
-											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
-												<input
-													type="url"
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+												<textarea
 													bind:value={newEvent.surveyUrl}
 													placeholder="Paste survey URL..."
-													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-												/>
-												<button
-													type="button"
-													onclick={() => showNewEventSurvey = false}
-													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
-												>
-													Done
-												</button>
+													class="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none"
+													rows="3"
+												></textarea>
+												<div class="flex gap-2 mt-3">
+													<button
+														type="button"
+														onclick={() => showNewEventSurvey = false}
+														class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+													>
+														Done
+													</button>
+													<button
+														type="button"
+														onclick={() => newEvent.surveyUrl = ''}
+														class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+													>
+														Clear
+													</button>
+												</div>
 											</div>
 										{/if}
 									</div>
@@ -1448,24 +1459,36 @@
 											</svg>
 										</button>
 										{#if showEditEventSurvey}
-											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-72">
-												<input
-													type="url"
+											<div class="absolute top-full right-0 mt-1 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+												<textarea
 													bind:value={editEvent.surveyUrl}
 													placeholder="Paste survey URL..."
-													class="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+													class="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none"
+													rows="3"
 													onclick={e => e.stopPropagation()}
-												/>
-												<button
-													type="button"
-													onclick={(e) => {
-														e.stopPropagation();
-														showEditEventSurvey = false;
-													}}
-													class="mt-1 text-xs text-gray-500 hover:text-gray-700"
-												>
-													Done
-												</button>
+												></textarea>
+												<div class="flex gap-2 mt-3">
+													<button
+														type="button"
+														onclick={(e) => {
+															e.stopPropagation();
+															showEditEventSurvey = false;
+														}}
+														class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+													>
+														Done
+													</button>
+													<button
+														type="button"
+														onclick={(e) => {
+															e.stopPropagation();
+															editEvent.surveyUrl = '';
+														}}
+														class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+													>
+														Clear
+													</button>
+												</div>
 											</div>
 										{/if}
 									</div>
@@ -1824,6 +1847,7 @@
 									required
 									class="w-full border rounded px-3 py-2"
 								>
+									<option value="" disabled>Select event type...</option>
 									{#each eventTypes as type (type.name)}
 										<option value={type.name}>{type.name}</option>
 									{/each}
