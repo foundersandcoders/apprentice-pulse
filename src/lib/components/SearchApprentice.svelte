@@ -57,6 +57,7 @@
 
 	// Navigate to apprentice attendance detail with referrer
 	function selectApprentice(apprentice: SearchResult) {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- URL is constructed from dynamic id
 		goto(`/admin/attendance/${apprentice.id}?from=search`);
 	}
 
@@ -93,7 +94,6 @@
 			selectedIndex = -1;
 		}
 	}
-
 
 	onMount(() => {
 		document.addEventListener('click', handleClickOutside);
@@ -143,7 +143,7 @@
 				</div>
 			{:else if searchResults.length > 0}
 				<ul class="py-2">
-					{#each searchResults as result, index}
+					{#each searchResults as result, index (result.id)}
 						<li>
 							<button
 								onclick={() => selectApprentice(result)}

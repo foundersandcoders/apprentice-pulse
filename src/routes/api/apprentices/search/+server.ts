@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createAirtableClient } from '$lib/airtable/airtable';
 import { AIRTABLE_API_KEY, AIRTABLE_BASE_ID_LEARNERS } from '$env/static/private';
 import Airtable from 'airtable';
 import { TABLES, APPRENTICE_FIELDS, COHORT_FIELDS } from '$lib/airtable/config';
@@ -35,19 +34,19 @@ export const GET: RequestHandler = async ({ url }) => {
 			.all();
 
 		const cohortMap = new Map<string, number>();
-		cohortRecords.forEach(record => {
+		cohortRecords.forEach((record) => {
 			const cohortNumber = record.get(COHORT_FIELDS.NUMBER) as string;
 			cohortMap.set(record.id, parseInt(cohortNumber) || 0);
 		});
 
 		// Filter and format results
 		const searchResults = apprenticeRecords
-			.filter(record => {
+			.filter((record) => {
 				const name = record.get(APPRENTICE_FIELDS.NAME) as string;
 				return name && name.toLowerCase().includes(query.toLowerCase());
 			})
 			.slice(0, 10) // Limit to 10 results
-			.map(record => {
+			.map((record) => {
 				// Email is a lookup field, returns array
 				const emailLookup = record.get(APPRENTICE_FIELDS.EMAIL) as string[] | undefined;
 				const cohortIds = record.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
@@ -64,14 +63,14 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({
 			success: true,
-			apprentices: searchResults
+			apprentices: searchResults,
 		});
 	}
 	catch (error) {
 		console.error('Failed to search apprentices:', error);
 		return json({
 			success: false,
-			error: 'Failed to search apprentices'
+			error: 'Failed to search apprentices',
 		}, { status: 500 });
 	}
 };

@@ -273,7 +273,6 @@
 	// Inline event creation state
 	let isAddingEvent = $state(false);
 	let tableContainer = $state<HTMLDivElement | null>(null);
-	// svelte-ignore state_referenced_locally
 	let newEvent = $state({
 		name: '',
 		date: '',
@@ -395,7 +394,6 @@
 	let seriesEventType = $state<EventType>('');
 	let seriesIsPublic = $state(false);
 	let seriesCheckInCode = $state<string | number>('');
-	// svelte-ignore state_referenced_locally
 	let seriesSurveyUrl = $state('');
 
 	// Auto-populate survey URL when event type changes for series

@@ -24,8 +24,8 @@
 		fromSearch
 			? resolve('/admin')
 			: cohortsParam
-			? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
-			: resolve('/admin/attendance'),
+				? `${resolve('/admin/attendance')}?cohorts=${cohortsParam}`
+				: resolve('/admin/attendance'),
 	);
 
 	// Loading state - show when navigating back to cohort attendance list
