@@ -307,6 +307,25 @@
 		}
 	});
 
+	// ESC key handler for canceling forms
+	$effect(() => {
+		function handleKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') {
+				if (isAddingEvent) {
+					cancelAddEvent();
+				}
+				else if (isCreatingSeries) {
+					cancelSeriesForm();
+				}
+			}
+		}
+
+		if (isAddingEvent || isCreatingSeries) {
+			document.addEventListener('keydown', handleKeydown);
+			return () => document.removeEventListener('keydown', handleKeydown);
+		}
+	});
+
 	// Auto-generate check-in code when isPublic is checked, clear when unchecked
 	let prevNewEventIsPublic = $state(false);
 	$effect(() => {
@@ -653,10 +672,10 @@
 		seriesTime = '10:00';
 		seriesEndTime = '11:00';
 		seriesCohortIds = [];
-		seriesEventType = eventTypes[0]?.name || '';
+		seriesEventType = '';
 		seriesIsPublic = false;
 		seriesCheckInCode = '';
-		seriesSurveyUrl = data.defaultSurveyUrl;
+		seriesSurveyUrl = '';
 		selectedDates = [];
 		seriesError = '';
 		seriesProgress = null;
@@ -990,7 +1009,8 @@
 						await tick();
 						tableContainer?.scrollTo({ top: 0, behavior: 'smooth' });
 					}}
-					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+					disabled={isCreatingSeries}
+					class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
 				>
 					+ Add Event
 				</button>
@@ -1770,7 +1790,8 @@
 					{#if !isCreatingSeries}
 						<button
 							onclick={() => { isCreatingSeries = true; }}
-							class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+							disabled={isAddingEvent}
+							class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
 						>
 							+ Create Series
 						</button>
@@ -1917,13 +1938,24 @@
 								<label for="seriesSurveyUrl" class="block text-sm font-medium text-gray-700 mb-1">
 									Survey URL
 								</label>
-								<input
-									type="url"
-									id="seriesSurveyUrl"
-									bind:value={seriesSurveyUrl}
-									class="w-full border rounded px-3 py-2"
-									placeholder="https://..."
-								/>
+								<div class="space-y-2">
+									<textarea
+										id="seriesSurveyUrl"
+										bind:value={seriesSurveyUrl}
+										class="w-full border rounded px-3 py-2 resize-none"
+										placeholder="https://..."
+										rows="3"
+									></textarea>
+									{#if seriesSurveyUrl}
+										<button
+											type="button"
+											onclick={() => seriesSurveyUrl = ''}
+											class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+										>
+											Clear
+										</button>
+									{/if}
+								</div>
 							</div>
 
 							{#if seriesIsPublic}
