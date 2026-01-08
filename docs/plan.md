@@ -13,7 +13,7 @@
    - [x] 2.2 Display overall attendance percentage with color coding
    - [x] 2.3 Show Attended group (Present + Late) with totals
    - [x] 2.4 Show Excused standalone
-   - [x] 2.5 Show Missed group (Not Check-in + Absent) with totals
+   - [x] 2.5 Show Did not attend group (Not Check-in + Absent) with totals
    - [x] 2.6 Add "Apprentices at Risk" indicator (count below 80%)
 
 3. [x] **Integrate into Cohort Attendance page**

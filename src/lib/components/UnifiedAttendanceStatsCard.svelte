@@ -84,7 +84,7 @@
 			</div>
 		</div>
 
-		<!-- Missed group: Not Check-in + Absent -->
+		<!-- Did not attend group: Not Check-in + Absent -->
 		<div class="flex-1 border-4 border-rose-300 rounded-lg overflow-hidden bg-rose-50/30">
 			<div class="grid grid-cols-2">
 				<div class="{STATUS_STYLES['Not Check-in'].bg} p-2">
@@ -104,7 +104,7 @@
 			</div>
 			<div class="bg-rose-100 p-2">
 				<div class="font-semibold text-rose-600">{stats.absent + stats.notComing}</div>
-				<div class="text-gray-500 text-xs">Missed</div>
+				<div class="text-gray-500 text-xs">Did not attend</div>
 				<div class="text-xs text-rose-600 font-medium">
 					{stats.totalEvents > 0 ? (((stats.absent + stats.notComing) / stats.totalEvents) * 100).toFixed(0) : 0}%
 				</div>
