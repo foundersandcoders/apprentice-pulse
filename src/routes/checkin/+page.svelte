@@ -494,53 +494,78 @@
 
 	{:else}
 		<!-- Guest check-in view -->
-		<div class="mb-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-xl text-center">
-			<h1 class="text-2xl font-bold mb-2">Guest Check In</h1>
-			<p class="opacity-90">Check in to an event as a guest</p>
-		</div>
-		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+		<header class="mb-6 flex justify-between items-start">
+			<div>
+				<h1 class="text-2xl font-bold">Check In</h1>
+				<p class="text-gray-600 mt-1">Guest access - no account required</p>
+			</div>
+			<div class="flex gap-4 text-sm">
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
+				<button class="text-blue-600 hover:underline" onclick={() => goto('/login')}>
+					Log in
+				</button>
+			</div>
+		</header>
+
+		<div class="space-y-6">
 			{#if guestStep === 'code'}
-				<p class="text-gray-600 text-center mb-6">Enter the 4-digit event code displayed at the venue.</p>
-				<form onsubmit={handleCodeSubmit} class="max-w-sm mx-auto">
-					<label for="code" class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
-					<input
-						type="text"
-						id="code"
-						bind:value={guestCode}
-						placeholder="1234"
-						maxlength="4"
-						inputmode="numeric"
-						autocomplete="off"
-						disabled={guestLoading}
-						class="w-full px-4 py-3 text-2xl text-center tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-					/>
-					<button
-						type="submit"
-						disabled={guestLoading || guestCode.length !== 4}
-						class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
-						{guestLoading ? 'Validating...' : 'Continue'}
-					</button>
-				</form>
-
-				{#if guestError}
-					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-						{guestError}
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-blue-50">
+						<h2 class="text-lg font-semibold text-blue-800">Enter Event Code</h2>
 					</div>
-				{/if}
+					<!-- Card content -->
+					<div class="p-6">
+						<p class="text-gray-600 text-center mb-6">Enter the 4-digit event code displayed at the venue.</p>
+						<form onsubmit={handleCodeSubmit} class="max-w-sm mx-auto">
+							<label for="code" class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
+							<input
+								type="text"
+								id="code"
+								bind:value={guestCode}
+								placeholder="1234"
+								maxlength="4"
+								inputmode="numeric"
+								autocomplete="off"
+								disabled={guestLoading}
+								class="w-full px-4 py-3 text-2xl text-center tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+							/>
+							<button
+								type="submit"
+								disabled={guestLoading || guestCode.length !== 4}
+								class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+								{guestLoading ? 'Validating...' : 'Continue'}
+							</button>
+						</form>
 
-				<p class="text-center mt-6 text-sm text-gray-600">
-					Have an account?
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
-					<button class="text-blue-600 hover:underline font-medium" onclick={() => goto('/login?redirect=/checkin')}>
-						Log in
-					</button>
-					for easier check-in.
-				</p>
+						{#if guestError}
+							<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+								{guestError}
+							</div>
+						{/if}
+
+						<p class="text-center mt-6 text-sm text-gray-600">
+							Have an account?
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
+							<button class="text-blue-600 hover:underline font-medium" onclick={() => goto('/login?redirect=/checkin')}>
+								Log in
+							</button>
+							for easier check-in.
+						</p>
+					</div>
+				</div>
 
 			{:else if guestStep === 'events'}
-				<p class="text-gray-600 text-center mb-6">Select the event you want to check in to:</p>
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-green-50">
+						<h2 class="text-lg font-semibold text-green-800">Select Event</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6">
+						<p class="text-gray-600 text-center mb-6">Select the event you want to check in to:</p>
 
-				<div class="space-y-4">
+						<div class="space-y-4">
 					{#each guestEvents as event (event.id)}
 						{@const timeStatus = getTimeStatus(event.dateTime)}
 						{@const typeColors = eventTypeColors()[event.eventType]}
@@ -590,35 +615,46 @@
 								</div>
 							</div>
 						</div>
+						</div>
+						{/each}
 					</div>
-					{/each}
-				</div>
 
-				<div class="text-center mt-6">
-					<button class="text-blue-600 hover:underline text-sm" onclick={resetGuestForm}>
-						Use a different code
-					</button>
+					<div class="text-center mt-6">
+						<button class="text-blue-600 hover:underline text-sm" onclick={resetGuestForm}>
+							Use a different code
+						</button>
+					</div>
 				</div>
+			</div>
 
 			{:else if guestStep === 'details'}
 				{@const guestTimeStatus = guestSelectedEvent ? getTimeStatus(guestSelectedEvent.dateTime) : null}
-				<div class="bg-gray-50 rounded-xl p-4 mb-6">
-					<h3 class="font-semibold mb-1">{guestSelectedEvent?.name}</h3>
-					<p class="text-gray-600 text-sm">{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
-					{#if guestTimeStatus}
-						<span class="inline-flex items-center mt-2 px-3 py-1 rounded-lg text-sm font-medium"
-							class:bg-red-100={guestTimeStatus.isLate}
-							class:text-red-800={guestTimeStatus.isLate}
-							class:bg-orange-100={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
-							class:text-orange-800={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
-							class:bg-blue-100={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}
-							class:text-blue-800={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}>
-							{guestTimeStatus.text}
-						</span>
-					{/if}
-				</div>
+				{@const selectedTypeColors = guestSelectedEvent ? eventTypeColors()[guestSelectedEvent.eventType] : null}
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe with event type color -->
+					<div class="px-6 py-4 {selectedTypeColors?.bgClass || 'bg-slate-100'}">
+						<h2 class="text-lg font-semibold {selectedTypeColors?.textClass || 'text-slate-800'}">
+							{guestSelectedEvent?.name}
+						</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6">
+						<div class="mb-6">
+							<p class="text-gray-600 text-sm">{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
+							{#if guestTimeStatus}
+								<span class="inline-flex items-center mt-2 px-3 py-1 rounded-lg text-sm font-medium"
+									class:bg-red-100={guestTimeStatus.isLate}
+									class:text-red-800={guestTimeStatus.isLate}
+									class:bg-orange-100={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+									class:text-orange-800={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+									class:bg-blue-100={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}
+									class:text-blue-800={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}>
+									{guestTimeStatus.text}
+								</span>
+							{/if}
+						</div>
 
-				<form onsubmit={handleGuestCheckIn} class="max-w-sm mx-auto">
+						<form onsubmit={handleGuestCheckIn} class="max-w-sm mx-auto">
 					<div class="mb-4">
 						<label for="name" class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
 						<input
@@ -645,36 +681,44 @@
 						/>
 					</div>
 
-					<button
-						type="submit"
-						disabled={guestLoading}
-						class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
-						{guestLoading ? 'Checking in...' : 'Check In'}
-					</button>
-				</form>
+							<button
+								type="submit"
+								disabled={guestLoading}
+								class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+								{guestLoading ? 'Checking in...' : 'Check In'}
+							</button>
+						</form>
 
-				{#if guestError}
-					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-						{guestError}
+						{#if guestError}
+							<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+								{guestError}
+							</div>
+						{/if}
+
+						<div class="text-center mt-6">
+							<button class="text-blue-600 hover:underline text-sm" onclick={backToEventSelection}>
+								Select a different event
+							</button>
+						</div>
 					</div>
-				{/if}
-
-				<div class="text-center mt-6">
-					<button class="text-blue-600 hover:underline text-sm" onclick={backToEventSelection}>
-						Select a different event
-					</button>
 				</div>
 
 			{:else if guestStep === 'success'}
-				<div class="bg-green-50 border border-green-200 rounded-xl p-6 text-center mb-6">
-					<h2 class="text-xl font-semibold text-green-800 mb-2">✓ You're checked in!</h2>
-					<p class="text-gray-700">Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-green-50">
+						<h2 class="text-lg font-semibold text-green-800">✓ You're checked in!</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6 text-center">
+						<p class="text-gray-700 mb-6">Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
+						<button
+							onclick={resetGuestForm}
+							class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+							Check in to another event
+						</button>
+					</div>
 				</div>
-				<button
-					onclick={resetGuestForm}
-					class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-					Check in to another event
-				</button>
 			{/if}
 		</div>
 	{/if}
