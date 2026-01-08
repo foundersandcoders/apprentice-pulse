@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import SearchApprentice from '$lib/components/SearchApprentice.svelte';
 	let { data } = $props();
 </script>
 
@@ -21,7 +22,7 @@
 			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all"
 		>
 			<div class="flex items-start gap-4">
-				<div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
+				<div class="shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
 					📅
 				</div>
 				<div>
@@ -35,14 +36,28 @@
 			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-green-300 transition-all"
 		>
 			<div class="flex items-start gap-4">
-				<div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-green-200 transition-colors">
+				<div class="shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-green-200 transition-colors">
 					✓
 				</div>
 				<div>
 					<h2 class="text-lg font-semibold mb-1 group-hover:text-green-600 transition-colors">Attendance</h2>
-					<p class="text-gray-600 text-sm">Track individual apprentice attendance rates and history</p>
+					<p class="text-gray-600 text-sm">Track cohorts attendance rates and history</p>
 				</div>
 			</div>
 		</a>
+		<div
+			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-purple-300 transition-all"
+		>
+			<div class="flex items-start gap-4">
+				<div class="shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-purple-200 transition-colors">
+					🔍
+				</div>
+				<div class="flex-1">
+					<h2 class="text-lg font-semibold mb-1 group-hover:text-purple-600 transition-colors">Search Apprentice</h2>
+					<p class="text-gray-600 text-sm mb-4">Find and view apprentice details</p>
+					<SearchApprentice />
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
