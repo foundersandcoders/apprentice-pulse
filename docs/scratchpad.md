@@ -5,6 +5,9 @@ survey send email
 link surveys with student. track not fulfilled
 
 
+latenes stats on aprentice as well
+details and cohort different marings
+
 Per week email to Jess. Absent, not survey, whoever marked "In need of support"
 
 Absent reason.
