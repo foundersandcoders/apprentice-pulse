@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { AUTH_SECRET } from '$env/static/private';
 
-export type UserType = 'staff' | 'student';
+export type UserType = 'staff' | 'student' | 'external';
 
 interface TokenPayload {
 	email: string;

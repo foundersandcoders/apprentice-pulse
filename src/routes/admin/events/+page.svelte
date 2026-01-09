@@ -27,7 +27,7 @@
 	function getDefaultSurveyUrl(eventTypeName: string): string {
 		if (!eventTypeName) return '';
 		const type = eventTypes.find(t => t.name === eventTypeName);
-		return type?.defaultSurveyUrl || data.defaultSurveyUrl;
+		return type?.defaultSurveyUrl || '';
 	}
 
 	// Sorting state
@@ -345,7 +345,7 @@
 		startTime: '',
 		endTime: '',
 		cohortIds: [] as string[],
-		eventType: eventTypes[0]?.name || '',
+		eventType: '',
 		isPublic: false,
 		checkInCode: '' as string | number,
 		surveyUrl: '',
@@ -659,7 +659,7 @@
 			eventType: eventTypes[0]?.name || '',
 			isPublic: false,
 			checkInCode: '' as string | number,
-			surveyUrl: data.defaultSurveyUrl,
+			surveyUrl: getDefaultSurveyUrl(eventTypes[0]?.name || ''),
 		};
 		addEventError = '';
 		newEventCohortDropdownOpen = false;

@@ -35,9 +35,11 @@ export interface StaffRecord {
 	name: string;
 	email: string;
 	learnerEmail: string | null; // Email of linked apprentice, if staff is also an apprentice
+	externalAccessEmail?: string; // Email for external staff login access
+	externalAccessName?: string; // Display name for external staff
 }
 
-export type UserType = 'staff' | 'student';
+export type UserType = 'staff' | 'student' | 'external';
 
 export function createAirtableClient(apiKey: string, baseId: string) {
 	Airtable.configure({ apiKey });
@@ -134,11 +136,15 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 			const collaborator = record.get(STAFF_FIELDS.COLLABORATOR) as { id: string; email: string; name: string } | undefined;
 			if (collaborator?.email?.toLowerCase() === email.toLowerCase()) {
 				const learnerEmailLookup = record.get(STAFF_FIELDS.LEARNER_EMAIL) as string[] | undefined;
+				const externalAccessEmail = record.get(STAFF_FIELDS.EXTERNAL_ACCESS_EMAIL) as string | undefined;
+				const externalAccessName = record.get(STAFF_FIELDS.EXTERNAL_ACCESS_NAME) as string | undefined;
 				return {
 					id: record.id,
 					name: collaborator.name,
 					email: collaborator.email,
 					learnerEmail: learnerEmailLookup?.[0] ?? null,
+					externalAccessEmail,
+					externalAccessName,
 				};
 			}
 		}
@@ -152,6 +158,44 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	async function findStaffByEmail(email: string): Promise<boolean> {
 		const staff = await getStaffByEmail(email);
 		return staff !== null;
+	}
+
+	/**
+	 * Get external user by email from external access fields
+	 */
+	async function getExternalAccessByEmail(email: string): Promise<{ type: 'external'; email: string; name: string; accessLevel: 'attendance-view' } | null> {
+		const staffTable = base(TABLES.STAFF);
+
+		try {
+			// We need to fetch all staff records and check the external access email field
+			// since email fields cannot be filtered directly in Airtable
+			const staffRecords = await staffTable
+				.select({
+					returnFieldsByFieldId: true,
+				})
+				.all();
+
+			for (const record of staffRecords) {
+				const externalAccessEmail = record.get(STAFF_FIELDS.EXTERNAL_ACCESS_EMAIL) as string | undefined;
+				const externalAccessName = record.get(STAFF_FIELDS.EXTERNAL_ACCESS_NAME) as string | undefined;
+
+				// Check if the email matches the external access email field
+				if (externalAccessEmail?.toLowerCase() === email.toLowerCase()) {
+					return {
+						type: 'external',
+						email: externalAccessEmail,
+						name: externalAccessName || 'External User',
+						accessLevel: 'attendance-view',
+					};
+				}
+			}
+
+			return null;
+		}
+		catch (error) {
+			console.error('Error fetching external access user:', error);
+			return null;
+		}
 	}
 
 	/**
@@ -328,6 +372,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 		findUserByEmail,
 		findStaffByEmail,
 		getStaffByEmail,
+		getExternalAccessByEmail,
 		findApprenticeByEmail,
 		getApprenticeByEmail,
 		listCohorts,

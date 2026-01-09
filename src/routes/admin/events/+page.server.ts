@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import { listEvents, listCohorts } from '$lib/airtable/sveltekit-wrapper';
-import { DEFAULTS } from '$lib/airtable/config';
 import { eventTypesService } from '$lib/services/event-types';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -20,6 +19,5 @@ export const load: PageServerLoad = async ({ url }) => {
 		cohorts,
 		eventTypes,
 		selectedCohortId: cohortId,
-		defaultSurveyUrl: DEFAULTS.SURVEY_URL,
 	};
 };

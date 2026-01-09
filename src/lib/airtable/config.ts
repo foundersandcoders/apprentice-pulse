@@ -33,6 +33,8 @@ export const STAFF_FIELDS = {
 	COLLABORATOR: 'fldHEHhQInmSdipn8', // singleCollaborator with { id, email, name }
 	APPRENTICE_LINK: 'fldAMwe9jOOdwIyBY', // multipleRecordLinks to Apprentices
 	LEARNER_EMAIL: 'fldPjDZTSySzbefXz', // multipleLookupValues from linked Apprentice
+	EXTERNAL_ACCESS_EMAIL: 'fldsR6gvnOsSEhfh9', // email (for external staff login access)
+	EXTERNAL_ACCESS_NAME: 'fld5Z9dl265e22TPQ', // singleLineText (display name for external staff)
 } as const;
 
 // Fields - Events
@@ -73,9 +75,4 @@ export const TERM_FIELDS = {
 	NAME: 'fldrnRBnBuHbscSy7', // singleLineText
 	STARTING_DATE: 'fldlzwlqYo7rMMSDp', // date
 	END_DATE: 'fldJKhrzNZNCD6SYY', // date
-} as const;
-
-// Defaults
-export const DEFAULTS = {
-	SURVEY_URL: 'https://airtable.com/app75iT6Or0Rya1KE/tblkbskw4fuTq0E9p/viwMPduDi2Cl0Bwa3/rec3vWwKLpAycDCSL/fld9XBHnCWBtZiZah?copyLinkToCellOrRecordOrigin=gridView',
 } as const;

@@ -15,6 +15,76 @@
 		events = [...data.events];
 	});
 
+	// Extract event types and build color mapping (same pattern as admin events page)
+	const eventTypes = $derived(data.eventTypes);
+	const eventTypeColors = $derived(() => {
+		const colorMap: Record<string, { main: string; tailwind: string; bgClass: string; textClass: string; borderClass: string }> = {};
+		eventTypes.forEach((type) => {
+			// Convert hex color to Tailwind background and text classes
+			const bgClass = convertToTailwindBg(type.color);
+			const textClass = convertToTailwindText(type.color);
+			const borderClass = convertToTailwindBorder(type.color);
+
+			colorMap[type.name] = {
+				main: type.color,
+				tailwind: type.tailwindClass,
+				bgClass,
+				textClass,
+				borderClass,
+			};
+		});
+		return colorMap;
+	});
+
+	// Helper functions to convert hex colors to Tailwind classes
+	function convertToTailwindBg(hexColor: string): string {
+		const colorMap: Record<string, string> = {
+			'#3b82f6': 'bg-blue-100',
+			'#10b981': 'bg-emerald-100',
+			'#f59e0b': 'bg-amber-100',
+			'#8b5cf6': 'bg-violet-100',
+			'#ef4444': 'bg-red-100',
+			'#06b6d4': 'bg-cyan-100',
+			'#84cc16': 'bg-lime-100',
+			'#f97316': 'bg-orange-100',
+			'#ec4899': 'bg-pink-100',
+			'#6b7280': 'bg-gray-100',
+		};
+		return colorMap[hexColor] || 'bg-slate-100';
+	}
+
+	function convertToTailwindText(hexColor: string): string {
+		const colorMap: Record<string, string> = {
+			'#3b82f6': 'text-blue-800',
+			'#10b981': 'text-emerald-800',
+			'#f59e0b': 'text-amber-800',
+			'#8b5cf6': 'text-violet-800',
+			'#ef4444': 'text-red-800',
+			'#06b6d4': 'text-cyan-800',
+			'#84cc16': 'text-lime-800',
+			'#f97316': 'text-orange-800',
+			'#ec4899': 'text-pink-800',
+			'#6b7280': 'text-gray-800',
+		};
+		return colorMap[hexColor] || 'text-slate-800';
+	}
+
+	function convertToTailwindBorder(hexColor: string): string {
+		const colorMap: Record<string, string> = {
+			'#3b82f6': 'border-blue-300',
+			'#10b981': 'border-emerald-300',
+			'#f59e0b': 'border-amber-300',
+			'#8b5cf6': 'border-violet-300',
+			'#ef4444': 'border-red-300',
+			'#06b6d4': 'border-cyan-300',
+			'#84cc16': 'border-lime-300',
+			'#f97316': 'border-orange-300',
+			'#ec4899': 'border-pink-300',
+			'#6b7280': 'border-gray-300',
+		};
+		return colorMap[hexColor] || 'border-slate-300';
+	}
+
 	// Check-in state for authenticated users
 	let checkingIn = $state<string | null>(null);
 	let markingNotComing = $state<string | null>(null);
@@ -292,16 +362,13 @@
 		<header class="mb-6 flex justify-between items-start">
 			<div>
 				<h1 class="text-2xl font-bold">Check In</h1>
-				<p class="text-gray-600 mt-1">Welcome back{data.user?.name ? `, ${data.user.name}` : ''}!</p>
+				<p class="text-gray-600 mt-1">Logged as: {data.user?.email}</p>
 			</div>
-			<div class="flex flex-col items-end gap-1">
-				<span class="text-sm text-gray-500">{data.user?.email}</span>
-				<div class="flex gap-4 text-sm">
-					{#if data.user?.type === 'staff'}
-						<a href={resolve('/admin')} class="text-blue-600 hover:underline">Admin</a>
-					{/if}
-					<a href={resolve('/api/auth/logout')} class="text-gray-500 hover:text-gray-700">Logout</a>
-				</div>
+			<div class="flex gap-4 text-sm">
+				{#if data.user?.type === 'staff' || data.user?.type === 'external'}
+					<a href={resolve('/admin')} class="text-blue-600 hover:underline">Admin</a>
+				{/if}
+				<a href={resolve('/api/auth/logout')} class="text-gray-500 hover:text-gray-700">Logout</a>
 			</div>
 		</header>
 
@@ -313,17 +380,18 @@
 			<div class="space-y-4">
 				{#each events as event (event.id)}
 					{@const timeStatus = getTimeStatus(event.dateTime)}
-					<div class="bg-white border rounded-xl p-6 shadow-sm transition-all"
-						class:border-green-300={event.attendanceStatus === 'checked-in'}
-						class:bg-green-50={event.attendanceStatus === 'checked-in'}
-						class:border-orange-300={event.attendanceStatus === 'absent'}
-						class:bg-orange-50={event.attendanceStatus === 'absent'}
-						class:border-gray-200={event.attendanceStatus === 'none'}>
-						<div class="flex justify-between items-start gap-4">
-							<div class="flex-1">
-								<h2 class="text-lg font-semibold mb-1">{event.name}</h2>
-								<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
-								<div class="flex items-center gap-3 mb-2">
+					{@const typeColors = eventTypeColors()[event.eventType]}
+					<div class="bg-white border rounded-xl shadow-sm transition-all overflow-hidden {typeColors?.borderClass || 'border-gray-200'}">
+						<!-- Title stripe -->
+						<div class="px-6 py-4 {typeColors?.bgClass || 'bg-slate-100'}">
+							<h2 class="text-lg font-semibold {typeColors?.textClass || 'text-slate-800'}">{event.name}</h2>
+						</div>
+						<!-- Card content -->
+						<div class="p-6">
+							<div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+								<div class="flex-1">
+									<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
+									<div class="flex items-center gap-3 mb-2">
 									<span class="text-xs text-gray-500 uppercase tracking-wide">{event.eventType}</span>
 									{#if event.expectedCount > 0}
 										<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -347,24 +415,24 @@
 									</span>
 								{/if}
 							</div>
-							<div class="flex flex-col gap-2">
+							<div class="flex flex-col sm:flex-col gap-2 w-full sm:w-auto sm:min-w-[140px]">
 								{#if event.attendanceStatus === 'checked-in'}
-									<span class="px-4 py-2 bg-green-600 text-white rounded-lg text-center font-medium">✓ Checked In</span>
+									<span class="w-full px-4 py-2 bg-green-600 text-white rounded-lg text-center font-medium">✓ Checked In</span>
 								{:else if event.attendanceStatus === 'absent'}
-									<span class="px-4 py-2 bg-orange-600 text-white rounded-lg text-center font-medium">Absent</span>
+									<span class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg text-center font-medium">Absent</span>
 									{#if timeStatus.canCheckIn}
-										<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+										<button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 											onclick={() => handleCheckIn(event.id)}
 											disabled={checkingIn === event.id}>
 											{checkingIn === event.id ? 'Checking in...' : 'Check In Instead'}
 										</button>
 									{/if}
 								{:else if checkingIn === event.id || markingNotComing === event.id}
-									<button class="px-4 py-2 bg-blue-600 text-white rounded-lg opacity-50 cursor-not-allowed" disabled>
+									<button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg opacity-50 cursor-not-allowed" disabled>
 										{checkingIn === event.id ? 'Checking in...' : 'Marking absent...'}
 									</button>
 								{:else if !timeStatus.canCheckIn}
-									<button class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+									<button class="w-full px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
 										disabled
 										title="Check-in opens on the day of the event">
 										Check In
@@ -396,13 +464,13 @@
 										</div>
 									</div>
 								{:else}
-									<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+									<button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 										onclick={() => handleCheckIn(event.id)}
 										disabled={checkingIn !== null || markingNotComing !== null}>
 										Check In
 									</button>
 									{#if data.checkInMethod === 'apprentice'}
-										<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+										<button class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 											onclick={() => showReasonInput(event.id)}
 											disabled={checkingIn !== null || markingNotComing !== null}>
 											Absent
@@ -411,6 +479,7 @@
 								{/if}
 							</div>
 						</div>
+					</div>
 					</div>
 				{/each}
 			</div>
@@ -424,61 +493,92 @@
 
 	{:else}
 		<!-- Guest check-in view -->
-		<div class="mb-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 rounded-xl text-center">
-			<h1 class="text-2xl font-bold mb-2">Guest Check In</h1>
-			<p class="opacity-90">Check in to an event as a guest</p>
-		</div>
-		<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+		<header class="mb-6 flex justify-between items-start">
+			<div>
+				<h1 class="text-2xl font-bold">Check In</h1>
+				<p class="text-gray-600 mt-1">Guest access - no account required</p>
+			</div>
+			<div class="flex gap-4 text-sm">
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
+				<button class="text-blue-600 hover:underline" onclick={() => goto('/login')}>
+					Log in
+				</button>
+			</div>
+		</header>
+
+		<div class="space-y-6">
 			{#if guestStep === 'code'}
-				<p class="text-gray-600 text-center mb-6">Enter the 4-digit event code displayed at the venue.</p>
-				<form onsubmit={handleCodeSubmit} class="max-w-sm mx-auto">
-					<label for="code" class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
-					<input
-						type="text"
-						id="code"
-						bind:value={guestCode}
-						placeholder="1234"
-						maxlength="4"
-						inputmode="numeric"
-						autocomplete="off"
-						disabled={guestLoading}
-						class="w-full px-4 py-3 text-2xl text-center tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-					/>
-					<button
-						type="submit"
-						disabled={guestLoading || guestCode.length !== 4}
-						class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
-						{guestLoading ? 'Validating...' : 'Continue'}
-					</button>
-				</form>
-
-				{#if guestError}
-					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-						{guestError}
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-blue-50">
+						<h2 class="text-lg font-semibold text-blue-800">Enter Event Code</h2>
 					</div>
-				{/if}
+					<!-- Card content -->
+					<div class="p-6">
+						<p class="text-gray-600 text-center mb-6">Enter the 4-digit event code displayed at the venue.</p>
+						<form onsubmit={handleCodeSubmit} class="max-w-sm mx-auto">
+							<label for="code" class="block text-sm font-medium text-gray-700 mb-2">Event Code</label>
+							<input
+								type="text"
+								id="code"
+								bind:value={guestCode}
+								placeholder="1234"
+								maxlength="4"
+								inputmode="numeric"
+								autocomplete="off"
+								disabled={guestLoading}
+								class="w-full px-4 py-3 text-2xl text-center tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+							/>
+							<button
+								type="submit"
+								disabled={guestLoading || guestCode.length !== 4}
+								class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+								{guestLoading ? 'Validating...' : 'Continue'}
+							</button>
+						</form>
 
-				<p class="text-center mt-6 text-sm text-gray-600">
-					Have an account?
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
-					<button class="text-blue-600 hover:underline font-medium" onclick={() => goto('/login?redirect=/checkin')}>
-						Log in
-					</button>
-					for easier check-in.
-				</p>
+						{#if guestError}
+							<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+								{guestError}
+							</div>
+						{/if}
+
+						<p class="text-center mt-6 text-sm text-gray-600">
+							Have an account?
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- static path -->
+							<button class="text-blue-600 hover:underline font-medium" onclick={() => goto('/login?redirect=/checkin')}>
+								Log in
+							</button>
+							for easier check-in.
+						</p>
+					</div>
+				</div>
 
 			{:else if guestStep === 'events'}
-				<p class="text-gray-600 text-center mb-6">Select the event you want to check in to:</p>
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-green-50">
+						<h2 class="text-lg font-semibold text-green-800">Select Event</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6">
+						<p class="text-gray-600 text-center mb-6">Select the event you want to check in to:</p>
 
-				<div class="space-y-4">
+						<div class="space-y-4">
 					{#each guestEvents as event (event.id)}
 						{@const timeStatus = getTimeStatus(event.dateTime)}
-						<div class="border border-gray-200 rounded-xl p-4">
-							<div class="flex justify-between items-start gap-4">
-								<div class="flex-1">
-									<h3 class="font-semibold mb-1">{event.name}</h3>
-									<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
-									<div class="flex items-center gap-3 mb-2">
+						{@const typeColors = eventTypeColors()[event.eventType]}
+						<div class="border rounded-xl overflow-hidden {typeColors?.borderClass || 'border-gray-200'}">
+							<!-- Title stripe -->
+							<div class="px-4 py-3 {typeColors?.bgClass || 'bg-slate-100'}">
+								<h3 class="font-semibold {typeColors?.textClass || 'text-slate-800'}">{event.name}</h3>
+							</div>
+							<!-- Card content -->
+							<div class="p-4">
+								<div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+									<div class="flex-1">
+										<p class="text-gray-600 text-sm mb-2">{formatDate(event.dateTime)}</p>
+										<div class="flex items-center gap-3 mb-2">
 										<span class="text-xs text-gray-500 uppercase tracking-wide">{event.eventType}</span>
 										{#if event.attendanceCount > 0}
 											<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -496,17 +596,17 @@
 										{timeStatus.text}
 									</span>
 								</div>
-								<div>
+								<div class="w-full sm:w-auto sm:min-w-[140px]">
 									{#if !timeStatus.canCheckIn}
 										<button
-											class="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
+											class="w-full px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed"
 											disabled
 											title="Check-in opens on the day of the event">
 											Check In
 										</button>
 									{:else}
 										<button
-											class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+											class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 											onclick={() => selectGuestEvent(event)}>
 											Check In
 										</button>
@@ -514,34 +614,46 @@
 								</div>
 							</div>
 						</div>
-					{/each}
-				</div>
+						</div>
+						{/each}
+					</div>
 
-				<div class="text-center mt-6">
-					<button class="text-blue-600 hover:underline text-sm" onclick={resetGuestForm}>
-						Use a different code
-					</button>
+					<div class="text-center mt-6">
+						<button class="text-blue-600 hover:underline text-sm" onclick={resetGuestForm}>
+							Use a different code
+						</button>
+					</div>
 				</div>
+			</div>
 
 			{:else if guestStep === 'details'}
 				{@const guestTimeStatus = guestSelectedEvent ? getTimeStatus(guestSelectedEvent.dateTime) : null}
-				<div class="bg-gray-50 rounded-xl p-4 mb-6">
-					<h3 class="font-semibold mb-1">{guestSelectedEvent?.name}</h3>
-					<p class="text-gray-600 text-sm">{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
-					{#if guestTimeStatus}
-						<span class="inline-flex items-center mt-2 px-3 py-1 rounded-lg text-sm font-medium"
-							class:bg-red-100={guestTimeStatus.isLate}
-							class:text-red-800={guestTimeStatus.isLate}
-							class:bg-orange-100={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
-							class:text-orange-800={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
-							class:bg-blue-100={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}
-							class:text-blue-800={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}>
-							{guestTimeStatus.text}
-						</span>
-					{/if}
-				</div>
+				{@const selectedTypeColors = guestSelectedEvent ? eventTypeColors()[guestSelectedEvent.eventType] : null}
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe with event type color -->
+					<div class="px-6 py-4 {selectedTypeColors?.bgClass || 'bg-slate-100'}">
+						<h2 class="text-lg font-semibold {selectedTypeColors?.textClass || 'text-slate-800'}">
+							{guestSelectedEvent?.name}
+						</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6">
+						<div class="mb-6">
+							<p class="text-gray-600 text-sm">{guestSelectedEvent ? formatDate(guestSelectedEvent.dateTime) : ''}</p>
+							{#if guestTimeStatus}
+								<span class="inline-flex items-center mt-2 px-3 py-1 rounded-lg text-sm font-medium"
+									class:bg-red-100={guestTimeStatus.isLate}
+									class:text-red-800={guestTimeStatus.isLate}
+									class:bg-orange-100={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+									class:text-orange-800={guestTimeStatus.isStartingSoon && !guestTimeStatus.isLate}
+									class:bg-blue-100={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}
+									class:text-blue-800={!guestTimeStatus.isLate && !guestTimeStatus.isStartingSoon}>
+									{guestTimeStatus.text}
+								</span>
+							{/if}
+						</div>
 
-				<form onsubmit={handleGuestCheckIn} class="max-w-sm mx-auto">
+						<form onsubmit={handleGuestCheckIn} class="max-w-sm mx-auto">
 					<div class="mb-4">
 						<label for="name" class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
 						<input
@@ -568,36 +680,44 @@
 						/>
 					</div>
 
-					<button
-						type="submit"
-						disabled={guestLoading}
-						class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
-						{guestLoading ? 'Checking in...' : 'Check In'}
-					</button>
-				</form>
+							<button
+								type="submit"
+								disabled={guestLoading}
+								class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+								{guestLoading ? 'Checking in...' : 'Check In'}
+							</button>
+						</form>
 
-				{#if guestError}
-					<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-						{guestError}
+						{#if guestError}
+							<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+								{guestError}
+							</div>
+						{/if}
+
+						<div class="text-center mt-6">
+							<button class="text-blue-600 hover:underline text-sm" onclick={backToEventSelection}>
+								Select a different event
+							</button>
+						</div>
 					</div>
-				{/if}
-
-				<div class="text-center mt-6">
-					<button class="text-blue-600 hover:underline text-sm" onclick={backToEventSelection}>
-						Select a different event
-					</button>
 				</div>
 
 			{:else if guestStep === 'success'}
-				<div class="bg-green-50 border border-green-200 rounded-xl p-6 text-center mb-6">
-					<h2 class="text-xl font-semibold text-green-800 mb-2">✓ You're checked in!</h2>
-					<p class="text-gray-700">Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
+				<div class="bg-white border rounded-xl shadow-sm overflow-hidden border-gray-200">
+					<!-- Title stripe -->
+					<div class="px-6 py-4 bg-green-50">
+						<h2 class="text-lg font-semibold text-green-800">✓ You're checked in!</h2>
+					</div>
+					<!-- Card content -->
+					<div class="p-6 text-center">
+						<p class="text-gray-700 mb-6">Welcome to <strong>{guestSelectedEvent?.name}</strong></p>
+						<button
+							onclick={resetGuestForm}
+							class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+							Check in to another event
+						</button>
+					</div>
 				</div>
-				<button
-					onclick={resetGuestForm}
-					class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-					Check in to another event
-				</button>
 			{/if}
 		</div>
 	{/if}

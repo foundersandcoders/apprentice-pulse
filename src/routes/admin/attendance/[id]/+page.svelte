@@ -17,6 +17,7 @@
 	const stats = $derived(data.stats as ApprenticeAttendanceStats);
 	const terms = $derived(data.terms as Term[]);
 	const cohortsParam = $derived(data.cohortsParam as string);
+	const isExternalUser = $derived(data.user?.type === 'external');
 
 	// Build back link - check if we came from search or cohort view
 	const fromSearch = $derived(page.url.searchParams.get('from') === 'search');
@@ -426,12 +427,18 @@
 												</div>
 											</div>
 										{:else}
-											<button
-												onclick={() => startEditingReason(entry)}
-												class="text-gray-600 hover:text-blue-600 text-xs cursor-pointer transition-colors px-2 py-1 rounded hover:bg-gray-100"
-											>
-												{entry.reason ? entry.reason : 'Add reason...'}
-											</button>
+											{#if isExternalUser}
+												<span class="text-gray-600 text-xs px-2 py-1">
+													{entry.reason || '—'}
+												</span>
+											{:else}
+												<button
+													onclick={() => startEditingReason(entry)}
+													class="text-gray-600 hover:text-blue-600 text-xs cursor-pointer transition-colors px-2 py-1 rounded hover:bg-gray-100"
+												>
+													{entry.reason ? entry.reason : 'Add reason...'}
+												</button>
+											{/if}
 										{/if}
 									{:else}
 										<span class="text-gray-400 text-xs">—</span>

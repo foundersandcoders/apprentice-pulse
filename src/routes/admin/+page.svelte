@@ -8,7 +8,18 @@
 	<header class="mb-6 flex justify-between items-start">
 		<div>
 			<h1 class="text-2xl font-bold">Admin Dashboard</h1>
-			<p class="text-gray-600 mt-1">Welcome, {data.user?.email}</p>
+			<div class="flex items-center gap-3 mt-1">
+				<p class="text-gray-600">Welcome, {data.user?.email}</p>
+				{#if data.user?.type === 'staff'}
+					<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+						Staff
+					</span>
+				{:else if data.user?.type === 'external'}
+					<span class="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+						External Staff
+					</span>
+				{/if}
+			</div>
 		</div>
 		<div class="flex gap-4 text-sm">
 			<a href={resolve('/checkin')} class="text-blue-600 hover:underline">Check In</a>
@@ -17,20 +28,20 @@
 	</header>
 
 	<div class="grid gap-6 sm:grid-cols-2">
-		<a
-			href={resolve('/admin/events')}
-			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all"
-		>
-			<div class="flex items-start gap-4">
-				<div class="shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
-					📅
+			<a
+				href={resolve('/admin/events')}
+				class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all"
+			>
+				<div class="flex items-start gap-4">
+					<div class="shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
+						📅
+					</div>
+					<div>
+						<h2 class="text-lg font-semibold mb-1 group-hover:text-blue-600 transition-colors">Events</h2>
+						<p class="text-gray-600 text-sm">Create, edit, and manage events for cohorts</p>
+					</div>
 				</div>
-				<div>
-					<h2 class="text-lg font-semibold mb-1 group-hover:text-blue-600 transition-colors">Events</h2>
-					<p class="text-gray-600 text-sm">Create, edit, and manage events for cohorts</p>
-				</div>
-			</div>
-		</a>
+			</a>
 		<a
 			href={resolve('/admin/attendance')}
 			class="group block p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg hover:border-green-300 transition-all"

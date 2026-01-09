@@ -28,14 +28,15 @@ The app uses **magic link authentication** with a single login page for all user
 |------|-------------------|--------------|
 | Staff | Staff table (collaborator email) | `/admin` |
 | Student | Apprentices table (learner email) | `/checkin` |
+| External | Staff table (external access fields) | `/admin` |
 
 ### How It Works
 
 1. User enters email at `/login`
-2. Server checks Staff table first, then Apprentices table
+2. Server checks Staff table first, then external access fields, then Apprentices table
 3. JWT token generated (15-minute expiry) and emailed via Resend
 4. User clicks link → token verified → session cookie set (90-day expiry)
-5. User redirected based on type: staff → `/admin`, students → `/checkin`
+5. User redirected based on type: staff/external → `/admin`, students → `/checkin`
 
 ### Route Protection
 
@@ -63,6 +64,39 @@ See [Staff Who Are Also Apprentices](#staff-who-are-also-apprentices) for setup 
 1. Add them as a **collaborator** in the Airtable workspace
 2. Add a record in the **Staff - Apprentice Pulse** table, selecting their collaborator profile
 3. They can now log in at `/login` using their collaborator email
+
+### Adding External Staff Access
+
+External staff are people who need login access to view attendance data but are not regular staff members or apprentices. Examples include external trainers, consultants, or partner organization staff.
+
+To grant external staff access:
+
+1. **In the Staff - Apprentice Pulse table**, find any existing staff record (or create a dummy one)
+2. **Add the external person's email** to the `Attendace access` field (this field can contain multiple emails, one per line)
+3. **Add their name** to the `Name - Attendance access` field (this should match the order of emails in step 2)
+
+**Example setup:**
+- `Attendace access` field: `external.trainer@company.com`
+- `Name - Attendance access` field: `External Trainer`
+
+**How it works:**
+- External staff can log in at `/login` using their email
+- They receive the same magic link authentication as regular staff
+- They have **full admin access** - same permissions as regular staff members
+- No Airtable workspace collaboration required
+
+**Multiple external users:**
+You can add multiple external users to the same staff record by putting each email on a new line:
+- `Attendace access` field:
+  ```
+  trainer1@company.com
+  trainer2@company.com
+  ```
+- `Name - Attendance access` field:
+  ```
+  External Trainer 1
+  External Trainer 2
+  ```
 
 ### Staff Who Are Also Apprentices
 
@@ -193,10 +227,4 @@ Event types are cached for performance (5-minute cache) and include automatic co
 
 ### Default Values
 
-Default values used in forms are stored in `src/lib/airtable/config.ts` under `DEFAULTS`:
-
-| Key | Description |
-|-----|-------------|
-| `SURVEY_URL` | Default survey URL pre-filled when creating events |
-
-To change the default survey URL, update `DEFAULTS.SURVEY_URL` in the config file.
+Default values for event creation are now managed dynamically through Airtable's "Event types - Apprentice Pulse" table. Each event type can have its own default survey URL, providing more flexibility than hardcoded values.
