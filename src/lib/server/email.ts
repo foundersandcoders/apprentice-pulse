@@ -12,10 +12,12 @@ interface SendMagicLinkResult {
 export async function sendMagicLinkEmail(
 	to: string,
 	magicLinkUrl: string,
-	type: 'staff' | 'student',
+	type: 'staff' | 'student' | 'external',
 ): Promise<SendMagicLinkResult> {
 	const subject = type === 'staff'
 		? 'Staff Login - Apprentice Pulse'
+		: type === 'external'
+		? 'External Access Login - Apprentice Pulse'
 		: 'Student Login - Apprentice Pulse';
 
 	const html = `

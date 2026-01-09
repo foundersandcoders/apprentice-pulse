@@ -184,7 +184,7 @@ describe('airtable client', () => {
 			expect(result).toBeNull();
 			expect(consoleSpy).toHaveBeenCalledWith(
 				'Error fetching external access user:',
-				expect.any(Error)
+				expect.any(Error),
 			);
 
 			consoleSpy.mockRestore();

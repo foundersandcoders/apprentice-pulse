@@ -17,7 +17,7 @@
 	const stats = $derived(data.stats as ApprenticeAttendanceStats);
 	const terms = $derived(data.terms as Term[]);
 	const cohortsParam = $derived(data.cohortsParam as string);
-
+	const isExternalUser = $derived(data.user?.type === 'external');
 
 	// Build back link - check if we came from search or cohort view
 	const fromSearch = $derived(page.url.searchParams.get('from') === 'search');
@@ -299,7 +299,6 @@
 			{/if}
 		</div>
 	</header>
-
 
 	<!-- Attendance Filters -->
 	<div class="mb-6">

@@ -30,7 +30,7 @@
 				tailwind: type.tailwindClass,
 				bgClass,
 				textClass,
-				borderClass
+				borderClass,
 			};
 		});
 		return colorMap;
@@ -159,7 +159,6 @@
 			minute: '2-digit',
 		});
 	}
-
 
 	// Authenticated user check-in
 	async function handleCheckIn(eventId: string) {

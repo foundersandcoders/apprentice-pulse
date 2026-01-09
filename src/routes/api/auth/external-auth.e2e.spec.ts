@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { dev } from '$app/environment';
 
-// Mock environment variables for testing
-const mockEnvVars = {
-	AIRTABLE_API_KEY: 'test-key',
-	AIRTABLE_BASE_ID: 'test-base-id',
-	JWT_SECRET: 'test-jwt-secret',
-};
+// Test configuration for external authentication
 
 // Mock Airtable for external user testing
 vi.mock('$lib/airtable/sveltekit-wrapper', () => ({
@@ -56,8 +50,7 @@ describe('External Staff Authentication E2E Flow', () => {
 			vi.mocked(generateMagicToken).mockReturnValue(mockToken);
 			vi.mocked(sendMagicLinkEmail).mockResolvedValue({ success: true });
 
-			// Act - Simulate login request
-			const requestBody = { email: testEmail };
+			// Act - Test external authentication flow
 
 			// Verify the flow logic
 			const isStaff = await findStaffByEmail(testEmail);
@@ -67,10 +60,10 @@ describe('External Staff Authentication E2E Flow', () => {
 			expect(externalUser).toEqual(testExternalUser);
 
 			if (externalUser) {
-				const token = generateMagicToken(testEmail, 'external');
+				// Test token generation for external users
 				const emailResult = await sendMagicLinkEmail(testEmail, mockVerifyUrl, 'external');
 
-				expect(token).toBe(mockToken);
+				expect(generateMagicToken(testEmail, 'external')).toBe(mockToken);
 				expect(emailResult.success).toBe(true);
 			}
 
@@ -110,7 +103,7 @@ describe('External Staff Authentication E2E Flow', () => {
 			const isStaff = await findStaffByEmail(testEmail);
 
 			if (isStaff) {
-				const token = generateMagicToken(testEmail, 'staff');
+				// Test token generation for staff users
 				await sendMagicLinkEmail(testEmail, 'mock-url', 'staff');
 			}
 
@@ -130,11 +123,11 @@ describe('External Staff Authentication E2E Flow', () => {
 			// Act
 			const externalUser = await getExternalAccessByEmail(testEmail);
 			if (externalUser) {
-				const token = generateMagicToken(testEmail, 'external');
+				// Test email service failure handling
 				const emailResult = await sendMagicLinkEmail(testEmail, 'mock-url', 'external');
 
 				// Assert
-				expect(token).toBe('mock-token');
+				expect(generateMagicToken(testEmail, 'external')).toBe('mock-token');
 				expect(emailResult.success).toBe(false);
 			}
 		});

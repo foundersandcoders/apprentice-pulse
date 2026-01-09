@@ -345,7 +345,7 @@
 		startTime: '',
 		endTime: '',
 		cohortIds: [] as string[],
-		eventType: eventTypes[0]?.name || '',
+		eventType: '',
 		isPublic: false,
 		checkInCode: '' as string | number,
 		surveyUrl: '',

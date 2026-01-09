@@ -29,11 +29,11 @@ describe('External Staff Security and Privilege Tests', () => {
 			};
 
 			const invalidPayloads = [
-				{ ...validExternalPayload, type: 'admin' as any },
-				{ ...validExternalPayload, type: 'superuser' as any },
-				{ ...validExternalPayload, type: 'root' as any },
-				{ ...validExternalPayload, type: '' as any },
-				{ ...validExternalPayload, type: undefined as any },
+				{ ...validExternalPayload, type: 'admin' as string },
+				{ ...validExternalPayload, type: 'superuser' as string },
+				{ ...validExternalPayload, type: 'root' as string },
+				{ ...validExternalPayload, type: '' as string },
+				{ ...validExternalPayload, type: undefined as string | undefined },
 			];
 
 			vi.mocked(verifyMagicToken).mockReturnValue(validExternalPayload);
@@ -47,7 +47,7 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Test that only valid user types are accepted
 			const validUserTypes = ['staff', 'student', 'external'];
-			invalidPayloads.forEach(payload => {
+			invalidPayloads.forEach((payload) => {
 				expect(validUserTypes).not.toContain(payload.type);
 			});
 		});
@@ -61,34 +61,28 @@ describe('External Staff Security and Privilege Tests', () => {
 			];
 
 			const invalidSessions = [
-				{ email: 'hacker@example.com', type: 'admin' as any },
-				{ email: 'hacker@example.com', type: 'superuser' as any },
-				{ email: 'hacker@example.com', type: 'root' as any },
+				{ email: 'hacker@example.com', type: 'admin' as string },
+				{ email: 'hacker@example.com', type: 'superuser' as string },
+				{ email: 'hacker@example.com', type: 'root' as string },
 			];
 
 			// Act & Assert
-			validSessions.forEach(session => {
+			validSessions.forEach((session) => {
 				vi.mocked(getSession).mockReturnValue(session);
-				const result = getSession({} as any);
+				const result = getSession({} as never);
 
 				expect(result?.type).toBeOneOf(['staff', 'student', 'external']);
 			});
 
 			// Invalid session types should not be accepted by the system
 			const allowedTypes = ['staff', 'student', 'external'];
-			invalidSessions.forEach(session => {
+			invalidSessions.forEach((session) => {
 				expect(allowedTypes).not.toContain(session.type);
 			});
 		});
 
 		it('should enforce JWT token expiration for external users', () => {
-			// Arrange - Expired token
-			const expiredPayload = {
-				email: 'external@example.com',
-				type: 'external' as const,
-				iat: Math.floor(Date.now() / 1000) - 1000, // 1000 seconds ago
-				exp: Math.floor(Date.now() / 1000) - 100,  // Expired 100 seconds ago
-			};
+			// Test expired token scenario - tokens should be validated for expiration
 
 			// Valid token
 			const validPayload = {
@@ -125,7 +119,7 @@ describe('External Staff Security and Privilege Tests', () => {
 			];
 
 			// Act & Assert
-			validEmails.forEach(email => {
+			validEmails.forEach((email) => {
 				const payload = {
 					email,
 					type: 'external' as const,
@@ -141,7 +135,7 @@ describe('External Staff Security and Privilege Tests', () => {
 			});
 
 			// Invalid emails should be rejected during token verification
-			invalidEmails.forEach(email => {
+			invalidEmails.forEach((email) => {
 				// The auth system should reject tokens with invalid emails
 				const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 				expect(emailRegex.test(email)).toBe(false);
@@ -156,7 +150,7 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Act
 			vi.mocked(getSession).mockReturnValue(externalSession);
-			const session = getSession({} as any);
+			const session = getSession({} as never);
 
 			// Assert - External user type cannot be changed
 			expect(session?.type).toBe('external');
@@ -173,9 +167,9 @@ describe('External Staff Security and Privilege Tests', () => {
 			];
 
 			// Act & Assert
-			sessions.forEach(originalSession => {
+			sessions.forEach((originalSession) => {
 				vi.mocked(getSession).mockReturnValue(originalSession);
-				const retrievedSession = getSession({} as any);
+				const retrievedSession = getSession({} as never);
 
 				// Session type should remain unchanged
 				expect(retrievedSession?.type).toBe(originalSession.type);
@@ -212,18 +206,18 @@ describe('External Staff Security and Privilege Tests', () => {
 			const adminRoutes = ['/admin', '/admin/events', '/admin/attendance'];
 
 			// Act & Assert
-			adminRoutes.forEach(route => {
+			adminRoutes.forEach(() => {
 				// Both staff and external should be allowed on admin routes
 				// (Based on our simplified implementation where external = staff permissions)
 
 				// Test staff access
 				vi.mocked(getSession).mockReturnValue(staffSession);
-				let session = getSession({} as any);
+				let session = getSession({} as never);
 				expect(['staff', 'external']).toContain(session?.type);
 
 				// Test external access
 				vi.mocked(getSession).mockReturnValue(externalSession);
-				session = getSession({} as any);
+				session = getSession({} as never);
 				expect(['staff', 'external']).toContain(session?.type);
 			});
 		});
@@ -242,7 +236,7 @@ describe('External Staff Security and Privilege Tests', () => {
 			const tokenResult = verifyMagicToken('token');
 
 			vi.mocked(getSession).mockReturnValue({ email: externalUser.email, type: externalUser.type });
-			const sessionResult = getSession({} as any);
+			const sessionResult = getSession({} as never);
 
 			// Assert - Email and type should be consistent across auth methods
 			expect(tokenResult?.email).toBe(sessionResult?.email);
@@ -256,7 +250,7 @@ describe('External Staff Security and Privilege Tests', () => {
 			vi.mocked(getSession).mockReturnValue(null);
 
 			// Act
-			const result = getSession({} as any);
+			const result = getSession({} as never);
 
 			// Assert
 			expect(result).toBeNull();
@@ -269,13 +263,13 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Act & Assert
 			vi.mocked(getSession).mockReturnValue(validSession);
-			let session = getSession({} as any);
+			let session = getSession({} as never);
 			expect(session).toHaveProperty('email');
 			expect(session).toHaveProperty('type');
 
 			// Incomplete session should be handled appropriately
-			vi.mocked(getSession).mockReturnValue(incompleteSession as any);
-			session = getSession({} as any);
+			vi.mocked(getSession).mockReturnValue(incompleteSession as never);
+			session = getSession({} as never);
 			expect(session?.email).toBe('external@example.com');
 		});
 
@@ -308,14 +302,7 @@ describe('External Staff Security and Privilege Tests', () => {
 			];
 
 			// Act & Assert
-			maliciousInputs.forEach(maliciousEmail => {
-				const payload = {
-					email: maliciousEmail,
-					type: 'external' as const,
-					iat: Math.floor(Date.now() / 1000),
-					exp: Math.floor(Date.now() / 1000) + 900,
-				};
-
+			maliciousInputs.forEach((maliciousEmail) => {
 				// The system should either reject malicious inputs or sanitize them
 				// For testing, we verify the input contains suspicious characters
 				expect(maliciousEmail).toMatch(/[<>'"]/);
@@ -337,14 +324,14 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Act & Assert
 			vi.mocked(getSession).mockReturnValue(originalSession);
-			const session = getSession({} as any);
+			const session = getSession({} as never);
 
 			// Original session should be unchanged
 			expect(session?.type).toBe('external');
 
 			// Verify invalid user types are not in allowed types
 			const allowedTypes = ['staff', 'student', 'external'];
-			invalidTypes.forEach(invalidType => {
+			invalidTypes.forEach((invalidType) => {
 				expect(allowedTypes).not.toContain(invalidType);
 			});
 
@@ -365,14 +352,14 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Act & Assert - Valid session should work
 			vi.mocked(getSession).mockReturnValue(validSession);
-			const session = getSession({} as any);
+			const session = getSession({} as never);
 			expect(session?.email).toBe('external@example.com');
 			expect(session?.type).toBe('external');
 
 			// Test incomplete sessions
 			incompleteAttempts.forEach((attempt) => {
-				const hasValidEmail = attempt.email && attempt.email.trim() !== '';
-				const hasValidType = attempt.type && attempt.type.trim() !== '';
+				const hasValidEmail = (attempt as Record<string, string>).email && (attempt as Record<string, string>).email.trim() !== '';
+				const hasValidType = (attempt as Record<string, string>).type && (attempt as Record<string, string>).type.trim() !== '';
 				const isIncomplete = !hasValidEmail || !hasValidType;
 
 				// All our test attempts should be incomplete
@@ -381,10 +368,10 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Null and undefined should be handled
 			vi.mocked(getSession).mockReturnValue(null);
-			expect(getSession({} as any)).toBeNull();
+			expect(getSession({} as never)).toBeNull();
 
-			vi.mocked(getSession).mockReturnValue(undefined as any);
-			expect(getSession({} as any)).toBeUndefined();
+			vi.mocked(getSession).mockReturnValue(undefined as never);
+			expect(getSession({} as never)).toBeUndefined();
 		});
 
 		it('should maintain authentication state integrity', () => {
@@ -393,9 +380,9 @@ describe('External Staff Security and Privilege Tests', () => {
 
 			// Act - Multiple session retrievals should be consistent
 			vi.mocked(getSession).mockReturnValue(externalSession);
-			const session1 = getSession({} as any);
-			const session2 = getSession({} as any);
-			const session3 = getSession({} as any);
+			const session1 = getSession({} as never);
+			const session2 = getSession({} as never);
+			const session3 = getSession({} as never);
 
 			// Assert - All retrievals should return identical data
 			expect(session1).toEqual(session2);
