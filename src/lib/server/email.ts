@@ -17,8 +17,8 @@ export async function sendMagicLinkEmail(
 	const subject = type === 'staff'
 		? 'Staff Login - Apprentice Pulse'
 		: type === 'external'
-		? 'External Access Login - Apprentice Pulse'
-		: 'Student Login - Apprentice Pulse';
+			? 'External Access Login - Apprentice Pulse'
+			: 'Student Login - Apprentice Pulse';
 
 	const html = `
 		<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
