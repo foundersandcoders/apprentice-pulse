@@ -61,9 +61,10 @@ describe('External Staff Authentication E2E Flow', () => {
 
 			if (externalUser) {
 				// Test token generation for external users
+				const token = generateMagicToken(testEmail, 'external');
 				const emailResult = await sendMagicLinkEmail(testEmail, mockVerifyUrl, 'external');
 
-				expect(generateMagicToken(testEmail, 'external')).toBe(mockToken);
+				expect(token).toBe(mockToken);
 				expect(emailResult.success).toBe(true);
 			}
 
@@ -104,6 +105,7 @@ describe('External Staff Authentication E2E Flow', () => {
 
 			if (isStaff) {
 				// Test token generation for staff users
+				generateMagicToken(testEmail, 'staff');
 				await sendMagicLinkEmail(testEmail, 'mock-url', 'staff');
 			}
 
@@ -124,10 +126,11 @@ describe('External Staff Authentication E2E Flow', () => {
 			const externalUser = await getExternalAccessByEmail(testEmail);
 			if (externalUser) {
 				// Test email service failure handling
+				const token = generateMagicToken(testEmail, 'external');
 				const emailResult = await sendMagicLinkEmail(testEmail, 'mock-url', 'external');
 
 				// Assert
-				expect(generateMagicToken(testEmail, 'external')).toBe('mock-token');
+				expect(token).toBe('mock-token');
 				expect(emailResult.success).toBe(false);
 			}
 		});
