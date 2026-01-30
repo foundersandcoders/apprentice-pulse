@@ -397,20 +397,21 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 	// ============================================
 
 	/**
-	 * Get events for a specific cohort, optionally filtered by date range
+	 * Get events for cohorts, optionally filtered by date range
 	 * This is THE source of truth for which events count toward an apprentice's stats
+	 * Accepts multiple cohort IDs - returns events that match ANY of the cohorts
 	 */
-	function getEventsForCohort(
+	function getEventsForCohorts(
 		allEvents: EventForStats[],
-		cohortId: string | null,
+		cohortIds: string[],
 		options?: { startDate?: Date; endDate?: Date },
 	): EventForStats[] {
-		// Filter by cohort (if no cohort, return empty - apprentice must belong to a cohort)
-		if (!cohortId) {
+		// Filter by cohorts (if no cohorts, return empty - apprentice must belong to at least one cohort)
+		if (cohortIds.length === 0) {
 			return [];
 		}
 
-		let events = allEvents.filter(e => e.cohortIds.includes(cohortId));
+		let events = allEvents.filter(e => e.cohortIds.some(c => cohortIds.includes(c)));
 
 		// Filter by date range if provided
 		if (options?.startDate && options?.endDate) {
@@ -475,14 +476,15 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		const apprentice = apprenticeRecords[0];
 		const apprenticeName = apprentice.get(APPRENTICE_FIELDS.NAME) as string;
 		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
-		const cohortId = cohortLink?.[0] ?? null;
+		const cohortIds = cohortLink ?? [];
+		const primaryCohortId = cohortIds[0] ?? null; // For display purposes
 
-		// Get cohort name if available
+		// Get primary cohort name if available (for display)
 		let cohortName: string | null = null;
-		if (cohortId) {
+		if (primaryCohortId) {
 			const cohortRecords = await cohortsTable
 				.select({
-					filterByFormula: `RECORD_ID() = "${cohortId}"`,
+					filterByFormula: `RECORD_ID() = "${primaryCohortId}"`,
 					maxRecords: 1,
 					returnFieldsByFieldId: true,
 				})
@@ -492,9 +494,9 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			}
 		}
 
-		// Get events for this cohort (with optional date filter)
+		// Get events for all of the apprentice's cohorts (with optional date filter)
 		const allEvents = await getAllEvents();
-		const relevantEvents = getEventsForCohort(allEvents, cohortId, options);
+		const relevantEvents = getEventsForCohorts(allEvents, cohortIds, options);
 		const relevantEventIds = new Set(relevantEvents.map(e => e.id));
 
 		// Get attendance for this apprentice, filtered to cohort events only
@@ -542,7 +544,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 			...stats,
 			apprenticeId,
 			apprenticeName,
-			cohortId,
+			cohortId: primaryCohortId,
 			cohortName,
 			trend: calculateTrend(recentRate, previousRate),
 		};
@@ -827,11 +829,11 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 
 		const apprentice = apprenticeRecords[0];
 		const cohortLink = apprentice.get(APPRENTICE_FIELDS.COHORT) as string[] | undefined;
-		const cohortId = cohortLink?.[0] ?? null;
+		const cohortIds = cohortLink ?? [];
 
-		// Get events for this cohort (with optional date filter)
+		// Get events for all of the apprentice's cohorts (with optional date filter)
 		const allEvents = await getAllEvents();
-		const relevantEvents = getEventsForCohort(allEvents, cohortId, options);
+		const relevantEvents = getEventsForCohorts(allEvents, cohortIds, options);
 		const relevantEventIds = new Set(relevantEvents.map(e => e.id));
 
 		// Get attendance for this apprentice, filtered to cohort events only
