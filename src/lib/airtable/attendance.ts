@@ -407,7 +407,7 @@ export function createAttendanceClient(apiKey: string, baseId: string) {
 		options?: { startDate?: Date; endDate?: Date },
 	): EventForStats[] {
 		// Filter by cohorts (if no cohorts, return empty - apprentice must belong to at least one cohort)
-		if (cohortIds.length === 0) {
+		if (cohortIds.length <= 0) {
 			return [];
 		}
 
