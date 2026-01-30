@@ -199,7 +199,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 	}
 
 	/**
-	 * Check if email exists in Apprentices table
+	 * Check if email exists in Apprentices table (case-insensitive)
 	 * Note: filterByFormula requires field NAME "Learner email" - this would break if renamed in Airtable
 	 */
 	async function findApprenticeByEmail(email: string): Promise<boolean> {
@@ -207,7 +207,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 
 		const apprenticeRecords = await apprenticesTable
 			.select({
-				filterByFormula: `{Learner email} = "${email}"`,
+				filterByFormula: `LOWER({Learner email}) = LOWER("${email}")`,
 				maxRecords: 1,
 				returnFieldsByFieldId: true,
 			})
@@ -224,7 +224,7 @@ export function createAirtableClient(apiKey: string, baseId: string) {
 
 		const records = await apprenticesTable
 			.select({
-				filterByFormula: `{Learner email} = "${email}"`,
+				filterByFormula: `LOWER({Learner email}) = LOWER("${email}")`,
 				maxRecords: 1,
 				returnFieldsByFieldId: true,
 			})
