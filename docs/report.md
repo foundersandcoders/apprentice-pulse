@@ -450,3 +450,102 @@ Implemented consistent loading/error patterns across all admin views:
 - Form validation feedback
 
 This creates a predictable user experience across the admin dashboard. [P11 - 40%]
+
+
+# Roles and Responsibilities in the Software Development Lifecycle (P1)
+
+This project was developed as a solo apprentice project with a clearly defined stakeholder relationship. Understanding the roles involved was essential to managing the work effectively.
+
+## Project Roles
+
+**Apprentice Developer (myself):** Responsible for the full software development lifecycle — requirements analysis, system design, implementation, testing, deployment, and documentation. Working as the sole developer meant taking ownership of all technical decisions while remaining accountable to the product owner at every sprint review.
+
+**Product Owner — Jess (FAC):** Jess acts as the primary stakeholder and main end-user of the admin-facing features of the application. Her responsibilities within the SDLC are to define and prioritise requirements, validate delivered functionality during sprint reviews, and provide feedback that shapes the product backlog. In Sprint 2, Jess also took on a direct task: configuring Airtable schema changes (creating tables and fields) that required permissions I did not have. I assigned her the relevant Jira tickets (e.g. AP-10, AP-11, AP-12) and tracked her progress as a dependency, demonstrating how even small teams must manage handoffs within a SDLC.
+
+**End users (Apprentices):** The student cohorts are the secondary user group, interacting with the check-in flow. Their needs (mobile-first UX, minimal friction, clear feedback) informed the design of the `/checkin` page. Although not directly involved in planning, their usage patterns — arriving late, attending multiple cohorts, checking in as guests — were captured in user stories and shaped implementation decisions.
+
+## My Role Within the SDLC
+
+Across the project I moved through each SDLC phase in sprint increments:
+
+| SDLC Phase | My contribution |
+|---|---|
+| Requirements | Wrote 16 user stories across 4 epics; collaborated with Jess to prioritise by value |
+| Design | Produced architecture diagram, data flow diagrams, and schema documentation |
+| Implementation | Built all application code across 4 sprints |
+| Testing | Wrote unit tests with Vitest; used Postman for API testing; created manual integration scripts |
+| Deployment | Configured CI/CD pipeline and managed production releases to Vercel |
+| Review | Conducted sprint reviews with Jess; iterated backlog based on feedback |
+
+[P1 - 100%] [K2 - 80%] [K3 - 80%]
+
+
+# How the Team Worked: Agile Process and Contribution (P2)
+
+Although I was the sole developer, I applied structured Agile practices throughout to maintain momentum, visibility, and quality — the same practices I would use in a larger team.
+
+## Sprint Structure
+
+The project ran in one-week sprints (Sprint 1 was 4 days; Sprint 2 extended slightly over Christmas break). Each sprint followed a consistent rhythm:
+
+- **Sprint planning:** I reviewed the backlog with Jess and agreed on the sprint goal and ticket scope. Tickets were estimated in story points and moved from the backlog to the sprint in Jira.
+- **Daily self-review:** With no team standup, I tracked my own progress against the sprint board each morning, identifying blockers early.
+- **Sprint review:** At the end of each sprint I demonstrated delivered features to Jess, captured her feedback, and updated the backlog accordingly. Sprint reviews are documented in `docs/planning/sprint0X_review.md`.
+- **Sprint retrospective (solo):** I documented what went well and what to improve in each sprint review file, and carried action items into the next sprint.
+
+## Version Control and Branching Strategy
+
+I used a feature-branch workflow throughout:
+
+- Each Jira ticket maps to a branch named `feature/ap-XX-short-description` (e.g. `feature/ap-26-cohort-attendance-metrics-view`)
+- All work was developed on feature branches and merged to `main` via Pull Requests — even as the sole developer. This ensured a clean history, gave me a structured review moment before merging, and kept `main` always deployable.
+- 21 PRs were merged across the project lifecycle, each with a descriptive summary of changes and a test plan.
+
+This discipline mirrors professional team practice: PRs provide a record of intent, allow review (by a team member, or by myself with fresh eyes), and trigger the CI pipeline before code reaches main.
+
+## Communication and Stakeholder Management
+
+When tasks required Airtable permissions I did not have, I communicated this to Jess directly and assigned her the relevant Jira tickets rather than letting them become silent blockers. This kept the sprint board accurate and made dependencies visible.
+
+Sprint reviews were the primary communication mechanism with the client. When Sprint 2 revealed that the events feature needed to support public (non-cohort) events — a requirement not captured initially — I split the story (AP-17 → AP-17 + AP-19), explained the reasoning to Jess, and adjusted the sprint plan. This shows how iterative delivery surfaces real requirements earlier than a waterfall approach would.
+
+[P2 - 100%] [K6 - 80%] [D1 - 50%]
+
+
+# Build, Deployment and Environment Management (P9)
+
+## CI/CD Pipeline
+
+The project uses a GitHub Actions pipeline defined in `.github/workflows/ci.yml`. It runs on every push to `main` and on every pull request targeting `main`.
+
+The pipeline has two jobs:
+
+**1. Test job** (runs on all PRs and pushes):
+- Checks out the code
+- Installs dependencies with `npm ci` (reproducible installs)
+- Runs ESLint (`npm run lint`) — enforces code style and catches common errors
+- Runs the full Vitest test suite (`npm test`)
+
+No code can reach `main` without passing both lint and tests. This gate ensured that regressions were caught before merging throughout the project.
+
+**2. Deploy job** (runs only on merge to `main`, after the test job passes):
+- Installs the Vercel CLI
+- Pulls the production environment configuration from Vercel (environment variables, project settings)
+- Builds the project using Vercel's build pipeline
+- Deploys the prebuilt output to Vercel production
+
+The deploy job has a `needs: test` dependency, meaning a failed test run blocks deployment entirely. This gave confidence that every production release had passed CI.
+
+## Environment Management
+
+Sensitive configuration (Airtable API key, Resend API key, JWT secret, Discord webhook URL) is managed exclusively through environment variables — never committed to the repository. A `.env.example` file documents the required variables for onboarding. Vercel stores production secrets and the CI pipeline pulls them securely via `vercel pull` using a `VERCEL_TOKEN` stored as a GitHub Actions secret.
+
+For local development, a `.env.local` file (gitignored) mirrors production config against the same Airtable base. One environment-specific fix was required: the `Secure` cookie flag had to be disabled in development (HTTP) while remaining enabled in production (HTTPS), handled with SvelteKit's `dev` import.
+
+## Deployment Architecture
+
+There is a single production environment — no dedicated staging. The feature-branch workflow mitigates this: code is reviewed and tested in CI before merging, so `main` is always in a releasable state. A merge to `main` triggers an automatic production deploy in approximately 1–2 minutes.
+
+The target hosting platform is Heroku (production), but during development Vercel is used for its tight integration with the CI pipeline and zero-configuration SvelteKit support.
+
+[P9 - 100%] [S10 - 80%] [S14 - 80%] [B1 - 60%]
